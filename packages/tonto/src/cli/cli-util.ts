@@ -9,7 +9,7 @@ import { BuiltInLib } from "./model/BuiltInLib.js";
 import {
     JSON_GENERATION_STEPS,
     createJsonGenerationError,
-    getJsonGenerationDiagnosticInfos,
+    getJsonGenerationBlockingDiagnosticInfos,
 } from "./requests/jsonGeneration.js";
 
 export async function extractAllDocuments(
@@ -93,10 +93,13 @@ export async function extractDocument(fileName: string, services: LangiumService
                 )
             );
         }
+    }
 
-        throw createJsonGenerationError("Could not generate JSON because the Tonto source file contains syntax or validation errors.", {
+    const blockingErrors = getJsonGenerationBlockingDiagnosticInfos(document);
+    if (blockingErrors.length > 0) {
+        throw createJsonGenerationError("Could not generate JSON because the Tonto source file contains syntax or linking errors.", {
             step: JSON_GENERATION_STEPS.documentValidation,
-            info: getJsonGenerationDiagnosticInfos(document),
+            info: blockingErrors,
         });
     }
 

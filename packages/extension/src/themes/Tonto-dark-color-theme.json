@@ -1306,8 +1306,8 @@
             "fontStyle": "bold"
         },
         "tontoObjects": {
-            "foreground": "#CD6872",
-            "fontStyle": "bold"
+            "foreground": "#67C3CB",
+            "fontStyle": "italic"
         },
         "tontoFunctionalComplex": {
             "foreground": "#f46a6a",

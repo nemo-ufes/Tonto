@@ -328,9 +328,6 @@ function computeNodeSize(label: string, attributes: TontoDiagramAttribute[]): To
 }
 
 function normalizePaletteToken(nature: TontoNatureResult): TontoDiagramPaletteToken {
-    if (nature.nature === "objects") {
-        return "functional-complexes";
-    }
     return nature.nature;
 }
 

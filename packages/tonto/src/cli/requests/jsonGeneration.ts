@@ -1,4 +1,4 @@
-import { AstNode, AstUtils, LangiumDocument, LangiumDocuments } from "langium";
+import { AstNode, AstUtils, DocumentValidator, LangiumDocument, LangiumDocuments } from "langium";
 import path from "node:path";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver-types";
 
@@ -131,6 +131,19 @@ export function getJsonGenerationDocumentErrorInfos(documents: LangiumDocuments)
         .toArray();
 }
 
+export function getJsonGenerationDocumentBlockingErrorInfos(documents: LangiumDocuments): JsonGenerationErrorInfo[] {
+    return documents.all
+        .flatMap((document) => getJsonGenerationBlockingDiagnosticInfos(document))
+        .toArray();
+}
+
+export function getJsonGenerationBlockingDiagnosticInfos(document: LangiumDocument): JsonGenerationErrorInfo[] {
+    return (document.diagnostics ?? [])
+        .filter((diagnostic) => diagnostic.severity === DiagnosticSeverity.Error)
+        .filter(isBlockingDiagnostic)
+        .map((diagnostic) => getJsonGenerationDiagnosticInfo(document, diagnostic));
+}
+
 export function formatJsonGenerationErrorMessage(error: unknown): string {
     if (!isJsonGenerationError(error)) {
         if (error instanceof Error) {
@@ -169,6 +182,23 @@ function formatInfoLocation(info: JsonGenerationErrorInfo): string {
     const column = info.column ? `:${info.column}` : "";
 
     return ` (${fileName}${line}${column})`;
+}
+
+function isBlockingDiagnostic(diagnostic: Diagnostic): boolean {
+    const code = getDiagnosticDataCode(diagnostic);
+    return (
+        code === DocumentValidator.LexingError ||
+        code === DocumentValidator.ParsingError ||
+        code === DocumentValidator.LinkingError
+    );
+}
+
+function getDiagnosticDataCode(diagnostic: Diagnostic): unknown {
+    const data = diagnostic.data;
+    if (typeof data !== "object" || data === null || !("code" in data)) {
+        return undefined;
+    }
+    return data.code;
 }
 
 function getDocumentPath(document: LangiumDocument): string {

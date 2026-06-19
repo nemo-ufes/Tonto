@@ -37,7 +37,7 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/matheuslenke/Tonto"
+        "href": "https://github.com/nemo-ufes/Tonto"
       },
       {
         "label": "CLI on npm",
@@ -56,7 +56,7 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/matheuslenke/Tonto",
+      "github": "https://github.com/nemo-ufes/Tonto",
       "linkedin": "https://www.linkedin.com/in/matheus-lenke-coutinho-492a4b15a/"
     },
     "links": [

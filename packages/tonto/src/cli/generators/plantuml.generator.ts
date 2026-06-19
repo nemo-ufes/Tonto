@@ -22,6 +22,8 @@ const COLORS = {
     LIGHT_PINK: "#FFDADD",
     BLUE: "#70D7FF",
     LIGHT_BLUE: "#C0EDFF",
+    TEAL: "#67C3CB",
+    LIGHT_TEAL: "#DDEDEE",
     WHITE: "#FFFFFF",
     YELLOW: "#FCFCD4",
     ORANGE: "#FCE0C0",
@@ -30,6 +32,7 @@ const COLORS = {
 };
 
 const mainColorMap: Record<string, string> = {
+    "objects": COLORS.TEAL,
     "functional-complexes": COLORS.PINK,
     "collectives": COLORS.PINK,
     "quantities": COLORS.PINK,
@@ -44,6 +47,7 @@ const mainColorMap: Record<string, string> = {
 };
 
 const alternativeColorMap: Record<string, string> = {
+    "objects": COLORS.LIGHT_TEAL,
     "functional-complexes": COLORS.LIGHT_PINK,
     "collectives": COLORS.LIGHT_PINK,
     "quantities": COLORS.LIGHT_PINK,

@@ -1,5 +1,5 @@
 {
-  "name": "tpm",
+  "name": "tonto-package-manager",
   "displayName": "Tonto Package Manager",
   "version": "0.3.2",
   "description": "A package manager for Tonto dependencies",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/matheuslenke/Tonto.git",
+    "url": "git+https://github.com/nemo-ufes/Tonto.git",
     "directory": "packages/tpm"
   },
   "type": "module",
@@ -31,9 +31,9 @@
   "author": "Matheus Lenke Coutinho",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/matheuslenke/Tonto/issues"
+    "url": "https://github.com/nemo-ufes/Tonto/issues"
   },
-  "homepage": "https://github.com/matheuslenke/Tonto#readme",
+  "homepage": "https://github.com/nemo-ufes/Tonto#readme",
   "engines": {
     "node": ">=16"
   },
@@ -50,7 +50,7 @@
     "execa": "^5.1.1",
     "figlet": "^1.6.0",
     "ora": "^5.4.1",
-    "tonto-cli": "file:../tonto"
+    "tonto-cli": "^0.4.12"
   },
   "devDependencies": {
     "@types/figlet": "^1.5.6",

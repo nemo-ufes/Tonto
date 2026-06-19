@@ -32,6 +32,19 @@ describe("ContextModuleValidator.checkCompatibleNaturesOfBaseSortals", () => {
     expect(errors).toHaveLength(0);
   });
 
+  it("should produce no error for base sortal specializing an extrinsicMode ultimate sortal", async () => {
+    const stub = `
+    package TestPackage
+    extrinsicMode Test
+    subkind A specializes Test
+    `;
+    const result = await validate(stub);
+    const errors = result.diagnostics.filter(
+      (d) => d.severity === 1
+    );
+    expect(errors).toHaveLength(0);
+  });
+
   it("should produce no error for base sortal with declared nature", async () => {
     const stub = `
     package TestPackage

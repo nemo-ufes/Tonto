@@ -10,7 +10,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/matheuslenke/Tonto">
+  <a href="https://github.com/nemo-ufes/Tonto">
     <img src="../../docs/images/TontoLogo.png" alt="Logo"  height="100" alt="Tonto Logo image, a blue background with TONTO written in it">
   </a>
 
@@ -221,7 +221,7 @@ This is all the tools you need installed to run the project and the versions tha
 <!-- LICENSE -->>
 ## 🔐 License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+Distributed under the MIT License. See `LICENSE.md` for more information.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

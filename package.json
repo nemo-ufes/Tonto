@@ -3,11 +3,11 @@
     "private": true,
     "engineStrict": true,
     "description": "Tonto is a DSL for creating OntoUML models",
-    "version": "0.4.9",
+    "version": "0.4.11",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/matheuslenke/Tonto"
+        "url": "https://github.com/nemo-ufes/Tonto"
     },
     "icon": "packages/extension/data/images/TontoIcon.png",
     "engines": {

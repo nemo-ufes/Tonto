@@ -10,7 +10,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/matheuslenke/Tonto">
+  <a href="https://github.com/nemo-ufes/Tonto">
     <img src="../../docs/images/TontoLogo.png" alt="Logo"  height="100" alt="Tonto Logo image, a blue background with TONTO written in it">
   </a>
 
@@ -121,7 +121,7 @@ tpm add help
 <!-- LICENSE -->
 ## 🔐 License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+Distributed under the MIT License. See the repository's root `LICENSE` file for more information.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -136,4 +136,3 @@ Matheus Lenke Coutinho - matheus.l.coutinho@edu.ufes.br - [Linkedin](https://www
 <div id="additional-tools"> </div>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-

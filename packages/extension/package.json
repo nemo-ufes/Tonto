@@ -3,12 +3,12 @@
     "displayName": "Tonto",
     "publisher": "lenke",
     "description": "Tonto is a DSL for creating OntoUML models",
-    "version": "0.4.10",
+    "version": "0.4.11",
     "license": "MIT",
     "type": "module",
     "repository": {
         "type": "git",
-        "url": "https://github.com/matheuslenke/Tonto",
+        "url": "https://github.com/nemo-ufes/Tonto",
         "directory": "packages/extension"
     },
     "icon": "data/images/TontoIcon.png",
@@ -204,6 +204,11 @@
                     "group": "navigation"
                 },
                 {
+                    "command": "tonto.addSemanticTokenColors",
+                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "group": "navigation"
+                },
+                {
                     "command": "tonto.diagram.plantuml.open",
                     "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
                     "group": "navigation"
@@ -328,6 +333,11 @@
                 "category": "Tonto"
             },
             {
+                "command": "tonto.addSemanticTokenColors",
+                "title": "Add Semantic Token Colors to User Settings",
+                "category": "Tonto"
+            },
+            {
                 "command": "tonto.diagram.plantuml.open",
                 "title": "Open PlantUML Diagram",
                 "category": "Tonto"
@@ -375,6 +385,7 @@
         "onWebviewPanel:tonto",
         "onView:tonto",
         "onLanguage:tontodiagram",
+        "onCommand:tonto.addSemanticTokenColors",
         "onCommand:tonto.diagram.createFile",
         "onCustomEditor:tonto.diagram.editor"
     ],
@@ -416,8 +427,8 @@
         "sprotty-elk": "^1.2.0",
         "sprotty-vscode": "file:../sprotty-vscode",
         "sprotty-vscode-webview": "file:../sprotty-vscode-webview",
-        "tonto-cli": "^0.4.3",
-        "tonto-package-manager": "~0.2.9",
+        "tonto-cli": "^0.4.12",
+        "tonto-package-manager": "~0.3.2",
         "uuid": "^9.0.1",
         "vite": "^5.4.19",
         "vscode-languageclient": "^9.0.1",

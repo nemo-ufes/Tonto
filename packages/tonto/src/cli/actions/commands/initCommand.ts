@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { createDefaultTontoManifest, manifestFileName, toJson } from '../../model/grammar/TontoManifest.js';
+import { createDefaultTontoManifest, manifestFileName, TontoManifest, toJson } from '../../model/grammar/TontoManifest.js';
 import { agentFolderGuidanceFiles } from '../../templates/agent-guidance.js';
 import { copilotInstructions } from '../../templates/copilot-instructions.js';
 import { cursorHeader, vscodeHeader } from '../../templates/headers.js';
@@ -28,6 +28,16 @@ interface InitOptions {
 }
 
 export type InitProjectFile = { type: 'file' | 'dir'; relativePath: string; content?: string };
+
+export interface InitManifestAnswers {
+    projectName: string;
+    displayName?: string;
+    version?: string;
+    description?: string;
+    license?: string;
+    authorName?: string;
+    authorEmail?: string;
+}
 
 export const GUIDANCE_TARGET_OPTIONS = [
     {
@@ -274,6 +284,38 @@ function normalizeRelativePath(relativePath: string): string {
     return relativePath.split(path.sep).join('/');
 }
 
+function normalizeOptionalText(value: string | undefined): string | undefined {
+    const trimmedValue = value?.trim();
+    return trimmedValue ? trimmedValue : undefined;
+}
+
+export function buildInitManifest(answers: InitManifestAnswers): TontoManifest {
+    const manifest = createDefaultTontoManifest();
+    manifest.projectName = answers.projectName;
+    manifest.displayName = normalizeOptionalText(answers.displayName) ?? answers.projectName;
+    manifest.version = normalizeOptionalText(answers.version) ?? manifest.version;
+    manifest.license = normalizeOptionalText(answers.license) ?? manifest.license;
+    manifest.authors = [];
+
+    const description = normalizeOptionalText(answers.description);
+    if (description) {
+        manifest.description = description;
+    }
+
+    const authorName = normalizeOptionalText(answers.authorName);
+    if (authorName) {
+        const authorEmail = normalizeOptionalText(answers.authorEmail);
+        manifest.authors = [
+            {
+                name: authorName,
+                ...(authorEmail ? { email: authorEmail } : {}),
+            },
+        ];
+    }
+
+    return manifest;
+}
+
 async function initAction(options: InitOptions) {
     console.log(chalk.cyan('[Tonto: Init new project command]'));
     console.log(chalk.blue('initAction started'));
@@ -291,12 +333,11 @@ async function initAction(options: InitOptions) {
     });
 
     const description = await input({
-        message: 'Description:',
-        default: 'A new Tonto project.'
+        message: 'Description (optional):'
     });
 
     const author = await input({
-        message: 'Author:'
+        message: 'Author name (optional):'
     });
 
     const guidanceTarget = await select({
@@ -344,14 +385,13 @@ async function initAction(options: InitOptions) {
         console.log(chalk.yellow('tonto.json already exists. Skipping creation.'));
     } else {
         // Create manifest from canonical API and populate with collected answers
-        const manifest = createDefaultTontoManifest();
-        manifest.projectName = answers.name;
-        manifest.displayName = answers.name;
-        manifest.version = answers.version ?? manifest.version;
-        // If author was provided as a simple string, map to authors array
-        if (answers.author) {
-            manifest.authors = [{ name: answers.author }];
-        }
+        const manifest = buildInitManifest({
+            projectName: answers.name,
+            displayName: answers.name,
+            version: answers.version,
+            description: answers.description,
+            authorName: answers.author,
+        });
         console.log(chalk.blue('Writing tonto.json'));
         try {
             fs.writeFileSync(tontoJsonPath, toJson(manifest));
@@ -473,9 +513,7 @@ export function buildInitProjectFiles(projectName: string, options: InitOptions)
     files.push({ type: 'dir', relativePath: projectName });
 
     // tonto.json - use canonical manifest
-    const manifest = createDefaultTontoManifest();
-    manifest.projectName = projectName;
-    manifest.displayName = projectName;
+    const manifest = buildInitManifest({ projectName, displayName: projectName });
     files.push({ type: 'file', relativePath: path.join(projectName, manifestFileName), content: toJson(manifest) });
 
     // src

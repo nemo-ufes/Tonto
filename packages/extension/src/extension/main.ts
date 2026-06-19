@@ -2,6 +2,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from "vscode-languageclient/node.js";
 import { createAddGuidancesCommand } from "../commands/addGuidancesCommand.js";
+import { createAddSemanticTokenColorsCommand } from "../commands/addSemanticTokenColorsCommand.js";
 import { createAddSkillCommand } from "../commands/addSkillCommand.js";
 import { createTransformToGufoSatusBarItem } from "../commands/gufoTransformCommand.js";
 import { createInitCommand } from "../commands/initCommand.js";
@@ -28,6 +29,7 @@ const TONTO_EXPLORER_COMMANDS = [
     "tonto.initProject",
     "tonto.addGuidances",
     "tonto.addSkill",
+    "tonto.addSemanticTokenColors",
     "tonto.diagram.plantuml.openProject",
 ];
 
@@ -81,6 +83,8 @@ class TontoCommandsProvider implements vscode.TreeDataProvider<TontoCommandItem>
                 return "Add Guidances to project (LLMs)";
             case "tonto.addSkill":
                 return "Add Tonto skill to project";
+            case "tonto.addSemanticTokenColors":
+                return "Add Semantic Token Colors";
             case "tonto.diagram.plantuml.openProject":
                 return "Open Ontology PlantUML Diagram";
             default:
@@ -111,6 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
     createInitCommand(context, outputChannel);
     createAddGuidancesCommand(context, outputChannel);
     createAddSkillCommand(context, outputChannel);
+    createAddSemanticTokenColorsCommand(context, outputChannel);
     createGenerateJsonStatusBarItem(context, generateJsonStatusBarItem);
     createTontoGenerationStatusBarItem(context, generateTontoStatusBarItem);
     createValidationSatusBarItem(context, validateStatusBarItem, outputChannel);

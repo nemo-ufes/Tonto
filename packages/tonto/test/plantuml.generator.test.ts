@@ -74,6 +74,7 @@ describe("PlantUML Generator", () => {
       
       kind Person
       subkind Man specializes Person
+      category PhysicalThing of objects
       relator Employment
       role Employee specializes Person
     `;
@@ -94,5 +95,8 @@ describe("PlantUML Generator", () => {
 
     // Employee (role of Person) -> LIGHT_PINK #FFDADD
     expect(puml).toContain(`class "Employee" <<role>> #FFDADD`);
+
+    // PhysicalThing (category of objects) -> LIGHT_TEAL #DDEDEE
+    expect(puml).toContain(`class "PhysicalThing" <<category>> #DDEDEE`);
   });
 });

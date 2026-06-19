@@ -64,6 +64,7 @@ export type TontoDiagramNodeKind = "class" | "datatype";
 export type TontoDiagramRigidity = "rigid" | "anti-rigid" | "semi-rigid" | "unknown";
 
 export type TontoDiagramPaletteToken =
+    | "objects"
     | "functional-complexes"
     | "collectives"
     | "quantities"

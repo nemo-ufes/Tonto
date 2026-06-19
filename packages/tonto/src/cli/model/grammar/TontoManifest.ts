@@ -1,6 +1,7 @@
 export interface TontoManifest {
     projectName: string;
     displayName: string;
+    description?: string;
     publisher: string;
     version: string;
     license: string;
@@ -43,5 +44,6 @@ export function createDefaultTontoManifest(): TontoManifest {
         license: "MIT",
         outFolder: "out",
         dependencies: {},
+        authors: [],
     } as TontoManifest;
 }

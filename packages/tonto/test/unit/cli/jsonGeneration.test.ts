@@ -103,37 +103,35 @@ describe("JSON generation errors", () => {
         const formattedMessage = formatJsonGenerationErrorMessage(thrownError);
 
         expect(thrownError.step).toBe(JSON_GENERATION_STEPS.documentValidation);
-        expect(formattedMessage).toContain("Could not generate JSON because the Tonto sources contain syntax or validation errors.");
+        expect(formattedMessage).toContain("Could not generate JSON because the Tonto sources contain syntax or linking errors.");
         expect(formattedMessage).toContain("Step: document validation");
         expect(formattedMessage).toContain("Source validation error");
         expect(formattedMessage).toContain("main.tonto");
     });
 
-    it("should stop modular generation when a relation end redefines itself", async () => {
+    it("should generate JSON when sources only have semantic validation errors", async () => {
         const tempDir = createTempProject(`
             package Main
-            kind Person {
-                [0..*] -- closeAssociates -- [0..*] ({ redefines specificColleagues } specificColleagues) Person
-            }
+            kind Person
+            role Student specializes Person
+            subkind Graduate specializes Student
         `);
 
-        let thrownError: unknown;
-        try {
-            await generateModularCommand(tempDir);
-        } catch (error) {
-            thrownError = error;
-        }
+        const generatedJsonPath = await generateModularCommand(tempDir);
+        const generatedJson = JSON.parse(fs.readFileSync(generatedJsonPath ?? "", "utf8")) as {
+            model: {
+                contents: Array<{
+                    contents?: Array<{
+                        propertyAssignments?: Record<string, unknown> | null;
+                    }>;
+                }>;
+            };
+        };
 
-        expect(isJsonGenerationError(thrownError)).toBe(true);
-        if (!isJsonGenerationError(thrownError)) {
-            throw new Error("Expected a JsonGenerationError");
-        }
-
-        const formattedMessage = formatJsonGenerationErrorMessage(thrownError);
-
-        expect(thrownError.step).toBe(JSON_GENERATION_STEPS.documentValidation);
-        expect(formattedMessage).toContain("Relation end \"specificColleagues\" cannot redefine itself.");
-        expect(formattedMessage).toContain("main.tonto");
+        const mainPackage = generatedJson.model.contents.find((element) =>
+            element.contents?.some((content) => content.propertyAssignments?.__tontoName === "Graduate")
+        );
+        expect(mainPackage).toBeDefined();
     });
 
     it("exports source names without duplicating label and description metadata", async () => {

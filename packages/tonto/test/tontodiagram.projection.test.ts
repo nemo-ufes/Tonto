@@ -110,4 +110,28 @@ relator Employment
         expect(graph.edges).toHaveLength(1);
         expect(graph.edges[0]?.label).toBe("employee");
     });
+
+    test("keeps objects nature as its own palette token", async () => {
+        const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "tonto-diagram-"));
+        temporaryDirectories.push(temporaryDirectory);
+
+        const sourcePath = path.join(temporaryDirectory, "objects.tonto");
+        const diagramPath = path.join(temporaryDirectory, "objects.tontodiagram");
+
+        await writeFile(sourcePath, `package things
+
+category PhysicalThing of objects
+`, "utf8");
+
+        const parsed = parseTontoDiagramSpec(`diagram "Objects" {
+  source "./objects.tonto"
+  import things
+
+  viewport { x 0 y 0 zoom 1 }
+}`);
+
+        const graph = await buildTontoDiagramGraph(parsed.spec!, diagramPath);
+
+        expect(graph.nodes.find((node) => node.id === "things.PhysicalThing")?.appearance.palette).toBe("objects");
+    });
 });

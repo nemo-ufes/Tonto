@@ -470,8 +470,8 @@
             "fontStyle": "bold"
         },
         "tontoObjects": {
-            "foreground": "#f51212",
-            "fontStyle": "bold"
+            "foreground": "#2F7F86",
+            "fontStyle": "italic"
         },
         "tontoFunctionalComplex": {
             "foreground": "#CD6872",

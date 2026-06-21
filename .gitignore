@@ -29,3 +29,5 @@ static/monaco-editor-workers/
 static/worker/
 syntaxes/
 pack
+
+dist-release

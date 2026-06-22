@@ -1,0 +1,161 @@
+---
+title: "Assisted Workflows"
+description: "Use LLM assistance for creating, extending, reviewing, documenting, and repairing Tonto ontologies."
+icon: "workflow"
+---
+
+LLM assistance works best when the modeler gives the assistant a concrete task, enough project context, and a validation loop. These workflows match the task families supported by the Tonto guidance and skill files.
+
+## Before any edit
+
+Ask the assistant to:
+
+1. Inspect `tonto.json`.
+2. Read the relevant `.tonto` packages and imports.
+3. Identify existing naming and package conventions.
+4. State assumptions before changing the model.
+5. Explain important UFO stereotype choices after the change.
+
+This reduces duplicated core concepts and broad rewrites.
+
+## Create a new ontology from natural language
+
+Use this workflow when starting from a domain description.
+
+```text
+Create an initial Tonto ontology for a scientific publication domain.
+Use packages for core people, publications, venues, and access conditions.
+Use UFO-based stereotypes and explain the most important choices.
+```
+
+Expected assistant behavior:
+
+- Identify candidate `kind`s, `collective`s, `relator`s, `event`s, datatypes, and enumerations.
+- Create a small package structure instead of one oversized file.
+- Use `relator` for material relationships that have their own properties.
+- Add `label` and `description` blocks when documentation is requested.
+- Leave uncertain modeling choices visible for review.
+
+## Enhance an existing ontology
+
+Use this workflow when adding concepts to a project that already exists.
+
+```text
+Extend the current university ontology with course offerings and student
+enrollment in courses. Preserve the current package structure.
+Use relators where the relationship needs properties such as date or status.
+```
+
+Expected assistant behavior:
+
+- Reuse existing `Person`, `UniversityStudent`, `University`, and related packages when present.
+- Avoid redefining concepts already available through imports.
+- Add relations with explicit cardinalities.
+- Use generalization sets when a partition is being modeled.
+- Run or request validation after edits.
+
+## Check terminology and stereotype consistency
+
+Use this workflow when the ontology compiles but names or stereotypes may be weak.
+
+```text
+Analyze the terminology in all packages.
+Find unclear class names, relation names, and possible stereotype mismatches.
+Return findings first; do not edit until I approve the proposed fixes.
+```
+
+The assistant should check:
+
+- Whether a `kind` name sounds like an identity-providing type.
+- Whether a `role` name depends on a relationship.
+- Whether a `phase` name represents an intrinsic temporary condition.
+- Whether a `relator` name represents a reified relationship rather than an object.
+- Whether names are too generic, such as `Thing`, `Data`, `Item`, `InfoHolder`, or `value`.
+- Whether labels and descriptions support or contradict the declarations.
+
+## Summarize a package or complete ontology
+
+Use this workflow when the user needs a readable explanation without modifying the model.
+
+```text
+Summarize this Tonto project for someone seeing it for the first time.
+Explain the main packages, central kinds, relators, taxonomies, and relation patterns.
+Do not list every attribute.
+```
+
+Expected assistant behavior:
+
+- Start with the ontology purpose and scope.
+- Explain package structure and imports.
+- Prioritize ultimate sortals such as `kind`, `collective`, `quality`, `mode`, `relator`, `event`, and `situation`.
+- Mention important `phase`, `role`, and `subkind` hierarchies.
+- Describe major relation patterns such as mediation, parthood, and participation.
+
+## Generate documentation and translations
+
+Use this workflow when the ontology structure is mostly stable and needs human-facing descriptions.
+
+```text
+Add labels and descriptions in English and Brazilian Portuguese
+for the public classes in this package. Also add short JSDoc comments
+where the stereotype choice needs explanation.
+```
+
+Expected assistant behavior:
+
+- Keep labels short and human-readable.
+- Use `@en` and `@pt-br` consistently when multilingual documentation is requested.
+- Use descriptions to define the domain meaning.
+- Use JSDoc comments to explain why a stereotype was chosen.
+- Avoid comments that only repeat the class name or keyword.
+
+Example:
+
+```tonto
+/**
+ * Represents a person only while they are formally enrolled in an institution.
+ *
+ * OntoUML: This is a role because the classification depends on an enrollment
+ * relationship. The person can stop being a Student without ceasing to exist.
+ */
+role Student specializes Person {
+  label {
+    @en "Student"
+    @pt-br "Estudante"
+  }
+  description {
+    @en "A person who studies at an educational institution."
+    @pt-br "Uma pessoa que estuda em uma instituicao educacional."
+  }
+}
+```
+
+## Repair validation errors
+
+Use this workflow when the editor or CLI reports errors after an LLM edit.
+
+```text
+Repair only the validation errors shown below.
+Keep the intended domain meaning and avoid rewriting unrelated packages.
+Explain each fix briefly.
+
+[paste diagnostics here]
+```
+
+Expected assistant behavior:
+
+- Fix declaration order, package/import mistakes, invalid relation syntax, reserved keywords, and missing specializations.
+- Preserve existing file content unless a change is required.
+- Avoid broad renames unless the error is caused by naming or duplicate declarations.
+- Ask for modeler judgment when the error depends on domain meaning.
+
+## Validate and visualize
+
+After accepting changes:
+
+```bash
+tonto-cli validate .
+tonto-cli plantuml . --per-package
+```
+
+Use the generated diagram to inspect whether the textual changes match the intended domain view.

@@ -1,0 +1,118 @@
+---
+title: "Project Structure"
+description: "Understand Tonto project folders, source files, manifests, outputs, and dependency directories."
+icon: "folder-tree"
+---
+
+A Tonto project is a folder with a `tonto.json` manifest and one or more `.tonto` source files.
+
+```text
+university-model/
+  tonto.json
+  src/
+    main.tonto
+    people.tonto
+    university.tonto
+  out/
+    university-model.json
+    gufo.ttl
+  tonto_dependencies/
+    shared-types/
+```
+
+## Manifest
+
+The manifest file is always named `tonto.json`.
+
+```json
+{
+  "projectName": "university-model",
+  "displayName": "University Model",
+  "publisher": "example",
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {},
+  "outFolder": "out",
+  "authors": [
+    {
+      "name": "Example Modeler",
+      "email": "modeler@example.com"
+    }
+  ]
+}
+```
+
+| Field | Purpose |
+| --- | --- |
+| `projectName` | Stable project identifier and default generated artifact name. |
+| `displayName` | Human-readable project name. |
+| `publisher` | Organization or person responsible for the package. |
+| `version` | Project version, also useful when publishing Git tags for dependencies. |
+| `license` | License string. |
+| `dependencies` | Git-based dependency map used by TPM. |
+| `outFolder` | Output directory used by generators. |
+| `authors` | Optional author metadata. |
+
+## Source files
+
+Each `.tonto` file contains statements: imports and package declarations. The recommended convention is one package per file:
+
+```tonto
+import core.datatypes
+import core.people as people
+
+package university.academic
+
+kind University
+role Student specializes people.Person
+```
+
+Source files can live anywhere under the project folder. Generated folders and dependency folders should not be treated as source.
+
+## Output folders
+
+Generators use `outFolder` unless a command-specific destination is provided:
+
+```bash
+tonto-cli generate . --destination generated-json
+tonto-cli plantuml . --destination generated-diagrams
+```
+
+Keep generated outputs out of source review unless your project intentionally tracks published artifacts.
+
+## Dependencies
+
+TPM installs dependencies into `tonto_dependencies`.
+
+```json
+{
+  "dependencies": {
+    "CoreTypes": {
+      "url": "https://github.com/example/tonto-core-types.git",
+      "version": "1.2.0",
+      "directory": "packages/core-types"
+    }
+  }
+}
+```
+
+Do not commit `tonto_dependencies`. The repository root `.gitignore` already ignores dependency directories.
+
+## Diagram specs
+
+`.tontodiagram` files store diagram authoring preferences for the alpha diagram editor:
+
+```tonto
+diagram "University overview" {
+  import university.academic
+  include University, Department, Student
+
+  direction LR
+  stereotypes true
+  attributes true
+  external false
+  datatypes true
+}
+```
+
+Diagram specs reference the model; they do not replace `.tonto` source files.

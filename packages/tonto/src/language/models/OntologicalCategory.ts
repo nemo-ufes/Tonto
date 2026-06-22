@@ -36,6 +36,8 @@ const UltimateSortalOntoCategories = [
     OntologicalCategoryEnum.RELATOR,
     OntologicalCategoryEnum.QUALITY,
     OntologicalCategoryEnum.MODE,
+    OntologicalCategoryEnum.INTRINSIC_MODE,
+    OntologicalCategoryEnum.EXTRINSIC_MODE,
 ];
 
 const BaseSortalOntoCategories = [
@@ -58,6 +60,8 @@ const RigidOntoCategories = [
     OntologicalCategoryEnum.QUANTITY,
     OntologicalCategoryEnum.COLLECTIVE,
     OntologicalCategoryEnum.MODE,
+    OntologicalCategoryEnum.INTRINSIC_MODE,
+    OntologicalCategoryEnum.EXTRINSIC_MODE,
     OntologicalCategoryEnum.QUALITY,
     OntologicalCategoryEnum.RELATOR,
     OntologicalCategoryEnum.SUBKIND,
@@ -191,4 +195,3 @@ export {
     isNonSortalOntoCategory, isSortalOntoCategory,
     isUltimateSortalOntoCategory
 };
-

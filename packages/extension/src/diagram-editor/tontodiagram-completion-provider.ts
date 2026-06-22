@@ -6,16 +6,13 @@ import * as vscode from "vscode";
 
 const TONTO_DIAGRAM_LANGUAGE_ID = "tontodiagram";
 
-export function registerTontoDiagramCompletionProvider(context: vscode.ExtensionContext): void {
-    const provider = vscode.languages.registerCompletionItemProvider(
+export function registerTontoDiagramCompletionProvider(): vscode.Disposable {
+    return vscode.languages.registerCompletionItemProvider(
         { language: TONTO_DIAGRAM_LANGUAGE_ID, scheme: "file" },
         {
             provideCompletionItems: async (document, position) => {
                 const linePrefix = document.lineAt(position.line).text.slice(0, position.character);
                 const sourceReference = readSourceReference(document.getText());
-                if (!sourceReference) {
-                    return undefined;
-                }
 
                 let workspaceContext: TontoDiagramWorkspaceContext;
                 try {
@@ -75,8 +72,6 @@ export function registerTontoDiagramCompletionProvider(context: vscode.Extension
         ".",
         ","
     );
-
-    context.subscriptions.push(provider);
 }
 
 function createCompletionItem(input: {
@@ -103,7 +98,7 @@ function createTokenRange(position: vscode.Position, token: string): vscode.Rang
 }
 
 function readSourceReference(text: string): string | undefined {
-    return text.match(/(^|\n)\s*source\s+["']([^"']+)["']/)?.[2];
+    return text.match(/(^|\n)\s*source\s+["']([^"']+)["']/)?.[2] ?? undefined;
 }
 
 function readImportedPackages(text: string): string[] {

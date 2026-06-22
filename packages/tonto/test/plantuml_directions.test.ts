@@ -8,7 +8,7 @@ describe("PlantUML Generator - Directional Arrows", () => {
   const services = createTontoServices(EmptyFileSystem);
   const validate = validationHelper(services.Tonto);
 
-  test("should generate directional arrows for multiple associations", async () => {
+  test("should not generate directional arrows for multiple associations", async () => {
     const tontoCode = `
       package TestPackage
       
@@ -48,16 +48,11 @@ describe("PlantUML Generator - Directional Arrows", () => {
     
     const puml = generatePlantUML(model);
     
-    // Check for Hub relations which should have directions
-    // Directions order: d, r, l, u
-    // 1st relation: Hub -- Up -> -d-
-    // 2nd relation: Hub -- Down -> -r-
-    // 3rd relation: Hub -- Left -> -l-
-    // 4th relation: Hub -- Right -> -u-
-    
-    expect(puml).toContain(`"Hub" "1" -d- "1" "Up"`);
-    expect(puml).toContain(`"Hub" "1" -r- "1" "Down"`);
-    expect(puml).toContain(`"Hub" "1" -l- "1" "Left"`);
-    expect(puml).toContain(`"Hub" "1" -u- "1" "Right"`);
+    expect(puml).toContain(`"Hub" "1" -- "1" "Up"`);
+    expect(puml).toContain(`"Hub" "1" -- "1" "Down"`);
+    expect(puml).toContain(`"Hub" "1" -- "1" "Left"`);
+    expect(puml).toContain(`"Hub" "1" -- "1" "Right"`);
+    expect(puml).not.toContain(`-r-`);
+    expect(puml).not.toContain(`-l-`);
   });
 });

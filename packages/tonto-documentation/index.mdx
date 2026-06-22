@@ -1,0 +1,55 @@
+---
+title: "Tonto"
+description: "Tonto is a textual language and toolchain for creating UFO-based OntoUML ontology projects."
+icon: "home"
+---
+
+![Tonto logo](/images/tonto-logo.png)
+
+Tonto is a textual modeling language for creating well-founded ontologies based on the Unified Foundational Ontology (UFO) and OntoUML. It gives ontology projects a code-like workflow: source files, packages, imports, validation, generated artifacts, dependency management, and version control.
+
+Use Tonto when you want ontology models that are readable as text, reviewable in Git, and supported by development tools such as VS Code, a CLI, diagram views, and package management.
+
+<CardGroup cols={2}>
+  <Card title="Model in text" icon="file-code" href="/first-model">
+    Write `.tonto` files with OntoUML stereotypes, relations, datatypes, labels, and descriptions.
+  </Card>
+  <Card title="Validate continuously" icon="badge-check" href="/tools/vscode-extension">
+    Catch syntax and semantic issues with the language server, validators, and CLI checks.
+  </Card>
+  <Card title="Generate artifacts" icon="repeat" href="/guides/generation-workflows">
+    Generate OntoUML JSON, gUFO Turtle, and PlantUML sources from the same project.
+  </Card>
+  <Card title="Reuse ontology packages" icon="package-plus" href="/tools/tpm">
+    Manage shared ontology projects through `tonto.json` manifests and TPM dependencies.
+  </Card>
+</CardGroup>
+
+<Frame caption="A Tonto model edited with the VS Code extension">
+  ![Tonto in VS Code](/gifs/1.gif)
+</Frame>
+
+## Project parts
+
+The repository contains several packages that work together:
+
+| Package | Purpose |
+| --- | --- |
+| `tonto-cli` | Language grammar, language server services, validators, transformations, and command-line workflows. |
+| `tonto` VS Code extension | Editor integration published as `Lenke.tonto`, including commands, syntax support, views, and webviews. |
+| `tpm` | Tonto Package Manager for Git-based ontology dependencies. |
+| `tonto-sprotty-webview` | Diagram and webview implementation used by the VS Code extension. |
+| `sprotty-vscode` packages | Sprotty integration packages used by the extension. |
+
+## Where to start
+
+Start with the [quickstart](/quickstart) if you want to install the tools and create a model. If you already know OntoUML and only need syntax, go to [packages and imports](/language/packages-and-imports). If you are maintaining the repository, read [package architecture](/reference/package-architecture).
+
+## Legacy references
+
+The previous Docusaurus documentation and PDFs are still useful historical references:
+
+- [Original Tonto paper PDF](/files/Tonto.pdf)
+- [Legacy EBNF PDF](/files/Tonto-EBNF.pdf)
+
+This Mintlify package is the updated documentation source for current Tonto projects.

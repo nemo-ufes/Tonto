@@ -3,12 +3,12 @@
     "displayName": "Tonto",
     "publisher": "lenke",
     "description": "Tonto is a DSL for creating OntoUML models",
-    "version": "0.4.9",
+    "version": "0.4.11",
     "license": "MIT",
     "type": "module",
     "repository": {
         "type": "git",
-        "url": "https://github.com/matheuslenke/Tonto",
+        "url": "https://github.com/nemo-ufes/Tonto",
         "directory": "packages/extension"
     },
     "icon": "data/images/TontoIcon.png",
@@ -96,7 +96,7 @@
                 },
                 {
                     "command": "tonto.diagram.createFile",
-                    "when": "editorLangId == 'tonto'"
+                    "when": "editorLangId == 'tonto' && config.tonto.features.tontodiagram.enabled"
                 },
                 {
                     "command": "tonto.diagram.fit",
@@ -123,7 +123,7 @@
                 },
                 {
                     "command": "tonto.diagram.createFile",
-                    "when": "editorLangId == 'tonto'",
+                    "when": "editorLangId == 'tonto' && config.tonto.features.tontodiagram.enabled",
                     "group": "navigation"
                 }
             ],
@@ -140,7 +140,7 @@
                 },
                 {
                     "command": "tonto.diagram.createFile",
-                    "when": "editorLangId == 'tonto'",
+                    "when": "editorLangId == 'tonto' && config.tonto.features.tontodiagram.enabled",
                     "group": "navigation"
                 }
             ],
@@ -157,7 +157,7 @@
                 },
                 {
                     "command": "tonto.diagram.createFile",
-                    "when": "resourceExtname == '.tonto'",
+                    "when": "resourceExtname == '.tonto' && config.tonto.features.tontodiagram.enabled",
                     "group": "navigation"
                 }
             ],
@@ -204,6 +204,11 @@
                     "group": "navigation"
                 },
                 {
+                    "command": "tonto.addSemanticTokenColors",
+                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "group": "navigation"
+                },
+                {
                     "command": "tonto.diagram.plantuml.open",
                     "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
                     "group": "navigation"
@@ -221,6 +226,17 @@
                 "url": "./data/tonto-manifest-schema.json"
             }
         ],
+        "configuration": {
+            "title": "Tonto",
+            "properties": {
+                "tonto.features.tontodiagram.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "scope": "window",
+                    "markdownDescription": "Enable Tonto new diagram visualization with `.tontodiagram` (Alpha feature)."
+                }
+            }
+        },
         "customEditors": [
             {
                 "viewType": "tonto",
@@ -240,7 +256,7 @@
                         "filenamePattern": "*.tontodiagram"
                     }
                 ],
-                "priority": "option"
+                "priority": "default"
             }
         ],
         "commands": [
@@ -273,7 +289,8 @@
             {
                 "command": "tonto.diagram.createFile",
                 "title": "New Diagram From Current Model",
-                "category": "Tonto"
+                "category": "Tonto",
+                "enablement": "config.tonto.features.tontodiagram.enabled"
             },
             {
                 "command": "tonto.generateJSON",
@@ -316,18 +333,18 @@
                 "category": "Tonto"
             },
             {
-                "command": "tonto.diagram.plantuml.open",
-                "title": "Open PlantUML Diagram",
-                "category": "Tonto"
-            },
-            {
-                "command": "tonto.diagram.plantuml.export",
-                "title": "Export PlantUML",
+                "command": "tonto.addSemanticTokenColors",
+                "title": "Add Semantic Token Colors to User Settings",
                 "category": "Tonto"
             },
             {
                 "command": "tonto.diagram.plantuml.open",
                 "title": "Open PlantUML Diagram",
+                "category": "Tonto"
+            },
+            {
+                "command": "tonto.diagram.plantuml.openProject",
+                "title": "Open Ontology PlantUML Diagram",
                 "category": "Tonto"
             },
             {
@@ -368,6 +385,7 @@
         "onWebviewPanel:tonto",
         "onView:tonto",
         "onLanguage:tontodiagram",
+        "onCommand:tonto.addSemanticTokenColors",
         "onCommand:tonto.diagram.createFile",
         "onCustomEditor:tonto.diagram.editor"
     ],
@@ -409,8 +427,8 @@
         "sprotty-elk": "^1.2.0",
         "sprotty-vscode": "file:../sprotty-vscode",
         "sprotty-vscode-webview": "file:../sprotty-vscode-webview",
-        "tonto-cli": "^0.4.3",
-        "tonto-package-manager": "~0.2.9",
+        "tonto-cli": "^0.4.12",
+        "tonto-package-manager": "~0.3.2",
         "uuid": "^9.0.1",
         "vite": "^5.4.19",
         "vscode-languageclient": "^9.0.1",

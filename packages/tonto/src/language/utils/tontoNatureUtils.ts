@@ -8,6 +8,8 @@ export type TontoNatureResult = {
 
 function getSemanticTokenFromNature(nature: TontoNatureResult): string {
     switch (nature.nature) {
+        case "objects":
+            return "tontoObjects";
         case "functional-complexes":
             if (nature.isKind) return "tontoKind";
             return "tontoFunctionalComplex";

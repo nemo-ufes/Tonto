@@ -38,7 +38,14 @@ const allowedStereotypeRestrictedToMatches: AllowedStereotypes = {
     [OntologicalCategoryEnum.CLASS]: [],
 };
 
+function isTontoModeUltimateSortal(stereotype: string): boolean {
+    return stereotype === "intrinsicMode" || stereotype === "extrinsicMode";
+}
+
 function hasSortalStereotype(stereotype: string): boolean {
+    if (isTontoModeUltimateSortal(stereotype)) {
+        return true;
+    }
     const classStereotype = getClassStereotype(stereotype);
     if (classStereotype) {
         return stereotypeUtils.isSortalClassStereotype(classStereotype);
@@ -55,6 +62,9 @@ function hasNonSortalStereotype(stereotype: string): boolean {
 }
 
 function isRigidStereotype(stereotype: string): boolean {
+    if (isTontoModeUltimateSortal(stereotype)) {
+        return true;
+    }
     const classStereotype = getClassStereotype(stereotype);
     if (classStereotype) {
         return stereotypeUtils.isRigidClassStereotype(classStereotype);

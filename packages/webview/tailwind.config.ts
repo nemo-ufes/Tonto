@@ -2,24 +2,36 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
     content: ["./src/**/*.{ts,tsx}"],
+    darkMode: "class",
     theme: {
         extend: {
-            borderRadius: {
-                xl: "1rem",
-                "2xl": "1.5rem",
-            },
-            boxShadow: {
-                diagram: "0 24px 64px rgba(8, 15, 30, 0.24)",
-            },
             colors: {
-                canvas: "var(--editor-bg)",
-                panel: "var(--panel-bg)",
-                line: "var(--panel-line)",
-                accent: "var(--panel-accent)",
+                canvas: "var(--diagram-canvas)",
+                surface: "var(--diagram-surface)",
+                line: "var(--diagram-line)",
+                accent: "var(--diagram-accent)",
             },
             fontFamily: {
-                display: ['"Iowan Old Style"', '"Palatino Linotype"', '"Book Antiqua"', "serif"],
-                mono: ['"IBM Plex Mono"', '"SFMono-Regular"', "monospace"],
+                sans: [
+                    "Geist",
+                    "Inter",
+                    "ui-sans-serif",
+                    "system-ui",
+                    "-apple-system",
+                    "BlinkMacSystemFont",
+                    "Segoe UI",
+                    "Roboto",
+                    "sans-serif",
+                ],
+                mono: [
+                    "Geist Mono",
+                    "JetBrains Mono",
+                    "IBM Plex Mono",
+                    "ui-monospace",
+                    "SFMono-Regular",
+                    "Menlo",
+                    "monospace",
+                ],
             },
         },
     },

@@ -1,0 +1,106 @@
+---
+title: "Tonto Package Manager"
+description: "Use TPM to install and manage Git-based Tonto project dependencies."
+icon: "package"
+---
+
+TPM is the Tonto Package Manager. The current npm package and command are both named `tpm`.
+
+```bash
+npm install -g tpm
+tpm help
+```
+
+TPM lets a Tonto project reuse other Tonto projects as dependencies.
+
+## Manifest dependencies
+
+TPM reads the `dependencies` object in `tonto.json`:
+
+```json
+{
+  "projectName": "Aguiar2019ooco",
+  "displayName": "Aguiar 2019 Object Oriented Example",
+  "publisher": "Aguiar",
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {
+    "SWO": {
+      "url": "https://github.com/matheuslenke/tonto-example-models.git",
+      "directory": "SWO",
+      "branch": "feature/test-tonto-reference"
+    },
+    "SPO": {
+      "url": "https://github.com/matheuslenke/tonto-example-models.git",
+      "directory": "SPO",
+      "version": "1.0.0"
+    }
+  },
+  "outFolder": "outDirectory"
+}
+```
+
+Dependency fields:
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `url` | Yes | Git repository URL. |
+| `directory` | No | Subdirectory inside the repository containing the Tonto project. |
+| `version` | No | Git tag to install. |
+| `branch` | No | Git branch to install. |
+
+If neither `version` nor `branch` is provided, TPM clones the repository default branch.
+
+## Install dependencies
+
+Run from the project root:
+
+```bash
+tpm install
+```
+
+or:
+
+```bash
+tpm i
+```
+
+Install a different project directory:
+
+```bash
+tpm install --dir path/to/project
+```
+
+TPM clones dependencies into a temporary folder, resolves nested dependencies recursively, then copies the selected projects into `tonto_dependencies`.
+
+## Add a dependency
+
+Use the current `add` command:
+
+```bash
+tpm add . -n CoreTypes -u https://github.com/example/tonto-core-types.git -v 1.0.0
+```
+
+Include a subdirectory:
+
+```bash
+tpm add . -n CoreTypes -u https://github.com/example/tonto-libraries.git -v 1.0.0 -d core-types
+```
+
+<Note>
+The current CLI requires `-v` when using `tpm add`. To use a branch dependency, edit `tonto.json` manually and add the `branch` field.
+</Note>
+
+## Dependency folder
+
+Installed dependencies are placed under:
+
+```text
+tonto_dependencies/
+```
+
+Do not commit this folder. It should be restored with `tpm install`.
+
+<Frame caption="TPM install from the VS Code extension">
+  ![TPM install](/gifs/tpm.gif)
+</Frame>

@@ -1,5 +1,5 @@
 import {
-  createFileUri, createWebviewHtml as doCreateWebviewHtml,
+  createFileUri,
   registerDefaultCommands, registerLspEditCommands, registerTextEditorSync, SprottyDiagramIdentifier, WebviewContainer, WebviewEndpoint
 } from "sprotty-vscode";
 import { addLspLabelEditActionHandler, addWorkspaceEditActionHandler } from "sprotty-vscode/lib/lsp/editing/index.js";
@@ -7,6 +7,7 @@ import { LspSprottyEditorProvider, LspSprottyViewProvider, LspWebviewEndpoint, L
 import * as vscode from "vscode";
 import { LanguageClient } from "vscode-languageclient/node.js";
 import { Messenger } from "vscode-messenger";
+import { createWebviewHtml as doCreateWebviewHtml } from "./webview-utils.js";
 
 export function activateDiagram(
   context: vscode.ExtensionContext,

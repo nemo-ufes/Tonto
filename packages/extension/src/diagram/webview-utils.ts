@@ -74,7 +74,7 @@ export function createWebviewHtml(identifier: SprottyDiagramIdentifier, containe
     </head>
     <body>
         <div id="${identifier.clientId}_container" style="height: 100%;"></div>
-        <script src="${transformUri(options.scriptUri)}"></script>
+        <script type="module" src="${transformUri(options.scriptUri)}"></script>
     </body>
 </html>`;
 }

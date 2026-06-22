@@ -1,0 +1,136 @@
+---
+title: "Quickstart"
+description: "Install Tonto, create a project, validate it, and generate output."
+icon: "rocket"
+---
+
+This guide creates a small Tonto project and runs the common validation and generation commands.
+
+## Prerequisites
+
+- Node.js `20.17.0` or newer for the current Tonto packages and Mintlify docs.
+- npm `7.7.0` or newer.
+- Visual Studio Code if you want the editor extension.
+
+## 1. Install the tools
+
+Install the VS Code extension from the Marketplace:
+
+```text
+Lenke.tonto
+```
+
+Install the CLI and package manager when you want terminal workflows:
+
+```bash
+npm install -g tonto-cli
+npm install -g tpm
+```
+
+<Note>
+The package manager package is currently named `tpm`. Older docs may refer to `tonto-package-manager`; use `tpm` for the current package.
+</Note>
+
+## 2. Create a project
+
+Use the CLI project initializer:
+
+```bash
+tonto-cli init
+```
+
+The initializer asks for project metadata, guidance target, and template. It creates a project folder with `tonto.json`, `src/`, guidance files, ignore files, and starter `.tonto` sources.
+
+You can also create a minimal project manually:
+
+```bash
+mkdir university-model
+cd university-model
+mkdir src
+```
+
+Create `tonto.json`:
+
+```json
+{
+  "projectName": "university-model",
+  "displayName": "University Model",
+  "publisher": "example",
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {},
+  "outFolder": "out",
+  "authors": [
+    {
+      "name": "Your Name"
+    }
+  ]
+}
+```
+
+Create `src/main.tonto`:
+
+```tonto
+package university
+
+kind Person {
+  name: string [1]
+}
+
+role Student specializes Person
+kind University {
+  @componentOf [1] <>-- enrolls -- [0..*] Student
+}
+```
+
+## 3. Validate
+
+Run local validation:
+
+```bash
+tonto-cli validate .
+```
+
+Add OntoUML API validation when you want server-side checks too:
+
+```bash
+tonto-cli validate . --with-api
+```
+
+## 4. Generate JSON
+
+Generate OntoUML JSON into the manifest `outFolder`:
+
+```bash
+tonto-cli generate .
+```
+
+Use `-d` or `--destination` when you want a custom output directory:
+
+```bash
+tonto-cli generate . --destination generated
+```
+
+## 5. Generate diagrams or gUFO
+
+Generate PlantUML:
+
+```bash
+tonto-cli plantuml .
+tonto-cli plantuml . --per-package
+tonto-cli plantuml . --layout left-to-right
+```
+
+Transform to gUFO Turtle:
+
+```bash
+tonto-cli transform .
+```
+
+## 6. Open in VS Code
+
+Open the project folder in VS Code. The extension activates when it sees a `tonto.json` file or a Tonto source. It provides syntax highlighting, completion, validation, commands, and diagram views.
+
+<Tip>
+For a deeper walkthrough, continue to [creating your first model](/first-model).
+</Tip>

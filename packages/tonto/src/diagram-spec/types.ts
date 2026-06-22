@@ -21,6 +21,16 @@ export type TontoDiagramLayout = {
     y: number;
 };
 
+/**
+ * Per-relation entry in the .tontodiagram source. Mirrors `node <name>`. The
+ * block body is reserved for future per-edge layout (waypoints, label
+ * position) — for now declaring an entry simply records that the relation is
+ * part of the diagram authoring trail.
+ */
+export type TontoDiagramRelationLayout = {
+    target: string;
+};
+
 export type TontoDiagramViewport = {
     x: number;
     y: number;
@@ -29,11 +39,12 @@ export type TontoDiagramViewport = {
 
 export type TontoDiagramSpec = {
     title: string;
-    source: string;
+    source?: string;
     imports: string[];
     filter: TontoDiagramFilter;
     presentation: TontoDiagramPresentation;
     nodes: TontoDiagramLayout[];
+    relations: TontoDiagramRelationLayout[];
     viewport: TontoDiagramViewport;
 };
 
@@ -53,6 +64,7 @@ export type TontoDiagramNodeKind = "class" | "datatype";
 export type TontoDiagramRigidity = "rigid" | "anti-rigid" | "semi-rigid" | "unknown";
 
 export type TontoDiagramPaletteToken =
+    | "objects"
     | "functional-complexes"
     | "collectives"
     | "quantities"
@@ -117,16 +129,22 @@ export type TontoDiagramEdge = {
     connector?: TontoDiagramConnector;
     sourceCardinality?: string;
     targetCardinality?: string;
+    sourceEnd?: string;
+    targetEnd?: string;
 };
 
 export type TontoDiagramGraph = {
     title: string;
-    source: string;
+    source?: string;
+    projectRoot: string;
     packages: string[];
+    imports: string[];
+    filter: TontoDiagramFilter;
     presentation: TontoDiagramPresentation;
     viewport: TontoDiagramViewport;
     nodes: TontoDiagramNode[];
     edges: TontoDiagramEdge[];
+    workspace: TontoDiagramWorkspaceContext;
     issues: TontoDiagramIssue[];
 };
 

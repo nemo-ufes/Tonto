@@ -1,0 +1,69 @@
+---
+title: "OntoUML Services"
+description: "Understand how Tonto uses OntoUML tooling for validation and transformations."
+icon: "cloud-cog"
+---
+
+Tonto integrates with OntoUML tooling to validate and transform generated models.
+
+## Local validation
+
+Local validation happens through the Tonto language services. It catches:
+
+- Parse errors.
+- Duplicate declarations.
+- Specialization cycles.
+- Sortal and ultimate sortal constraints.
+- Nature compatibility issues.
+- Other language-server diagnostics.
+
+Run:
+
+```bash
+tonto-cli validate .
+```
+
+## API validation
+
+API validation is requested with:
+
+```bash
+tonto-cli validate . --with-api
+```
+
+The CLI generates an OntoUML project representation and sends it through the OntoUML validation flow.
+
+Use this when:
+
+- You need checks beyond local syntax and semantic validators.
+- You are preparing a model for publication or transformation.
+- You want compatibility feedback from OntoUML tooling.
+
+## JSON generation
+
+```bash
+tonto-cli generate .
+```
+
+Generated JSON follows the OntoUML JSON format expected by OntoUML tools.
+
+## gUFO transformation
+
+```bash
+tonto-cli transform .
+```
+
+The gUFO transformation converts the model into Turtle syntax for semantic web workflows.
+
+<Frame caption="gUFO transformation from the VS Code extension">
+  ![Tonto to gUFO](/gifs/tonto-to-gufo.gif)
+</Frame>
+
+## Failure modes
+
+If service-backed validation or transformation fails:
+
+- Run local validation first and fix syntax/model diagnostics.
+- Confirm the project has a valid `tonto.json`.
+- Confirm the project has source files outside `outFolder`.
+- Retry when network or upstream service availability is uncertain.

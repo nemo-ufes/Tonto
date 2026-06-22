@@ -1,0 +1,80 @@
+---
+title: "OntoUML Quick Reference"
+description: "How Tonto maps textual syntax to OntoUML modeling concepts."
+icon: "landmark"
+---
+
+OntoUML is a UML-based conceptual modeling language grounded in UFO. Tonto provides a textual syntax for many OntoUML constructs.
+
+## Classes
+
+OntoUML class stereotypes become Tonto declaration keywords:
+
+```tonto
+kind Person
+role Student specializes Person
+relator Enrollment
+category PhysicalObject of objects
+event EnrollmentCeremony
+```
+
+Use [classes and natures](/language/classes-and-natures) for the full syntax.
+
+## Relations
+
+OntoUML association stereotypes are written after `@`:
+
+```tonto
+@mediation relation Enrollment [1] -- [1] Student
+@material relation Student [0..*] -- enrolledAt -- [0..*] University
+@componentOf relation University [1] <>-- hasDepartments -- [1..*] Department
+```
+
+Connectors preserve association, aggregation, and composition distinctions.
+
+## Generalization
+
+Generalization is written with `specializes`:
+
+```tonto
+kind Person
+role Student specializes Person
+```
+
+Generalization sets capture disjointness and completeness:
+
+```tonto
+disjoint complete genset PersonPhases where Child, Adult specializes Person
+```
+
+## Ontological natures
+
+OntoUML 2 style restricted natures are expressed with `of`:
+
+```tonto
+category SocialEntity of functional-complexes, relators
+roleMixin Customer of objects
+```
+
+This is especially important for non-sortals.
+
+## Labels and descriptions
+
+Tonto adds textual documentation blocks for generated output and model review:
+
+```tonto
+kind Person {
+  label { @en "Person" }
+  description { @en "A human being considered as an individual." }
+}
+```
+
+## Visual examples
+
+<Frame caption="University model represented in OntoUML">
+  ![OntoUML University model](/images/diagrams/fig-diagrams-university-model.png)
+</Frame>
+
+<Frame caption="A smaller person phase example">
+  ![Person phases](/images/diagrams/fig-diagrams-example2.png)
+</Frame>

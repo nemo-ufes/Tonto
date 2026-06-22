@@ -1,0 +1,107 @@
+---
+title: "Tonto Ontology Skills"
+description: "Install the Tonto ontology skill for task-routed LLM assistance."
+icon: "blocks"
+---
+
+The Tonto ontology skill packages the same modeling knowledge in a skill-oriented format for agentic tools. It is useful when the assistant supports task routing through a `SKILL.md` file and can load detailed reference files only when needed.
+
+Guidance files are broad project instructions. Skills are task-oriented references. They can be installed together.
+
+## Add the skill with the CLI
+
+Run the command from a Tonto project:
+
+```bash
+tonto-cli add-skill . --target codex
+tonto-cli add-skill . --target all
+```
+
+Supported target values are:
+
+```text
+cursor
+vscode
+codex
+claude
+google
+all
+```
+
+If `--target` is omitted, the CLI asks which editor or agentic IDE you use.
+
+## Add the skill from VS Code
+
+Open the project folder in VS Code and run:
+
+```text
+Tonto: Add Tonto Skill to project
+```
+
+## Generated locations
+
+| Target | Skill location |
+| --- | --- |
+| Cursor | `.cursor/skills/tonto-ontology/` |
+| VS Code / GitHub Copilot | `.github/skills/tonto-ontology/` |
+| Codex | `.codex/skills/tonto-ontology/` |
+| Claude Code | `.claude/skills/tonto-ontology/` |
+| Google Gemini / Antigravity | `.agents/skills/tonto-ontology/` |
+| All | Every target above |
+
+## Skill contents
+
+The skill contains:
+
+| File | Role |
+| --- | --- |
+| `SKILL.md` | Main entry point with Tonto syntax, OntoUML stereotypes, relation syntax, project conventions, and task routing. |
+| `references/extending.md` | Detailed workflow for adding classes, attributes, relations, generalization sets, and packages. |
+| `references/terminology.md` | Naming and terminology analysis criteria. |
+| `references/summarization.md` | Summarization structure for packages and complete ontologies. |
+| `references/documentation.md` | Documentation rules for labels, descriptions, and explanatory comments. |
+
+## Guidance files vs skills
+
+| Use case | Prefer |
+| --- | --- |
+| Cursor rules, Copilot instructions, and always-available repository context | Guidance files |
+| Agent tools that discover task skills and load references on demand | Tonto ontology skill |
+| A project where multiple assistants may be used | Both |
+| A lightweight setup for only one modeling session | Guidance files |
+| Reusable Tonto modeling knowledge shared across projects | Skill |
+
+## Skill routing
+
+The skill routes common requests to specialized references:
+
+- Creating or extending the ontology -> `references/extending.md`
+- Improving names, terminology, or consistency -> `references/terminology.md`
+- Explaining or summarizing an ontology -> `references/summarization.md`
+- Writing labels, descriptions, or JSDoc comments -> `references/documentation.md`
+
+The routing matters because Tonto tasks mix syntax with ontological judgment. For example, creating a `Student` class is not only a code-generation step; the assistant must decide whether it is a `role`, `phase`, `subkind`, or another UFO category based on the domain.
+
+## Recommended use
+
+When using a skill-enabled assistant, start requests with the intended task:
+
+```text
+Use the Tonto ontology skill. Analyze the terminology of this ontology,
+especially class stereotypes and relation names. Do not edit files yet;
+return findings and suggested fixes first.
+```
+
+For edit requests:
+
+```text
+Use the Tonto ontology skill to extend this project with publication venues.
+Inspect all imports and existing packages first, then edit the smallest set of files.
+Explain the stereotype rationale for every new class.
+```
+
+After accepting changes, validate the model:
+
+```bash
+tonto-cli validate .
+```

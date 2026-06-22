@@ -1,10 +1,9 @@
-import { TontoDiagramSpec } from "./types.js";
+import { TontoDiagramRelationLayout, TontoDiagramSpec } from "./types.js";
 
 export function serializeTontoDiagramSpec(spec: TontoDiagramSpec): string {
     const lines: string[] = [];
 
     lines.push(`diagram "${spec.title}" {`);
-    lines.push(`  source "${spec.source}"`);
 
     for (const packageName of [...spec.imports].sort((left, right) => left.localeCompare(right))) {
         lines.push(`  import ${packageName}`);
@@ -32,17 +31,40 @@ export function serializeTontoDiagramSpec(spec: TontoDiagramSpec): string {
         }
     }
 
-    lines.push("");
-    lines.push(`  viewport { x ${formatNumber(spec.viewport.x)} y ${formatNumber(spec.viewport.y)} zoom ${formatNumber(spec.viewport.zoom)} }`);
+    // Relations are intentionally NOT serialized. They are derived from the
+    // .tonto source files by the projection — including them here would
+    // duplicate authoring information. The parser still accepts
+    // `relation <id> { ... }` blocks (for forward-compat / future per-edge
+    // layout) but the serializer omits them.
+
     lines.push("}");
 
     return lines.join("\n");
 }
 
+/**
+ * Replace `spec.relations` so the file reflects the supplied set of edge ids.
+ * Used by the extension after each spec mutation to keep the diagram source
+ * in sync with the rendered relation set (auto-add).
+ */
+export function syncTontoDiagramRelations(
+    spec: TontoDiagramSpec,
+    edgeIds: string[]
+): TontoDiagramSpec {
+    const next: TontoDiagramRelationLayout[] = [...new Set(edgeIds)]
+        .sort((left, right) => left.localeCompare(right))
+        .map((target) => ({ target }));
+
+    return {
+        ...spec,
+        source: undefined,
+        relations: next,
+    };
+}
+
 export function updateTontoDiagramLayout(
     spec: TontoDiagramSpec,
-    layouts: Array<{ target: string; x: number; y: number }>,
-    viewport: TontoDiagramSpec["viewport"]
+    layouts: Array<{ target: string; x: number; y: number }>
 ): TontoDiagramSpec {
     const normalizedLayouts = [...layouts]
         .sort((left, right) => left.target.localeCompare(right.target))
@@ -54,12 +76,8 @@ export function updateTontoDiagramLayout(
 
     return {
         ...spec,
+        source: undefined,
         nodes: normalizedLayouts,
-        viewport: {
-            x: roundNumber(viewport.x),
-            y: roundNumber(viewport.y),
-            zoom: roundNumber(viewport.zoom),
-        },
     };
 }
 

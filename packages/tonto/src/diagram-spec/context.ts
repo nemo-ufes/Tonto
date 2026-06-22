@@ -21,12 +21,28 @@ import {
 } from "./types.js";
 
 type DiagramWorkspace = {
-    sourceModel: Model;
-    sourcePath: string;
+    sourceModel?: Model;
+    sourcePath?: string;
+    projectRoot: string;
     models: Model[];
 };
 
-export async function loadTontoDiagramWorkspace(source: string, diagramPath: string): Promise<DiagramWorkspace> {
+export async function loadTontoDiagramProjectWorkspace(diagramPath: string): Promise<DiagramWorkspace> {
+    const projectRoot = await findTontoProjectRoot(path.dirname(diagramPath));
+    const services = createTontoServices({ ...NodeFileSystem }).Tonto;
+    const builtDocuments = await buildFolderDocuments(projectRoot, services, { validation: false });
+
+    return {
+        projectRoot,
+        models: builtDocuments.models,
+    };
+}
+
+export async function loadTontoDiagramWorkspace(source: string | undefined, diagramPath: string): Promise<DiagramWorkspace> {
+    if (!source) {
+        return loadTontoDiagramProjectWorkspace(diagramPath);
+    }
+
     const sourcePath = resolveTontoDiagramSourcePath(source, diagramPath);
     const projectRoot = await findTontoProjectRoot(path.dirname(sourcePath));
     const services = createTontoServices({ ...NodeFileSystem }).Tonto;
@@ -34,18 +50,22 @@ export async function loadTontoDiagramWorkspace(source: string, diagramPath: str
     const sourceModel = builtDocuments.models.find((model) => model.$document?.uri.fsPath === sourcePath);
 
     if (!sourceModel) {
-        throw new Error(`Could not resolve Tonto source file at ${sourcePath}.`);
+        return {
+            projectRoot,
+            models: builtDocuments.models,
+        };
     }
 
     return {
         sourceModel,
         sourcePath,
+        projectRoot,
         models: builtDocuments.models,
     };
 }
 
 export async function collectTontoDiagramWorkspaceContext(
-    source: string,
+    source: string | undefined,
     diagramPath: string
 ): Promise<TontoDiagramWorkspaceContext> {
     const workspace = await loadTontoDiagramWorkspace(source, diagramPath);
@@ -54,10 +74,19 @@ export async function collectTontoDiagramWorkspaceContext(
     const relations = collectRelations(workspace.models);
 
     return {
-        sourcePath: workspace.sourcePath,
+        sourcePath: workspace.sourcePath ?? workspace.projectRoot,
         packages,
         elements,
         relations,
+    };
+}
+
+export function buildTontoDiagramWorkspaceContext(models: Model[], sourcePath: string): TontoDiagramWorkspaceContext {
+    return {
+        sourcePath,
+        packages: collectPackages(models),
+        elements: collectElements(models),
+        relations: collectRelations(models),
     };
 }
 

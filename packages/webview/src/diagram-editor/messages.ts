@@ -1,11 +1,16 @@
-import type { TontoDiagramGraph, TontoDiagramIssue } from "tonto-cli";
+import type { TontoDiagramDirection, TontoDiagramGraph, TontoDiagramIssue } from "tonto-cli";
+
+export type DiagramDocumentStateStatus = "loading" | "ready" | "error";
 
 export type DiagramDocumentStateMessage = {
     type: "documentState";
+    status?: DiagramDocumentStateStatus;
     documentText: string;
     graph?: TontoDiagramGraph;
     issues: TontoDiagramIssue[];
 };
+
+export type DiagramExportFormat = "png" | "svg" | "plantuml";
 
 export type DiagramOutgoingMessage =
     | {
@@ -16,6 +21,14 @@ export type DiagramOutgoingMessage =
         text: string;
     }
     | {
+        type: "updateTitle";
+        title: string;
+    }
+    | {
+        type: "requestExport";
+        format: DiagramExportFormat;
+    }
+    | {
         type: "updateLayout";
         nodes: Array<{
             id: string;
@@ -23,9 +36,23 @@ export type DiagramOutgoingMessage =
             x: number;
             y: number;
         }>;
-        viewport: {
-            x: number;
-            y: number;
-            zoom: number;
-        };
+    }
+    | {
+        type: "updateImports";
+        imports: string[];
+    }
+    | {
+        type: "updateInclude";
+        include: string[];
+    }
+    | {
+        type: "updatePresentation";
+        direction?: TontoDiagramDirection;
+        stereotypes?: boolean;
+        attributes?: boolean;
+    }
+    | {
+        type: "updateFilterFlags";
+        external?: boolean;
+        datatypes?: boolean;
     };

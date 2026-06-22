@@ -2,11 +2,35 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
     buildGuidanceProjectFiles,
+    buildInitManifest,
     buildInitProjectFiles,
     shouldIncludeTemplatePathForGuidanceTarget,
 } from "../../../src/cli/actions/commands/initCommand.js";
 
 describe("guidance scaffolding", () => {
+    it("keeps description and author optional in init manifests", () => {
+        const manifest = buildInitManifest({
+            projectName: "demo-project",
+            description: "",
+            authorName: "   ",
+        });
+
+        expect(manifest.description).toBeUndefined();
+        expect(manifest.authors).toEqual([]);
+    });
+
+    it("includes provided description and author when init answers contain them", () => {
+        const manifest = buildInitManifest({
+            projectName: "demo-project",
+            description: "Demo ontology",
+            authorName: "Jane Doe",
+            authorEmail: "jane@example.com",
+        });
+
+        expect(manifest.description).toBe("Demo ontology");
+        expect(manifest.authors).toEqual([{ name: "Jane Doe", email: "jane@example.com" }]);
+    });
+
     it("includes folder-based guidance files for Codex, Claude Code, and Google tools", () => {
         const guidancePaths = buildGuidanceProjectFiles("demo-project").map((file) => file.relativePath);
 

@@ -1,0 +1,91 @@
+---
+title: "Package Architecture"
+description: "Understand the Tonto monorepo packages, build workflow, and contributor commands."
+icon: "git-merge"
+---
+
+Tonto is organized as an npm workspace monorepo.
+
+## Workspaces
+
+| Workspace | Role |
+| --- | --- |
+| `packages/tonto` | `tonto-cli`, grammar, language server services, validators, generators, parser utilities, templates. |
+| `packages/extension` | VS Code extension package published as `Lenke.tonto`. |
+| `packages/tpm` | Tonto Package Manager package published as `tpm`. |
+| `packages/webview` | React/Vite webview package for diagram experiences. |
+| `packages/sprotty-vscode` | Sprotty VS Code extension-side integration. |
+| `packages/sprotty-vscode-webview` | Sprotty webview-side integration. |
+| `packages/tonto-documentation` | Mintlify documentation package. |
+
+## Root scripts
+
+Run these from the repository root:
+
+```bash
+npm run build
+npm run test
+npm run lint
+npm run docs:dev
+npm run docs:check
+```
+
+Language generation:
+
+```bash
+npm run langium:generate
+npm run langium:watch
+```
+
+## CLI package
+
+The CLI package contains:
+
+- Langium grammar files under `src/language`.
+- Validators under `src/language/validators`.
+- CLI commands under `src/cli/actions/commands`.
+- Generators for JSON, Tonto, PlantUML, and project templates.
+- Tonto ontology skill and guidance templates.
+
+## Extension package
+
+The extension package contributes:
+
+- VS Code language registrations.
+- Commands and status bar actions.
+- Webview and diagram commands.
+- `tonto.json` schema association.
+- Feature toggle for `.tontodiagram`.
+
+## Webview package
+
+The webview package contains the React-based diagram editor and supporting UI. It is built with Vite and bundled for the extension.
+
+## Documentation package
+
+The documentation package is a Mintlify site. It is intentionally a package in the workspace so docs scripts and dependency locking live with the rest of the project.
+
+Run:
+
+```bash
+npm run docs:dev
+npm run docs:check
+```
+
+For deployment, configure Mintlify with:
+
+```text
+/packages/tonto-documentation
+```
+
+## Contributor workflow
+
+Before publishing a change that affects syntax, commands, or generated artifacts:
+
+1. Update the code and tests.
+2. Run `npm run langium:generate` when grammar changes require generated language files.
+3. Run `npm run test`.
+4. Update relevant documentation pages in `packages/tonto-documentation`.
+5. Run `npm run docs:check`.
+
+Documentation should describe current behavior from source code, not only legacy docs.

@@ -81,21 +81,38 @@ describe("tontodiagram parser", () => {
             [
                 { target: "people.Child", x: 360.154, y: 120.499 },
                 { target: "people.Person", x: 80, y: 120 },
-            ],
-            { x: 4.124, y: 10.333, zoom: 0.875 }
+            ]
         );
 
         expect(serializeTontoDiagramSpec(updated)).toContain("node people.Child { x 360.15 y 120.5 }");
         expect(serializeTontoDiagramSpec(updated)).toContain("import people");
-        expect(serializeTontoDiagramSpec(updated)).toContain("viewport { x 4.12 y 10.33 zoom 0.88 }");
+        expect(serializeTontoDiagramSpec(updated)).not.toContain("viewport");
     });
 
-    test("reports missing source declarations", () => {
-        const result = parseTontoDiagramSpec(`diagram "Broken" {
+    test("accepts diagrams without a source declaration", () => {
+        const result = parseTontoDiagramSpec(`diagram "Empty" {
+  import people
   viewport { x 0 y 0 zoom 1 }
 }`);
 
-        expect(result.spec).toBeUndefined();
-        expect(result.issues.some((issue) => issue.message.includes("Diagram source is required"))).toBe(true);
+        expect(result.spec).toBeDefined();
+        expect(result.spec?.source).toBeUndefined();
+        expect(result.spec?.imports).toEqual(["people"]);
+        expect(result.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    });
+
+    test("strips legacy source declarations on serialize", () => {
+        const parsed = parseTontoDiagramSpec(`diagram "Legacy" {
+  source "./src/people.tonto"
+  import people
+  direction LR
+  stereotypes true
+  attributes true
+  external false
+  datatypes true
+}`);
+
+        const updated = updateTontoDiagramLayout(parsed.spec!, []);
+        expect(serializeTontoDiagramSpec(updated)).not.toContain("source");
     });
 });

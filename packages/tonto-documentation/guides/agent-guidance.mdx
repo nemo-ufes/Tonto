@@ -1,0 +1,78 @@
+---
+title: "Agent Guidance and Skills"
+description: "Add Tonto-specific guidance files and ontology skills for AI coding tools."
+icon: "bot"
+---
+
+Tonto includes templates for AI coding assistants so they can understand `.tonto` syntax, OntoUML terminology, cardinalities, documentation conventions, and safe ontology extension workflows.
+
+## Add guidance during project initialization
+
+Run:
+
+```bash
+tonto-cli init
+```
+
+The initializer asks which editor or agentic IDE you use:
+
+```text
+Cursor
+VS Code
+Codex
+Claude Code
+Google (Gemini / Antigravity)
+All
+```
+
+It writes guidance files into the target-specific folder.
+
+## Add guidance from VS Code
+
+Use:
+
+```text
+Tonto: Add Guidances to project (Work with LLMs)
+```
+
+This command writes project guidance without manually copying templates.
+
+## Add the Tonto ontology skill
+
+Use the CLI:
+
+```bash
+tonto-cli add-skill . --target codex
+tonto-cli add-skill . --target all
+```
+
+Or use the VS Code command:
+
+```text
+Tonto: Add Tonto Skill to project
+```
+
+## What the guidance covers
+
+The generated materials cover:
+
+- Basic Tonto syntax and project structure.
+- How to choose OntoUML stereotypes.
+- Cardinality guidance.
+- How to create new ontology elements.
+- How to analyze terminology consistency.
+- How to summarize and document ontology packages.
+
+## Recommended agent workflow
+
+When asking an AI assistant to modify a Tonto ontology:
+
+1. Point it to the project root and `tonto.json`.
+2. Ask it to inspect imports and existing package names before editing.
+3. Ask for stereotype rationale for new classes.
+4. Run `tonto-cli validate .` after changes.
+5. Review labels and descriptions for public packages.
+
+<Warning>
+Do not let an assistant invent broad foundational concepts without checking existing packages and imported dependencies first. Duplicate core concepts are harder to fix than local modeling mistakes.
+</Warning>

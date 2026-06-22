@@ -8,15 +8,15 @@
     },
     "type": "module",
     "description": "Tonto is a DSL for creating OntoUML models",
-    "version": "0.4.9",
+    "version": "0.4.12",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/matheuslenke/Tonto.git",
+        "url": "git+https://github.com/nemo-ufes/Tonto.git",
         "directory": "packages/tonto"
     },
     "engines": {
-        "node": ">= 16"
+        "node": ">= 20"
     },
     "categories": [
         "Programming Languages"
@@ -54,11 +54,12 @@
         "@inquirer/prompts": "^7.8.6",
         "@vscode/vsce": "3.3.2",
         "chalk": "^5.6.2",
-        "chevrotain": "^11.0.3",
+        "chevrotain": "11.0.3",
         "concurrently": "3.5.1",
         "elkjs": "^0.10.0",
         "glob": "^10.2.2",
-        "langium-sprotty": "^3.0.0",
+        "langium": "3.2.0",
+        "langium-sprotty": "3.2.0",
         "node-fetch-native": "^1.0.1",
         "ontouml-js": "github:matheuslenke/ontouml-js#feature/include-types-in-build",
         "reflect-metadata": "^0.2.2",

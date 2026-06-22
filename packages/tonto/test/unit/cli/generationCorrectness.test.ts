@@ -5,6 +5,7 @@ import { NodeFileSystem } from "langium/node";
 import { ClassStereotype, RelationStereotype } from "ontouml-js";
 import { afterEach, describe, expect, it } from "vitest";
 import { generateCommand, generateModularCommand } from "../../../src/cli/actions/commands/generateCommand.js";
+import { generatePlantUMLCommand } from "../../../src/cli/actions/commands/generatePlantUMLCommand.js";
 import { createDefaultTontoManifest, type TontoManifest } from "../../../src/cli/model/grammar/TontoManifest.js";
 import { buildFolderDocuments } from "../../../src/cli/utils/buildFolderDocuments.js";
 import { parseProjectModular } from "../../../src/cli/utils/parseProjectModular.js";
@@ -123,5 +124,57 @@ describe("generation correctness", () => {
 
         expect(generatedFilePath).toBe(path.join(tempDir, "nested/out/nested-output.json"));
         expect(fs.existsSync(generatedFilePath ?? "")).toBe(true);
+    });
+
+    it("should generate one PlantUML file for the whole ontology", async () => {
+        const { tempDir } = createTempProject({
+            projectName: "full-ontology",
+            outFolder: "diagrams",
+        });
+
+        writeProjectFile(path.join(tempDir, "Alpha.tonto"), "package Alpha\nkind Person\n");
+        writeProjectFile(
+            path.join(tempDir, "Beta.tonto"),
+            "import Alpha\npackage Beta\nkind Course\n@material relation Alpha.Person [1] -- enrolledIn -- [*] Course\n"
+        );
+
+        const generatedFilePaths = await generatePlantUMLCommand(tempDir);
+
+        expect(generatedFilePaths).toEqual([path.join(tempDir, "diagrams/full-ontology.puml")]);
+        const contents = fs.readFileSync(generatedFilePaths[0], "utf-8");
+        expect(contents).toContain(`class "Alpha::Person" <<kind>> #FF99A3`);
+        expect(contents).toContain(`class "Beta::Course" <<kind>> #FF99A3`);
+        expect(contents).toContain(`"Alpha::Person" "1" -- "*" "Beta::Course" : <back:WhiteSmoke>enrolledIn</back> >`);
+        expect(contents.match(/class "Alpha::Person"/g)).toHaveLength(1);
+    });
+
+    it("should generate separate PlantUML files per package", async () => {
+        const { tempDir } = createTempProject({ projectName: "split-ontology" });
+        const destination = path.join(tempDir, "custom-diagrams");
+
+        writeProjectFile(path.join(tempDir, "Alpha.tonto"), "package Alpha\nkind Person\n");
+        writeProjectFile(
+            path.join(tempDir, "Beta.tonto"),
+            "import Alpha\npackage Beta\nkind Course\n@material relation Alpha.Person [1] -- enrolledIn -- [*] Course\n"
+        );
+
+        const generatedFilePaths = await generatePlantUMLCommand(tempDir, {
+            destination,
+            perPackage: true,
+        });
+
+        expect([...generatedFilePaths].sort()).toEqual([
+            path.join(destination, "Alpha.puml"),
+            path.join(destination, "Beta.puml"),
+        ].sort());
+
+        const alphaContents = fs.readFileSync(path.join(destination, "Alpha.puml"), "utf-8");
+        const betaContents = fs.readFileSync(path.join(destination, "Beta.puml"), "utf-8");
+
+        expect(alphaContents).toContain(`class "Person" <<kind>> #FF99A3`);
+        expect(alphaContents).toContain(`class "Beta::Course" <<kind>> #FF99A3`);
+        expect(alphaContents).toContain(`"Person" "1" ---- "*" "Beta::Course" : <back:WhiteSmoke>enrolledIn</back> >`);
+        expect(betaContents).toContain(`class "Course" <<kind>> #FF99A3`);
+        expect(betaContents).toContain(`"Alpha::Person" "1" ---- "*" "Course" : <back:WhiteSmoke>enrolledIn</back> >`);
     });
 });

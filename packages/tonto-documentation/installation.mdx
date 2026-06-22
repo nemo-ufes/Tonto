@@ -1,0 +1,87 @@
+---
+title: "Installation"
+description: "Install the Tonto VS Code extension, CLI, package manager, and documentation tooling."
+icon: "download"
+---
+
+Tonto can be used from VS Code, the terminal, or both.
+
+## Requirements
+
+| Tool | Version |
+| --- | --- |
+| Node.js | `>=20.17.0` recommended for current packages and Mintlify docs. |
+| npm | `>=7.7.0` for workspaces and global installs. |
+| VS Code | `^1.92.0` for the current extension package. |
+
+## VS Code extension
+
+Install the extension from the Visual Studio Marketplace:
+
+```text
+Lenke.tonto
+```
+
+The extension contributes:
+
+- `.tonto` and `.tontodiagram` languages.
+- Syntax highlighting and language configuration.
+- Language-server validation and completions.
+- Commands for JSON, Tonto, gUFO, PlantUML, TPM, project initialization, and guidance generation.
+- Diagram views and an alpha `.tontodiagram` editor.
+
+## CLI
+
+Install the CLI globally:
+
+```bash
+npm install -g tonto-cli
+```
+
+Check that the command is available:
+
+```bash
+tonto-cli --version
+tonto-cli help
+```
+
+The CLI package exports the command `tonto-cli`.
+
+## Tonto Package Manager
+
+Install TPM globally:
+
+```bash
+npm install -g tpm
+```
+
+Check that the command is available:
+
+```bash
+tpm --version
+tpm help
+```
+
+TPM reads `tonto.json` and installs Git-based ontology dependencies into `tonto_dependencies`.
+
+## Documentation package
+
+This documentation is a Mintlify package inside the Tonto monorepo.
+
+From the repository root:
+
+```bash
+npm install
+npm run docs:dev
+npm run docs:check
+```
+
+Mintlify deployment should use this monorepo path:
+
+```text
+/packages/tonto-documentation
+```
+
+<Warning>
+Do not configure Mintlify to use the legacy `tonto-docs` symlink. That directory is kept only as migration reference material.
+</Warning>

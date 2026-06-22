@@ -1,0 +1,95 @@
+---
+title: "Generation Workflows"
+description: "Generate OntoUML JSON, gUFO Turtle, PlantUML diagrams, and Tonto source from JSON."
+icon: "repeat-2"
+---
+
+Tonto generators let one textual project produce multiple artifacts.
+
+## Validate first
+
+Run local validation before generating:
+
+```bash
+tonto-cli validate .
+```
+
+Use API validation for additional OntoUML checks:
+
+```bash
+tonto-cli validate . --with-api
+```
+
+## Generate OntoUML JSON
+
+```bash
+tonto-cli generate .
+```
+
+Generated JSON is written to the manifest `outFolder`.
+
+Use a custom destination:
+
+```bash
+tonto-cli generate . --destination out-json
+```
+
+<Frame caption="Tonto to JSON command in VS Code">
+  ![Tonto to JSON](/gifs/tonto-to-json.gif)
+</Frame>
+
+## Import JSON into Tonto
+
+```bash
+tonto-cli import model.json --destination imported-model
+```
+
+Use this workflow for migrating existing OntoUML JSON models into textual Tonto projects.
+
+## Transform to gUFO
+
+```bash
+tonto-cli transform .
+```
+
+The VS Code extension also exposes:
+
+```text
+Tonto: Transform to GUFO
+```
+
+<Frame caption="Tonto to gUFO command in VS Code">
+  ![Tonto to gUFO](/gifs/tonto-to-gufo.gif)
+</Frame>
+
+## Generate PlantUML
+
+```bash
+tonto-cli plantuml .
+```
+
+Use per-package output for large models:
+
+```bash
+tonto-cli plantuml . --per-package
+```
+
+Use layout options for readability:
+
+```bash
+tonto-cli plantuml . --layout top-to-bottom
+tonto-cli plantuml . --layout orthogonal
+```
+
+## Recommended pipeline
+
+For a repeatable publication flow:
+
+```bash
+tpm install
+tonto-cli validate .
+tonto-cli generate .
+tonto-cli plantuml . --per-package
+```
+
+Track source files and manifest changes in Git. Track generated files only when your team needs generated artifacts in the repository.

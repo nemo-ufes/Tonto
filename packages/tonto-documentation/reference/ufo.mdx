@@ -1,0 +1,68 @@
+---
+title: "UFO Quick Reference"
+description: "A compact overview of the Unified Foundational Ontology concepts used by Tonto."
+icon: "network"
+---
+
+Tonto is based on UFO, the Unified Foundational Ontology. UFO provides domain-independent distinctions that help ontology modelers choose precise stereotypes and avoid ambiguous models.
+
+<Warning>
+This page is a modeling aid, not the normative UFO specification.
+</Warning>
+
+## Endurants and perdurants
+
+| Concept | Meaning | Tonto examples |
+| --- | --- | --- |
+| Endurant | Exists in time while remaining the same individual through change. | `kind Person`, `relator Enrollment`, `quality Weight`. |
+| Perdurant | Unfolds in time and has temporal parts. | `event EnrollmentCeremony`, `process CourseDelivery`. |
+
+<Frame caption="UFO taxonomy from the legacy documentation">
+  ![UFO diagram](/images/diagrams/fig-ufo-diagram.png)
+</Frame>
+
+## Sortality
+
+Sortals provide or inherit identity principles.
+
+- `kind`, `collective`, `quantity`, `quality`, `mode`, `relator`, `type`, and `powertype` are ultimate sortal-like roots in Tonto syntax.
+- `subkind`, `phase`, `role`, and `historicalRole` inherit identity through specialization.
+
+Non-sortals classify entities across identity principles:
+
+- `category`
+- `mixin`
+- `phaseMixin`
+- `roleMixin`
+- `historicalRoleMixin`
+
+## Rigidity
+
+Rigidity describes whether classification is essential.
+
+| Category | Meaning | Examples |
+| --- | --- | --- |
+| Rigid | Every instance must remain classified by the type. | `kind Person`, `subkind Man`, `category PhysicalObject`. |
+| Anti-rigid | Instances may stop being classified by the type. | `phase Child`, `role Student`. |
+| Semi-rigid | Essential for some instances, accidental for others. | `mixin Insurable`. |
+
+## Relators
+
+Relators are central to many OntoUML models. A relator is the truth-maker for a material relation.
+
+```tonto
+kind Person
+kind Company
+
+role Employee specializes Person
+role Employer specializes Company
+
+relator Employment {
+  @mediation [1] -- [1] Employee
+  @mediation [1] -- [1] Employer
+}
+
+@material relation Employee [0..*] -- worksFor -- [0..*] Employer
+```
+
+Use relators when the relation itself has unity, identity, or attributes.

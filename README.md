@@ -10,7 +10,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/matheuslenke/Tonto">
+  <a href="https://github.com/nemo-ufes/Tonto">
     <img src="docs/images/TontoLogo.png" alt="Logo"  height="100" alt="Tonto Logo image, a blue background with TONTO written in it">
   </a>
 
@@ -135,7 +135,7 @@ This project defines tasks in order to be easier for vscode to build everything.
   # Run this to generate .vsix file
   npm run package
   # Or
-  vsce package --pre-release --baseContentUrl https://github.com/matheuslenke/Tonto
+  vsce package --pre-release --baseContentUrl https://github.com/nemo-ufes/Tonto
 
   # Installing the extension in your vscode (requires the code extension in path)
   code --install-extension tonto-x.x.x.vsix
@@ -155,7 +155,7 @@ Then, inside the `tonto` or `tonto-vscode` folder, run the following command:
 <!-- LICENSE -->
 ## 🔐 License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -170,4 +170,3 @@ Matheus Lenke Coutinho - matheus.l.coutinho@edu.ufes.br - [Linkedin](https://www
 <div id="additional-tools"> </div>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-

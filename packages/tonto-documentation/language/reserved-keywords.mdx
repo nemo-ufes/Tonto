@@ -1,0 +1,117 @@
+---
+title: "Reserved Keywords"
+description: "Avoid parser conflicts by choosing attribute and element names that do not collide with Tonto keywords."
+icon: "circle-slash"
+---
+
+Tonto has keywords for stereotypes, relations, structure, and TypeScript-derived parser terms. Avoid using these words as element or attribute names.
+
+## Tonto language keywords
+
+```text
+class
+event
+situation
+process
+category
+mixin
+phaseMixin
+roleMixin
+historicalRoleMixin
+kind
+collective
+quantity
+quality
+mode
+intrinsicMode
+extrinsicMode
+relator
+type
+powertype
+subkind
+phase
+role
+historicalRole
+datatype
+enum
+import
+as
+package
+of
+label
+description
+specializes
+instanceOf
+genset
+disjoint
+complete
+general
+specifics
+categorizer
+where
+relation
+inverseOf
+```
+
+## Relation stereotype keywords
+
+```text
+material
+derivation
+comparative
+mediation
+characterization
+externalDependence
+componentOf
+memberOf
+subCollectionOf
+subQuantityOf
+instantiation
+termination
+participational
+participation
+historicalDependence
+creation
+manifestation
+bringsAbout
+triggers
+composition
+aggregation
+inherence
+value
+formal
+constitution
+```
+
+## Common conflicts
+
+| Intended name | Problem | Better option |
+| --- | --- | --- |
+| `description` | Reserved block keyword. | `summary`, `details`, `_description`. |
+| `label` | Reserved block keyword. | `displayName`, `title`, `_label`. |
+| `type` | Class stereotype keyword. | `category`, `classification`, `_type`. |
+| `role` | Class stereotype keyword. | `function`, `participationRole`, `_role`. |
+| `value` | Relation stereotype keyword and common parser conflict. | `amount`, `measure`, `_value`. |
+| `class` | Stereotype keyword. | `category`, `classification`, `_class`. |
+
+## Example
+
+Avoid:
+
+```tonto
+kind Metric {
+  value: number
+  description: string
+}
+```
+
+Prefer:
+
+```tonto
+kind Metric {
+  measure: number
+  summary: string
+}
+```
+
+Use a leading underscore only when the domain term is unavoidable and the underscore will not confuse readers.

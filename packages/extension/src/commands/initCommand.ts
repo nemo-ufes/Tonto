@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { buildInitProjectFiles } from "../../../tonto/src/cli/actions/commands/initCommand.js";
+import { buildInitManifest, buildInitProjectFiles } from "../../../tonto/src/cli/actions/commands/initCommand.js";
+import { toJson } from "../../../tonto/src/cli/model/grammar/TontoManifest.js";
 import { getOutputChannel } from "../extension/outputChannel.js";
 import { CommandIds } from "./commandIds.js";
 import {
@@ -141,7 +142,7 @@ async function promptInitProjectAnswers(
     const description = await promptTextValue(outputChannel, "description", {
         prompt: "Description",
         value: "",
-    });
+    }, { allowEmpty: true });
     if (description === undefined) {
         return undefined;
     }
@@ -157,7 +158,7 @@ async function promptInitProjectAnswers(
     const authorName = await promptTextValue(outputChannel, "authorName", {
         prompt: "Author name",
         value: "",
-    });
+    }, { allowEmpty: true });
     if (authorName === undefined) {
         return undefined;
     }
@@ -165,7 +166,7 @@ async function promptInitProjectAnswers(
     const authorEmail = await promptTextValue(outputChannel, "authorEmail", {
         prompt: "Author email (optional)",
         value: "",
-    });
+    }, { allowEmpty: true });
     if (authorEmail === undefined) {
         return undefined;
     }
@@ -265,30 +266,17 @@ async function writeManifestFile(
 }
 
 function buildManifestContent(answers: InitProjectAnswers): string {
-    const authors = answers.authorName
-        ? [
-            {
-                name: answers.authorName,
-                ...(answers.authorEmail ? { email: answers.authorEmail } : {}),
-            },
-        ]
-        : [];
-
-    return JSON.stringify(
-        {
-            projectName: answers.projectName,
-            displayName: answers.displayName,
-            version: answers.version,
-            description: answers.description,
-            publisher: "",
-            license: answers.license,
-            dependencies: {},
-            outFolder: "out",
-            authors,
-        },
-        null,
-        2
-    );
+    const manifest = buildInitManifest({
+        projectName: answers.projectName,
+        displayName: answers.displayName,
+        version: answers.version,
+        description: answers.description,
+        license: answers.license,
+        authorName: answers.authorName,
+        authorEmail: answers.authorEmail,
+    });
+    manifest.publisher = "";
+    return toJson(manifest);
 }
 
 async function promptToOpenGeneratedProject(

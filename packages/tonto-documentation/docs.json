@@ -1,0 +1,166 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Tonto Documentation",
+  "description": "Documentation for Tonto, a textual language and toolchain for UFO-based OntoUML ontology projects.",
+  "logo": "/images/tonto-logo.png",
+  "favicon": "/images/favicon.ico",
+  "colors": {
+    "primary": "#0B6FAE",
+    "light": "#2A9FD6",
+    "dark": "#064D7A"
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "appearance": {
+    "default": "system"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": {
+      "theme": "css-variables",
+      "languages": {
+        "custom": [
+          "syntaxes/tonto.tmLanguage.json"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "timestamp": true
+  },
+  "seo": {
+    "indexing": "all"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/nemo-ufes/Tonto"
+      },
+      {
+        "label": "CLI on npm",
+        "href": "https://www.npmjs.com/package/tonto-cli"
+      },
+      {
+        "label": "VS Code Extension",
+        "href": "https://marketplace.visualstudio.com/items?itemName=Lenke.tonto"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Quickstart",
+      "href": "/quickstart"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/nemo-ufes/Tonto",
+      "linkedin": "https://www.linkedin.com/in/matheus-lenke-coutinho-492a4b15a/"
+    },
+    "links": [
+      {
+        "header": "Packages",
+        "items": [
+          {
+            "label": "Tonto CLI",
+            "href": "/tools/cli"
+          },
+          {
+            "label": "VS Code Extension",
+            "href": "/tools/vscode-extension"
+          },
+          {
+            "label": "TPM",
+            "href": "/tools/tpm"
+          }
+        ]
+      },
+      {
+        "header": "Reference",
+        "items": [
+          {
+            "label": "Language Reference",
+            "href": "/language/packages-and-imports"
+          },
+          {
+            "label": "Project Architecture",
+            "href": "/reference/package-architecture"
+          }
+        ]
+      }
+    ]
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Start Here",
+        "icon": "rocket",
+        "pages": [
+          "index",
+          "quickstart",
+          "installation",
+          "first-model",
+          "project-structure"
+        ]
+      },
+      {
+        "group": "Language",
+        "icon": "braces",
+        "pages": [
+          "language/packages-and-imports",
+          "language/classes-and-natures",
+          "language/datatypes-attributes-labels",
+          "language/relations",
+          "language/generalization-sets",
+          "language/reserved-keywords",
+          "language/ebnf"
+        ]
+      },
+      {
+        "group": "Tools",
+        "icon": "wrench",
+        "pages": [
+          "tools/cli",
+          "tools/vscode-extension",
+          "tools/diagrams",
+          "tools/tpm"
+        ]
+      },
+      {
+        "group": "LLM Assistance",
+        "icon": "bot",
+        "pages": [
+          "llm-assistance/overview",
+          "llm-assistance/guidance-files",
+          "llm-assistance/skills",
+          "llm-assistance/workflows",
+          "llm-assistance/evaluation-and-limitations"
+        ]
+      },
+      {
+        "group": "Guides",
+        "icon": "book-open",
+        "pages": [
+          "guides/university-example",
+          "guides/modular-projects",
+          "guides/dependency-reuse",
+          "guides/generation-workflows",
+          "guides/agent-guidance"
+        ]
+      },
+      {
+        "group": "Theory & Reference",
+        "icon": "library",
+        "pages": [
+          "reference/ufo",
+          "reference/ontouml",
+          "reference/beyond-endurant-types",
+          "reference/ontouml-services",
+          "reference/package-architecture"
+        ]
+      }
+    ]
+  }
+}

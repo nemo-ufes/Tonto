@@ -1,0 +1,111 @@
+---
+title: "Dependency Reuse"
+description: "Share Tonto ontology packages across projects with TPM and Git repositories."
+icon: "package-plus"
+---
+
+TPM dependencies are Tonto projects stored in Git repositories. A project can depend on another project by URL, optional subdirectory, and optional version tag or branch.
+
+## Publish a reusable project
+
+A reusable Tonto project should include:
+
+```text
+core-types/
+  tonto.json
+  src/
+    datatypes.tonto
+    identity.tonto
+```
+
+`tonto.json`:
+
+```json
+{
+  "projectName": "core-types",
+  "displayName": "Core Types",
+  "publisher": "example",
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {},
+  "outFolder": "out",
+  "authors": [
+    {
+      "name": "Example"
+    }
+  ]
+}
+```
+
+Tag the repository when you want versioned installs:
+
+```bash
+git tag 1.0.0
+git push origin 1.0.0
+```
+
+## Consume a dependency
+
+Add the dependency to the consuming project:
+
+```bash
+tpm add . -n CoreTypes -u https://github.com/example/core-types.git -v 1.0.0
+tpm install
+```
+
+Or edit `tonto.json` manually:
+
+```json
+{
+  "dependencies": {
+    "CoreTypes": {
+      "url": "https://github.com/example/core-types.git",
+      "version": "1.0.0"
+    }
+  }
+}
+```
+
+## Use repository subdirectories
+
+Use `directory` when the Git repository contains multiple Tonto projects:
+
+```json
+{
+  "dependencies": {
+    "CoreTypes": {
+      "url": "https://github.com/example/tonto-libraries.git",
+      "directory": "packages/core-types",
+      "version": "1.0.0"
+    }
+  }
+}
+```
+
+## Use branches for active collaboration
+
+Use `branch` for temporary or active development dependencies:
+
+```json
+{
+  "dependencies": {
+    "CoreTypes": {
+      "url": "https://github.com/example/core-types.git",
+      "branch": "feature/shared-identity"
+    }
+  }
+}
+```
+
+Prefer version tags for stable project reuse.
+
+## Reinstall when dependencies change
+
+TPM does not currently maintain a lockfile. Re-run installation after changing dependency versions or branches:
+
+```bash
+rm -rf tonto_dependencies
+tpm install
+```
+
+Keep dependency declarations reviewable in `tonto.json`.

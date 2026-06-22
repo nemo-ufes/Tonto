@@ -1,0 +1,47 @@
+pre[language="tonto"],
+pre:has(code[language="tonto"]) {
+  --mint-background: transparent;
+  --mint-foreground: #27313d;
+  --mint-token-comment: #7f7d7d;
+  --mint-token-constant: #cd6872;
+  --mint-token-deleted: #cd6872;
+  --mint-token-function: #19b0f1;
+  --mint-token-inserted: #45e72b;
+  --mint-token-keyword: #6f7782;
+  --mint-token-link: #9b69b1;
+  --mint-token-parameter: #9f9710;
+  --mint-token-punctuation: #657485;
+  --mint-token-string-expression: #fca90d;
+}
+
+.dark pre[language="tonto"],
+.dark pre:has(code[language="tonto"]) {
+  --mint-foreground: #d7dde4;
+  --mint-token-comment: #a1a1a1;
+  --mint-token-constant: #cd6872;
+  --mint-token-deleted: #cd6872;
+  --mint-token-function: #19b0f1;
+  --mint-token-inserted: #45e72b;
+  --mint-token-keyword: #9aa4af;
+  --mint-token-link: #b989d0;
+  --mint-token-parameter: #d1ca3c;
+  --mint-token-punctuation: #93a0ad;
+  --mint-token-string-expression: #fca90d;
+}
+
+pre[language="tonto"] span[style*="--mint-token-constant"],
+pre[language="tonto"] span[style*="--mint-token-deleted"],
+pre[language="tonto"] span[style*="--mint-token-function"],
+pre[language="tonto"] span[style*="--mint-token-inserted"],
+pre[language="tonto"] span[style*="--mint-token-link"],
+pre[language="tonto"] span[style*="--mint-token-parameter"],
+pre[language="tonto"] span[style*="--mint-token-string-expression"],
+pre:has(code[language="tonto"]) span[style*="--mint-token-constant"],
+pre:has(code[language="tonto"]) span[style*="--mint-token-deleted"],
+pre:has(code[language="tonto"]) span[style*="--mint-token-function"],
+pre:has(code[language="tonto"]) span[style*="--mint-token-inserted"],
+pre:has(code[language="tonto"]) span[style*="--mint-token-link"],
+pre:has(code[language="tonto"]) span[style*="--mint-token-parameter"],
+pre:has(code[language="tonto"]) span[style*="--mint-token-string-expression"] {
+  font-weight: 700;
+}

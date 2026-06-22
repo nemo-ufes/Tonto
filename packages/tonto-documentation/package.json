@@ -1,0 +1,19 @@
+{
+  "name": "tonto-documentation",
+  "displayName": "Tonto Documentation",
+  "private": true,
+  "type": "module",
+  "description": "Mintlify documentation for the Tonto language, CLI, VS Code extension, and package manager.",
+  "engines": {
+    "node": ">=20.17.0"
+  },
+  "scripts": {
+    "dev": "mint dev",
+    "preview": "mint dev",
+    "check": "mint broken-links",
+    "check:links": "mint broken-links"
+  },
+  "devDependencies": {
+    "mint": "^4.2.572"
+  }
+}

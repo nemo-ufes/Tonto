@@ -1,0 +1,90 @@
+---
+title: "Modular Projects"
+description: "Split large Tonto ontologies into packages, files, and reusable dependency projects."
+icon: "blocks"
+---
+
+A modular Tonto project keeps concepts in small packages and connects them through imports.
+
+## When to modularize
+
+Modularize when:
+
+- Multiple teams maintain different bounded contexts.
+- Shared datatypes or foundational concepts are reused across models.
+- One file has too many unrelated declarations.
+- A dependency should be published and reused by other Tonto projects.
+
+## Package by context
+
+Prefer context-oriented packages:
+
+```text
+src/
+  core/
+    datatypes.tonto
+    people.tonto
+  university/
+    organization.tonto
+    academic.tonto
+  library/
+    loans.tonto
+```
+
+Example:
+
+```tonto
+import core.people
+import university.organization
+
+package university.academic
+
+role Student specializes people.Person
+kind Course
+```
+
+## Keep imports explicit
+
+Imports show the dependency graph of your ontology. Avoid relying on accidental global availability for domain packages.
+
+```tonto
+import core.datatypes
+import core.people as people
+
+package university.academic
+```
+
+Aliases are useful when package names would make declarations ambiguous.
+
+## Keep shared foundations small
+
+A reusable foundation package should contain stable concepts:
+
+- Built or refined datatypes.
+- Broad categories.
+- Common kinds such as `Person` or `Organization`, when they really are shared.
+- Documentation labels and descriptions.
+
+Avoid putting domain-specific roles into a shared core unless all consuming domains agree on their meaning.
+
+## Avoid generated folders
+
+Do not place source files under:
+
+```text
+out/
+generated/
+tonto_dependencies/
+```
+
+Generators and TPM use those folders for output and installed dependencies.
+
+## Validate the whole project
+
+Run validation from the project root:
+
+```bash
+tonto-cli validate .
+```
+
+The CLI reads the manifest and loads source documents as a project, so cross-package references can be checked together.

@@ -1,0 +1,106 @@
+---
+title: "VS Code Extension"
+description: "Use the Tonto VS Code extension for editing, validation, snippets, commands, and diagrams."
+icon: "panels-top-left"
+---
+
+The extension is published as:
+
+```text
+Lenke.tonto
+```
+
+It activates for Tonto workspaces and provides editor support for `.tonto` and `.tontodiagram` files.
+
+<Frame caption="Tonto extension editing a University model">
+  ![Tonto VS Code extension](/images/extension/fig-extension-1.png)
+</Frame>
+
+## Language support
+
+The extension contributes:
+
+- `tonto` language for `.tonto` files.
+- `tontodiagram` language for `.tontodiagram` files.
+- TextMate grammars for syntax highlighting.
+- Language configuration for editor behavior.
+- JSON schema association for `tonto.json`.
+
+## Commands
+
+The extension contributes these command palette entries:
+
+| Command title | Command id |
+| --- | --- |
+| Open Tonto Diagram | `tonto.diagram.open` |
+| New Diagram From Current Model | `tonto.diagram.createFile` |
+| Transform Tonto -> JSON | `tonto.generateJSON` |
+| Transform JSON -> Tonto | `tonto.generateTonto` |
+| Init new Tonto project | `tonto.initProject` |
+| Validate Model | `tonto.validateModel` |
+| Transform to GUFO | `tonto.transformModel` |
+| Install Packages (TPM) | `tonto.tpm.install` |
+| Add Guidances to project (Work with LLMs) | `tonto.addGuidances` |
+| Add Tonto Skill to project | `tonto.addSkill` |
+| Open PlantUML Diagram | `tonto.diagram.plantuml.open` |
+| Open Ontology PlantUML Diagram | `tonto.diagram.plantuml.openProject` |
+| Export PlantUML | `tonto.diagram.plantuml.export` |
+
+<Frame caption="Command palette integration">
+  ![Tonto command palette](/images/extension/fig-extension-command-palette.png)
+</Frame>
+
+## Validation
+
+Validation runs as you edit and reports syntax and semantic problems inline. Current validators include:
+
+- Ultimate sortal specialization.
+- Sortal specializes more than one ultimate sortal.
+- Sortal missing an ultimate sortal specialization.
+- Rigid element specializing anti-rigid element.
+- Compatible and redundant ontological natures.
+- Duplicate names and circular specialization.
+
+<Frame caption="Inline semantic validation">
+  ![Tonto validation](/gifs/validation.gif)
+</Frame>
+
+## Completion and snippets
+
+The language server provides completions for:
+
+- Class declarations.
+- Datatypes.
+- Attributes and cardinalities.
+- Relations and relation snippets.
+- Generalization sets.
+- Enum snippets.
+
+<Frame caption="Completion and snippets">
+  ![Tonto completion](/gifs/autocomplete.gif)
+</Frame>
+
+## Settings
+
+The alpha `.tontodiagram` editor is disabled by default.
+
+Enable it with:
+
+```json
+{
+  "tonto.features.tontodiagram.enabled": true
+}
+```
+
+When disabled, the classic Tonto diagram and PlantUML workflows remain available.
+
+## Keybindings
+
+When the diagram editor is focused:
+
+| Key | Command |
+| --- | --- |
+| `Alt+F` | Fit to screen. |
+| `Alt+C` | Center selection. |
+| `Alt+E` | Export diagram to SVG. |
+| `Delete` | Delete selected element. |

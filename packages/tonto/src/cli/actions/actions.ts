@@ -8,6 +8,7 @@ import { ErrorResultResponse, ValidationReturn } from "../requests/ontoumljsVali
 import { readOrCreateDefaultTontoManifest } from "../utils/readManifest.js";
 import { generateModularCommand } from "./commands/generateCommand.js";
 import { isGufoResultResponse, transformToGufoCommand } from "./commands/generateGufoCommand.js";
+import { generatePlantUMLCommand } from "./commands/generatePlantUMLCommand.js";
 import { ImportOptions, newImportCommand } from "./commands/importCommand.js";
 import { initCommand } from "./commands/initCommand.js";
 import { validateCommand } from "./commands/validateCommand.js";
@@ -21,6 +22,13 @@ export type GenerateOptions = {
 
 export type ValidateOptions = {
     local: boolean;
+}
+
+export type GeneratePlantUMLOptions = {
+    destination?: string;
+    perPackage?: boolean;
+    externalReferences?: boolean;
+    layout?: string;
 }
 
 export class TontoActions {
@@ -96,6 +104,32 @@ export class TontoActions {
         }
     }
 
+    async generatePlantUMLAction(dirName: string, opts: GeneratePlantUMLOptions = {}): Promise<void> {
+        if (!dirName) {
+            console.log(chalk.red("Directory not provided!"));
+            return;
+        }
+
+        try {
+            const generatedFiles = await generatePlantUMLCommand(dirName, {
+                destination: opts.destination,
+                perPackage: opts.perPackage,
+                showExternalReferences: opts.externalReferences !== false,
+                layout: opts.layout,
+            });
+
+            if (generatedFiles.length === 1) {
+                console.log(chalk.green(`PlantUML file generated successfully: ${generatedFiles[0]}`));
+                return;
+            }
+
+            console.log(chalk.green("PlantUML files generated successfully:"));
+            generatedFiles.forEach((filePath) => console.log(chalk.green(`- ${filePath}`)));
+        } catch (error) {
+            console.log(chalk.red(formatJsonGenerationErrorMessage(error)));
+        }
+    }
+
     async validateAction(dirName: string, opts: { withApi?: boolean }): Promise<void> {
         if (!dirName) {
             console.log(chalk.red("Directory not provided!"));
@@ -113,22 +147,20 @@ export class TontoActions {
         if (opts.withApi) {
             console.log(chalk.bold("\nPerforming API validation..."));
             try {
-                const response = await validateCommand(dirName, true);
+                const response = await validateCommand(dirName, false);
 
-                if (Array.isArray(response)) {
-                    const resultResponses = response as ValidationReturn[];
-                    let errorCount = 0;
-                    resultResponses.forEach(result => {
-                        errorCount += result.result.length;
-                        result.result.forEach(resultResponse => {
+                if (isValidationReturn(response)) {
+                    if (response.result.length > 0) {
+                        response.result.forEach(resultResponse => {
                             console.log(chalk.bold.redBright(`[${resultResponse.severity}] ${resultResponse.title}:`));
                             console.log(chalk.red(resultResponse.description));
                         });
-                    });
-                    console.log(chalk.bold(`- Total of API errors: ${errorCount}`));
+                        console.log(chalk.bold(`- Total of API errors: ${response.numberOfErrors}`));
+                    } else {
+                        console.log(chalk.green("No API errors found."));
+                    }
                 } else {
-                    const error = response as ErrorResultResponse;
-                    console.log(chalk.bold.red(error.message));
+                    console.log(chalk.bold.red(response.message ?? "API validation failed."));
                 }
             } catch (error) {
                 console.log(chalk.red(error));
@@ -141,4 +173,8 @@ export class TontoActions {
         const cmd = initCommand();
         cmd.parse([process.argv[0], process.argv[1]]);
     }
+}
+
+function isValidationReturn(response: ValidationReturn | ErrorResultResponse): response is ValidationReturn {
+    return "result" in response && Array.isArray(response.result);
 }

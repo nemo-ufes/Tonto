@@ -69,22 +69,24 @@ describe("PlantUML Generator Reproduction", () => {
 
     const puml = generatePlantUML(contractsPackage, { showExternalReferences: true });
     
+    expect(puml).toContain(`set separator none`);
+
     // Check if EmploymentContract is generated
     expect(puml).toContain(`class "EmploymentContract" <<relator>> #99FF99`);
 
     // Check if external element People.Employee is generated with correct color/stereotype
     // It should be generated because it is referenced in the relation
     // Employee is a role, so it should be LIGHT_PINK #FFDADD
-    expect(puml).toContain(`class "Employee" <<role>> #FFDADD`);
+    expect(puml).toContain(`class "People::Employee" <<role>> #FFDADD`);
 
     // Check if external element University.UniversityProfessor is generated
     // UniversityProfessor is a role, so it should be LIGHT_PINK #FFDADD
-    expect(puml).toContain(`class "UniversityProfessor" <<role>> #FFDADD`);
+    expect(puml).toContain(`class "University::UniversityProfessor" <<role>> #FFDADD`);
 
     // Check relations
-    // External references use longer arrows (-d-- instead of -d-)
-    expect(puml).toContain(`"EmploymentContract" "1..*" -d-- "1" "Employee"`);
-    expect(puml).toContain(`"EmploymentContract" "1..*" -r-- "1" "UniversityProfessor"`);
+    // External references use longer arrows.
+    expect(puml).toContain(`"EmploymentContract" "1..*" ---- "1" "People::Employee"`);
+    expect(puml).toContain(`"EmploymentContract" "1..*" ---- "1" "University::UniversityProfessor"`);
   });
 
   test("should include external relations declared outside the focused module", async () => {
@@ -111,15 +113,15 @@ describe("PlantUML Generator Reproduction", () => {
 
     const puml = generatePlantUML(peoplePackage, { showExternalReferences: true, externalReferenceModules });
 
-    expect(puml).toContain(`class "Contract" <<kind>> #FF99A3`);
-    expect(puml).toContain(`"Contract"  ---- "1" "Person" : <back:WhiteSmoke>engages</back> >`);
+    expect(puml).toContain(`class "IncomingContracts::Contract" <<kind>> #FF99A3`);
+    expect(puml).toContain(`"IncomingContracts::Contract"  ---- "1" "Person" : <back:WhiteSmoke>engages</back> >`);
 
     const pumlWithoutExternalReferences = generatePlantUML(peoplePackage, {
       showExternalReferences: false,
       externalReferenceModules,
     });
 
-    expect(pumlWithoutExternalReferences).not.toContain(`class "Contract" <<kind>> #FF99A3`);
+    expect(pumlWithoutExternalReferences).not.toContain(`class "IncomingContracts::Contract" <<kind>> #FF99A3`);
     expect(pumlWithoutExternalReferences).not.toContain(`engages`);
   });
 
@@ -148,7 +150,7 @@ describe("PlantUML Generator Reproduction", () => {
     const puml = generatePlantUML(peoplePackage, { showExternalReferences: true });
 
     expect(puml).toContain(`<back:WhiteSmoke>participatesIn</back>\\ninverseOf InverseAgreements.Contract.hasParticipant >`);
-    expect(puml).toContain(`"Contract" "1" ---- "*" "Person" : <back:WhiteSmoke>hasParticipant</back> >`);
-    expect(puml).toContain(`class "Contract" <<kind>> #FF99A3`);
+    expect(puml).toContain(`"InverseAgreements::Contract" "1" ---- "*" "Person" : <back:WhiteSmoke>hasParticipant</back> >`);
+    expect(puml).toContain(`class "InverseAgreements::Contract" <<kind>> #FF99A3`);
   });
 });

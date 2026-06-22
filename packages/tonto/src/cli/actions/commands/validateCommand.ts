@@ -25,10 +25,6 @@ export const validateCommand = async (dirName: string = "", locally: boolean = f
 
         const validationResult = await validateTontoFile(project, locally);
 
-        if (isValidationReturn(validationResult)) {
-            console.log(`Total of errors: ${validationResult.numberOfErrors}`);
-        }
-
         if (validationResult) {
             return validationResult;
         } else {
@@ -45,9 +41,3 @@ export const validateCommand = async (dirName: string = "", locally: boolean = f
         message: "Validation failed",
     } as ErrorResultResponse;
 };
-
-function isValidationReturn(value: unknown): value is ValidationReturn {
-    return typeof value === "object"
-        && value !== null
-        && "result" in value;
-}

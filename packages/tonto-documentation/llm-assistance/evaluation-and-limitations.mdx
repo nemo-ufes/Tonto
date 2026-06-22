@@ -1,0 +1,81 @@
+---
+title: "Evaluation and Limitations"
+description: "Review the evidence, practical limitations, and safeguards for LLM-assisted Tonto modeling."
+icon: "shield-alert"
+---
+
+Tonto's LLM assistance should be understood as modeling support, not as an automatic correctness guarantee. The research behind this feature combines the textual Tonto toolchain with guidance files and skills so assistants can produce better reviewable suggestions for ontology-driven conceptual modeling.
+
+## Evidence so far
+
+The published Tonto work first identified LLM integration as a natural extension of a textual ontology language: Tonto makes models easier to include in prompts, compare in version control, validate, and transform.
+
+The later LLM-focused work explored guidance-driven assistance for tasks such as:
+
+- Creating or enhancing ontology elements.
+- Summarizing packages and complete models.
+- Checking terminology and UFO stereotype usage.
+- Generating labels, descriptions, and documentation.
+- Adding multilingual terminology.
+- Repairing models with validation feedback.
+
+In the demonstration reported in the 2025 LLM assistance paper, guidance files improved the assistant's behavior compared with an unguided baseline. The guided assistant was better able to use Tonto syntax, replace generic declarations with more precise UFO-based stereotypes, and use proper `label` and `description` blocks instead of plain comments.
+
+## User evaluation observations
+
+An exploratory user evaluation with 16 participants found positive perceived usability and usefulness for Tonto with LLM assistance:
+
+- Familiarity with LLMs was high on average.
+- Prior familiarity with Tonto was lower, which makes the positive post-use ratings more informative.
+- Participants rated Tonto syntax clarity highly.
+- Participants reported that using LLMs in the development environment was easy.
+- PlantUML visualization was one of the strongest positive points because it helped users inspect the ontology.
+
+Open-ended feedback also identified practical issues:
+
+- LLMs sometimes generated wrong Tonto syntax.
+- Some outputs placed `package` and `import` declarations in the wrong order.
+- Some outputs used invalid comment syntax such as `#`.
+- Longer edit sessions could make the assistant lose track of file content.
+- Manual correction and validation were still necessary.
+- Onboarding instructions and privacy expectations need to be explicit in experiments and teaching material.
+
+## Known limitations
+
+LLM assistance has several limits:
+
+- **No guarantee of ontological correctness.** UFO decisions may depend on domain commitments that validation cannot infer.
+- **Model variability.** Different LLMs, versions, and settings may produce different outputs for the same guidance.
+- **Context limits.** Large ontologies and long guidance files can exceed or dilute the assistant's usable context.
+- **Domain sensitivity.** Niche domains may be underrepresented in model training data, making domain interpretation less reliable.
+- **Syntax drift.** Assistants can produce plausible but invalid Tonto-like syntax.
+- **Destructive edits.** Agent modes can accidentally remove or rewrite unrelated file content during broad tasks.
+- **Privacy concerns.** Prompts, logs, and copied ontology snippets may contain user or domain-sensitive information.
+
+## Safeguards
+
+Use these safeguards in LLM-assisted modeling sessions:
+
+1. Keep the ontology in version control.
+2. Ask the assistant to inspect before editing.
+3. Request a short plan for non-trivial changes.
+4. Prefer small patches over large rewrites.
+5. Validate after every accepted change.
+6. Use diagrams to inspect model structure.
+7. Review every stereotype choice that affects identity, rigidity, dependence, or event participation.
+8. Avoid sending private domain information to external LLM providers unless that is acceptable for the project.
+
+## Future directions
+
+The LLM assistance work points to several future improvements:
+
+- Better controlled comparisons of no-AI, baseline LLM, and guided LLM workflows.
+- More artifact-level evaluation of model quality, not only user perception.
+- More robust repair loops connected directly to Tonto diagnostics.
+- Larger task suites with different domain complexity levels.
+- Natural-language interfaces for querying and manipulating Tonto ontologies.
+- More structured operations so agents edit Tonto through safer model-aware actions instead of unrestricted text rewriting.
+
+<Warning>
+LLM output is not evidence that an ontology is valid. Treat it as a draft, validate with Tonto, inspect diagrams, and review the underlying UFO commitments.
+</Warning>

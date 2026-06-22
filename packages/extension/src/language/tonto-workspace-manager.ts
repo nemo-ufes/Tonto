@@ -22,7 +22,7 @@ export class TontoGrammarWorkspaceManager extends DefaultWorkspaceManager {
         _folders: WorkspaceFolder[],
         _collector: (document: LangiumDocument<AstNode>) => void
     ): Promise<void> {
-        const uri = URI.parse("builtin://basicDatatypes.tonto");
+        const uri = URI.parse("builtin:///basicDataTypes.tonto");
         const document = this.documentFactory.fromString(this.basicDataTypes, uri);
         _collector(document);
     }

@@ -2,6 +2,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from "vscode-languageclient/node.js";
 import { createAddGuidancesCommand } from "../commands/addGuidancesCommand.js";
+import { createAddSemanticTokenColorsCommand } from "../commands/addSemanticTokenColorsCommand.js";
 import { createAddSkillCommand } from "../commands/addSkillCommand.js";
 import { createTransformToGufoSatusBarItem } from "../commands/gufoTransformCommand.js";
 import { createInitCommand } from "../commands/initCommand.js";
@@ -10,8 +11,8 @@ import { registerPlantUMLCommands } from "../commands/plantumlCommand.js";
 import { createTontoGenerationStatusBarItem } from "../commands/TontoGenerationCommand.js";
 import { createTpmInstallCommands } from "../commands/TpmInstallCommand.js";
 import { createValidationSatusBarItem } from "../commands/validationCommand.js";
+import { TontoFeature, TontoFeatureToggleController } from "../configuration/tonto-feature-toggles.js";
 import { activateDiagram } from "../diagram/activateDiagram.js";
-import { registerAutoOpenTontoDiagramPreview } from "../diagram-editor/auto-open-tontodiagram-preview.js";
 import { registerCreateTontoDiagramCommand } from "../diagram-editor/create-tontodiagram-command.js";
 import { registerTontoDiagramCompletionProvider } from "../diagram-editor/tontodiagram-completion-provider.js";
 import { TontoDiagramEditorProvider } from "../diagram-editor/tonto-diagram-editor-provider.js";
@@ -28,6 +29,8 @@ const TONTO_EXPLORER_COMMANDS = [
     "tonto.initProject",
     "tonto.addGuidances",
     "tonto.addSkill",
+    "tonto.addSemanticTokenColors",
+    "tonto.diagram.plantuml.openProject",
 ];
 
 class TontoCommandItem extends vscode.TreeItem {
@@ -80,6 +83,10 @@ class TontoCommandsProvider implements vscode.TreeDataProvider<TontoCommandItem>
                 return "Add Guidances to project (LLMs)";
             case "tonto.addSkill":
                 return "Add Tonto skill to project";
+            case "tonto.addSemanticTokenColors":
+                return "Add Semantic Token Colors";
+            case "tonto.diagram.plantuml.openProject":
+                return "Open Ontology PlantUML Diagram";
             default:
                 return cmd;
         }
@@ -108,17 +115,22 @@ export function activate(context: vscode.ExtensionContext): void {
     createInitCommand(context, outputChannel);
     createAddGuidancesCommand(context, outputChannel);
     createAddSkillCommand(context, outputChannel);
+    createAddSemanticTokenColorsCommand(context, outputChannel);
     createGenerateJsonStatusBarItem(context, generateJsonStatusBarItem);
     createTontoGenerationStatusBarItem(context, generateTontoStatusBarItem);
     createValidationSatusBarItem(context, validateStatusBarItem, outputChannel);
     createTransformToGufoSatusBarItem(context, transformToGufoStatusBarItem);
     createTpmInstallCommands(context, tpmInstallStatusBarItem);
-    registerCreateTontoDiagramCommand(context);
     activateDiagram(context, languageClient);
     registerPlantUMLCommands(context);
-    context.subscriptions.push(TontoDiagramEditorProvider.register(context));
-    registerAutoOpenTontoDiagramPreview(context);
-    registerTontoDiagramCompletionProvider(context);
+
+    const featureToggles = new TontoFeatureToggleController();
+    context.subscriptions.push(featureToggles);
+    featureToggles.registerFeature(TontoFeature.TontoDiagramVisualization, () => vscode.Disposable.from(
+        registerCreateTontoDiagramCommand(),
+        TontoDiagramEditorProvider.register(context),
+        registerTontoDiagramCompletionProvider(),
+    ));
 
     // Register a TreeDataProvider for the `tontoCommandsExplorer` view so commands
     // appear as items inside the primary Sidebar view instead of as top-bar buttons.

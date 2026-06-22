@@ -10,7 +10,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/matheuslenke/Tonto">
+  <a href="https://github.com/nemo-ufes/Tonto">
     <img src="../../docs/images/TontoLogo.png" alt="Logo"  height="100" alt="Tonto Logo image, a blue background with TONTO written in it">
   </a>
 
@@ -61,6 +61,11 @@ Tonto Command Line Interface (CLI) is a tool that expands the use of Tonto model
 4.  **Validation:** The `validate` command sends the Tonto model to the `ontouml-server` API for validation. It returns any validation errors identified by the server, helping to ensure the model's correctness and adherence to OntoUML/UFO rules.
     ```bash
     tonto-cli validate [directoryName]
+    ```
+5.  **PlantUML diagram generation:** The `plantuml` command creates PlantUML diagram source for the whole ontology. Use `--per-package` to generate one diagram file per package.
+    ```bash
+    tonto-cli plantuml [directoryName]
+    tonto-cli plantuml [directoryName] --per-package
     ```
 
 ### Installation and Usage
@@ -208,10 +213,15 @@ This is all the tools you need installed to run the project and the versions tha
  ```bash
     tonto-cli validate <dirName>
  ```
+- Generate PlantUML diagram source for a Tonto Project
+ ```bash
+    tonto-cli plantuml <dirName>
+    tonto-cli plantuml <dirName> --per-package
+ ```
 <!-- LICENSE -->>
 ## 🔐 License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+Distributed under the MIT License. See `LICENSE.md` for more information.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -226,4 +236,3 @@ Matheus Lenke Coutinho - matheus.l.coutinho@edu.ufes.br - [Linkedin](https://www
 <div id="additional-tools"> </div>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-

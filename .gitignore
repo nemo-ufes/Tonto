@@ -29,4 +29,5 @@ static/monaco-editor-workers/
 static/worker/
 syntaxes/
 pack
-.claude
+
+dist-release

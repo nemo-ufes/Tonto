@@ -68,6 +68,16 @@ export default function (): void {
         .action(actions.transformToGufoAction);
 
     program
+        .command("plantuml")
+        .argument("<dir>", "Directory of the actual project")
+        .option("-d, --destination <dir>", "Destination directory for generated PlantUML files")
+        .option("--per-package", "Generate one PlantUML file per package")
+        .option("--no-external-references", "Hide references outside each generated package")
+        .option("--layout <variant>", "Layout variant: default, top-to-bottom, left-to-right, polyline, orthogonal, smetana, elk", "default")
+        .description("Generate PlantUML diagram source from your Tonto project")
+        .action(actions.generatePlantUMLAction);
+
+    program
         .command('init')
         .description('Initialize a new Tonto project.')
         .option("-d, --destination <dir>", "Destination directory of generating")

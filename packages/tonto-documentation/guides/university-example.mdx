@@ -1,0 +1,118 @@
+---
+title: "University Example"
+description: "Build a small University ontology with people, departments, enrollments, and teaching relations."
+icon: "graduation-cap"
+---
+
+This guide sketches the University model used throughout the legacy documentation.
+
+<Frame caption="University OntoUML model">
+  ![University model](/images/diagrams/fig-diagrams-university-model.png)
+</Frame>
+
+## Project layout
+
+```text
+university-model/
+  tonto.json
+  src/
+    datatypes.tonto
+    people.tonto
+    organization.tonto
+    academic.tonto
+```
+
+## Datatypes
+
+`src/datatypes.tonto`:
+
+```tonto
+global package university.datatypes
+
+datatype EmailAddress specializes string
+
+datatype RegistrationNumber {
+  code: string [1]
+}
+```
+
+## People
+
+`src/people.tonto`:
+
+```tonto
+import university.datatypes
+
+package university.people
+
+kind Person {
+  label { @en "Person" }
+  name: string [1]
+  email: EmailAddress [0..1]
+}
+
+phase Child specializes Person
+phase Adult specializes Person
+
+role Student specializes Person
+role Professor specializes Person
+
+disjoint complete genset PersonAgePhases where Child, Adult specializes Person
+```
+
+## Organization
+
+`src/organization.tonto`:
+
+```tonto
+package university.organization
+
+kind University {
+  name: string [1]
+  @componentOf [1] <>-- hasDepartments -- [1..*] Department
+}
+
+kind Department {
+  name: string [1]
+}
+```
+
+## Academic relations
+
+`src/academic.tonto`:
+
+```tonto
+import university.people
+import university.organization
+import university.datatypes
+
+package university.academic
+
+relator Enrollment {
+  registration: RegistrationNumber [1]
+  enrollmentDate: date [1]
+
+  @mediation [1] -- [1] Student
+  @mediation [1] -- [1] University
+}
+
+relator TeachingAssignment {
+  startDate: date [1]
+
+  @mediation [1] -- [1] Professor
+  @mediation [1] -- [1] Department
+}
+
+@material relation Student [0..*] -- enrolledAt -- [0..*] University
+@material relation Professor [0..*] -- teachesAt -- [0..*] Department
+```
+
+## Validate and generate
+
+```bash
+tonto-cli validate .
+tonto-cli generate .
+tonto-cli plantuml . --layout left-to-right
+```
+
+Use the VS Code extension to inspect validations and diagram output while you refine the model.

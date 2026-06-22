@@ -1,0 +1,164 @@
+---
+title: "Generalization Sets"
+description: "Declare disjoint and complete generalization sets with short or block syntax."
+icon: "split"
+---
+
+Generalization sets group specializations under a general element. They can be marked `disjoint`, `complete`, both, or neither.
+
+## Short syntax
+
+Use short syntax when the set is direct:
+
+```tonto
+kind Person
+
+phase Child specializes Person
+phase Teenager specializes Person
+phase Adult specializes Person
+
+disjoint complete genset PersonLifePhases where Child, Teenager, Adult specializes Person
+```
+
+This declares that `Child`, `Teenager`, and `Adult` specialize `Person` as one complete and disjoint partition.
+
+```mermaid
+classDiagram
+  direction TB
+  class Person:::tontoKind {
+    <<kind>>
+  }
+  class Child:::tontoFunctionalComplex {
+    <<phase>>
+  }
+  class Teenager:::tontoFunctionalComplex {
+    <<phase>>
+  }
+  class Adult:::tontoFunctionalComplex {
+    <<phase>>
+  }
+  class PersonLifePhases:::tontoNone {
+    <<genset>>
+    disjoint
+    complete
+  }
+
+  Person <|-- Child
+  Person <|-- Teenager
+  Person <|-- Adult
+  PersonLifePhases ..> Child : specific
+  PersonLifePhases ..> Teenager : specific
+  PersonLifePhases ..> Adult : specific
+
+  classDef tontoKind fill:#FF99A3,stroke:#A84D57,color:#1F2937
+  classDef tontoFunctionalComplex fill:#FFDADD,stroke:#A84D57,color:#1F2937
+  classDef tontoNone fill:#E0E0E0,stroke:#777777,color:#1F2937
+```
+
+## Block syntax
+
+Use block syntax when you want a clearer multi-line form or a categorizer:
+
+```tonto
+kind Person
+type EnrollmentStatus
+
+role Student specializes Person
+role ActiveStudent specializes Student
+role FormerStudent specializes Student
+
+disjoint complete genset StudentStatus {
+  general Student
+  categorizer EnrollmentStatus
+  specifics ActiveStudent, FormerStudent
+}
+```
+
+The `categorizer` field is optional.
+
+```mermaid
+classDiagram
+  direction TB
+  class Person:::tontoKind {
+    <<kind>>
+  }
+  class Student:::tontoFunctionalComplex {
+    <<role>>
+  }
+  class ActiveStudent:::tontoFunctionalComplex {
+    <<role>>
+  }
+  class FormerStudent:::tontoFunctionalComplex {
+    <<role>>
+  }
+  class EnrollmentStatus:::tontoType {
+    <<type>>
+  }
+  class StudentStatus:::tontoNone {
+    <<genset>>
+    disjoint
+    complete
+  }
+
+  Person <|-- Student
+  Student <|-- ActiveStudent
+  Student <|-- FormerStudent
+  EnrollmentStatus ..> StudentStatus : categorizer
+  StudentStatus ..> ActiveStudent : specific
+  StudentStatus ..> FormerStudent : specific
+
+  classDef tontoKind fill:#FF99A3,stroke:#A84D57,color:#1F2937
+  classDef tontoFunctionalComplex fill:#FFDADD,stroke:#A84D57,color:#1F2937
+  classDef tontoType fill:#D3D3FC,stroke:#7C5AA6,color:#1F2937
+  classDef tontoNone fill:#E0E0E0,stroke:#777777,color:#1F2937
+```
+
+## Generalizing relations
+
+The grammar also allows generalization sets over class declarations or relations:
+
+```tonto
+kind Person
+kind Organization
+
+@material relation Person [0..*] -- affiliatedWith -- [0..*] Organization
+@material relation Person [0..*] -- employedBy -- [0..1] Organization specializes affiliatedWith
+@material relation Person [0..*] -- studiesAt -- [0..1] Organization specializes affiliatedWith
+
+disjoint genset MembershipRelations where employedBy, studiesAt specializes affiliatedWith
+```
+
+Use this only when relation specialization is part of the intended ontology.
+
+```mermaid
+classDiagram
+  direction TB
+  class affiliatedWith:::tontoRelation {
+    <<material relation>>
+  }
+  class employedBy:::tontoRelation {
+    <<material relation>>
+  }
+  class studiesAt:::tontoRelation {
+    <<material relation>>
+  }
+  class MembershipRelations:::tontoNone {
+    <<genset>>
+    disjoint
+  }
+
+  affiliatedWith <|-- employedBy
+  affiliatedWith <|-- studiesAt
+  MembershipRelations ..> employedBy : specific
+  MembershipRelations ..> studiesAt : specific
+
+  classDef tontoRelation fill:#FFFFFF,stroke:#6B7280,color:#1F2937,stroke-dasharray:4 3
+  classDef tontoNone fill:#E0E0E0,stroke:#777777,color:#1F2937
+```
+
+## Modeling guidance
+
+- Use `disjoint` when instances cannot be classified by more than one specific at the same time.
+- Use `complete` when the specifics cover all instances of the general in the model scope.
+- Name generalization sets after the partitioning criterion, such as `PersonLifePhases`.
+- Do not mark a set complete unless the domain really commits to exhaustive coverage.

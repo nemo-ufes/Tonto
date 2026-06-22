@@ -1,0 +1,211 @@
+---
+title: "Current Grammar Reference"
+description: "A compact EBNF-style reference based on the current Langium grammar files."
+icon: "file-code-2"
+---
+
+This page summarizes the current grammar used by `tonto-cli`. The source of truth is the Langium grammar under `packages/tonto/src/language`.
+
+The legacy PDF remains available for historical comparison: [Tonto EBNF PDF](/files/Tonto-EBNF.pdf).
+
+## Model, statements, packages, imports
+
+```ebnf
+Model:
+  statements+=Statement*
+;
+
+Statement:
+  import=Import | contextModule=ContextModule
+;
+
+ContextModule:
+  (isGlobal?='global')? 'package' name=QualifiedName
+  declarations+=Declaration*
+;
+
+Import:
+  'import' referencedModel=[ContextModule:QualifiedName]
+  ('as' packageAlias=ID)?
+;
+
+Declaration:
+  ClassDeclaration | AuxiliaryDeclaration
+;
+
+AuxiliaryDeclaration:
+  DataType | Enum | GeneralizationSetImpl | GeneralizationSetShort | ExternalRelation
+;
+```
+
+## Classes
+
+```ebnf
+ClassDeclaration:
+  classElementType=OntologicalCategory
+  name=ID
+  ontologicalNatures=ElementOntologicalNature?
+  ('(' 'instanceOf' instanceOf=[ClassDeclaration:QualifiedName] ')')?
+  ('specializes' specializationEndurants+=[ClassDeclaration:QualifiedName]
+    (',' specializationEndurants+=[ClassDeclaration:QualifiedName])*
+  )?
+  ('{'
+    label=Label?
+    description=Description?
+    (attributes+=Attribute | references+=InternalRelation)*
+  '}')?
+;
+```
+
+## Stereotypes and natures
+
+```ebnf
+OntologicalCategory:
+  ontologicalCategory=(UnspecifiedType | NonEndurantType | EndurantType)
+;
+
+UnspecifiedType:
+  'class'
+;
+
+NonEndurantType:
+  'event' | 'situation' | 'process'
+;
+
+NonSortal:
+  'category' | 'mixin' | 'phaseMixin' | 'roleMixin' | 'historicalRoleMixin'
+;
+
+UltimateSortal:
+  'kind' | 'collective' | 'quantity' | 'quality' | 'mode' |
+  'intrinsicMode' | 'extrinsicMode' | 'relator' | 'type' | 'powertype'
+;
+
+Sortal:
+  'subkind' | 'phase' | 'role' | 'historicalRole'
+;
+
+ElementOntologicalNature:
+  'of' natures+=OntologicalNature (',' natures+=OntologicalNature)*
+;
+```
+
+## Attributes, labels, descriptions
+
+```ebnf
+Label:
+  'label' '{' labels+=LanguageLabelItem* '}'
+;
+
+Description:
+  'description' '{' descriptions+=LanguageLabelItem* '}'
+;
+
+LanguageLabelItem:
+  '@' language=ID label=STRING
+;
+
+Attribute:
+  name=QualifiedName ':' attributeTypeRef=[DataType:QualifiedName]
+  cardinality=Cardinality?
+  ('{' ((isOrdered?='ordered') & (isConst?='const') & (isDerived?='derived'))? '}')?
+;
+
+Cardinality:
+  '[' lowerBound=(INT | '*') ('..' upperBound=(INT | '*'))? ']'
+;
+```
+
+## Datatypes and enums
+
+```ebnf
+DataType:
+  'datatype' name=QualifiedName ontologicalNature=ElementOntologicalNature?
+  ('specializes' specializationEndurants+=[DataTypeOrClass:QualifiedName]
+    (',' specializationEndurants+=[DataTypeOrClass:QualifiedName])?
+  )?
+  ('{' label=Label? description=Description? attributes+=Attribute* '}')?
+;
+
+Enum:
+  'enum' name=QualifiedName
+  ('specializes' specializationEndurants+=[DataTypeOrClass:QualifiedName]
+    (',' specializationEndurants+=[DataTypeOrClass:QualifiedName])?
+  )?
+  ('{' label=Label? description=Description?
+    (elements+=EnumElement (',' elements+=EnumElement)*)?
+  '}')?
+;
+```
+
+## Relations
+
+```ebnf
+InternalRelation:
+  ('@' relationType=RelationStereotype)? RelationData
+;
+
+ExternalRelation:
+  ('@' relationType=RelationStereotype)?
+  'relation' firstEnd=[DataTypeOrClassOrRelation:QualifiedName]
+  RelationData
+;
+
+RelationData:
+  firstEndMetaAttributes=RelationMetaAttributes?
+  firstCardinality=Cardinality?
+  RelationName
+  secondCardinality=Cardinality?
+  secondEndMetaAttributes=RelationMetaAttributes?
+  secondEnd=[DataTypeOrClassOrRelation:QualifiedName]
+  ('specializes' specializeRelation=[ElementRelation:QualifiedName])?
+  (hasInverse='inverseOf' inverseEnd=[ElementRelation:QualifiedName])?
+;
+
+RelationName:
+  (RelationType (name=ID '--')?)
+  | (('--' name=ID)? RelationInvertedType)?
+;
+
+RelationType:
+  '--' | '<>--' | '<o>--'
+;
+
+RelationInvertedType:
+  '--<>' | '--<o>'
+;
+
+RelationMetaAttributes:
+  '(' ('{' RelationMetaAttribute (',' RelationMetaAttribute)* '}')? endName=ID? ')'
+;
+
+RelationMetaAttribute:
+  'ordered' | 'const' | 'derived'
+  | 'subsets' relationEnd
+  | 'redefines' relationEnd
+;
+```
+
+For relation-end metadata, the first end metadata is written before the first cardinality, while the second end metadata is written after the second cardinality and before the target reference.
+
+## Generalization sets
+
+```ebnf
+GeneralizationSetImpl:
+  ('disjoint')? ('complete')?
+  'genset' name=ID '{'
+    'general' generalItem=[ClassDeclarationOrRelation:QualifiedName]
+    ('categorizer' categorizerItems+=[ClassDeclarationOrRelation:QualifiedName])?
+    'specifics' specificItems+=[ClassDeclarationOrRelation:QualifiedName]
+      (',' specificItems+=[ClassDeclarationOrRelation:QualifiedName])*
+  '}'
+;
+
+GeneralizationSetShort:
+  ('disjoint')? ('complete')?
+  'genset' name=ID 'where'
+  specificItems+=[ClassDeclarationOrRelation:QualifiedName]
+    (',' specificItems+=[ClassDeclarationOrRelation:QualifiedName])*
+  'specializes' generalItem=[ClassDeclarationOrRelation:QualifiedName]
+;
+```

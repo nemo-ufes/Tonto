@@ -5,15 +5,160 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-    :root {
-        --editor-bg: var(--vscode-editor-background, #f8fafc);
-        --panel-bg: rgba(255, 255, 255, 0.72);
-        --panel-line: rgba(148, 163, 184, 0.34);
-        --panel-accent: rgba(15, 23, 42, 0.85);
-        color-scheme: light;
-    }
+/* ============================================================
+   Tonto Diagram Editor — "Drafting table" theme
+   Warm cream paper (light) / deep navy ink (dark)
+   ============================================================ */
 
+/* Theme tokens live OUTSIDE any @layer so they always win in the cascade. */
+:root {
+    --bg:          #F4EFE6;
+    --surface:     #FBF8F2;
+    --surface-2:   #EFE9DC;
+    --line:        #D4CBB6;
+    --line-2:      #B5AB94;
+    --line-strong: #8B7F65;
+
+    --fg:          #1F1A14;
+    --fg-2:        #4A4133;
+    --fg-muted:    #807459;
+    --fg-faint:    #A99E83;
+
+    --accent:      #1F5C5C;
+    --accent-2:    #2F7B7B;
+    --accent-soft: rgba(31, 92, 92, 0.10);
+
+    --warn:        #A36510;
+    --warn-soft:   rgba(163, 101, 16, 0.10);
+    --err:         #9B2C2C;
+    --err-soft:    rgba(155, 44, 44, 0.10);
+
+    --grid-minor:  rgba(120, 100, 60, 0.16);
+    --grid-major:  rgba(120, 100, 60, 0.28);
+
+    --edge:        #1F1A14;
+
+    --radius:      4px;
+    --radius-sm:   3px;
+
+    --shadow:      0 1px 0 rgba(40, 30, 10, 0.05), 0 1px 2px rgba(40, 30, 10, 0.04);
+    --shadow-card: 0 1px 0 rgba(40, 30, 10, 0.06), 0 2px 6px rgba(40, 30, 10, 0.06);
+
+    /* Legacy aliases kept for any consumer that still reads them */
+    --diagram-canvas: var(--bg);
+    --diagram-surface: var(--surface);
+    --diagram-line: var(--line);
+    --diagram-line-strong: var(--line-strong);
+    --diagram-accent: var(--accent);
+    --diagram-fg: var(--fg);
+    --diagram-fg-muted: var(--fg-muted);
+    --diagram-grid: var(--grid-minor);
+    --diagram-edge: var(--edge);
+    --diagram-node-bg: var(--surface);
+    --diagram-sidebar-bg: var(--surface-2);
+    --diagram-sidebar-fg: var(--fg);
+    --diagram-controls-bg: var(--surface);
+
+    color-scheme: light;
+}
+
+.dark {
+    --bg:          #0C111B;
+    --surface:     #141A26;
+    --surface-2:   #0F141E;
+    --line:        #232A38;
+    --line-2:      #354152;
+    --line-strong: #57647B;
+
+    --fg:          #ECE6D7;
+    --fg-2:        #C7C0AC;
+    --fg-muted:    #8E8770;
+    --fg-faint:    #5D5747;
+
+    --accent:      #5FCAB8;
+    --accent-2:    #82DBC9;
+    --accent-soft: rgba(95, 202, 184, 0.14);
+
+    --warn:        #E0A85F;
+    --warn-soft:   rgba(224, 168, 95, 0.12);
+    --err:         #E58A8A;
+    --err-soft:    rgba(229, 138, 138, 0.12);
+
+    --grid-minor:  rgba(200, 195, 175, 0.10);
+    --grid-major:  rgba(200, 195, 175, 0.20);
+
+    --edge:        #C7C0AC;
+
+    --shadow:      0 1px 0 rgba(0, 0, 0, 0.4);
+    --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+
+    color-scheme: dark;
+}
+
+/* Force ReactFlow edge paths to use our colour and never shrink below 1 px
+   at low zoom levels. Without `vector-effect: non-scaling-stroke` the
+   1.4 px stroke gets scaled by ReactFlow's viewport transform and disappears
+   into sub-pixel territory at fit-view zoom. */
+.react-flow__edge-path,
+.react-flow__edge-interaction {
+    vector-effect: non-scaling-stroke;
+}
+.react-flow__edge-path {
+    stroke: var(--edge) !important;
+    stroke-width: 1.4 !important;
+    fill: none !important;
+}
+/* Markers/end-shapes — keep them crisp at any zoom and let CSS resolve the
+   theme-aware colours so dark mode looks correct without rerendering. */
+.tonto-edge-marker {
+    vector-effect: non-scaling-stroke;
+    stroke: var(--edge);
+    stroke-width: 1.25;
+    stroke-linejoin: miter;
+}
+.tonto-edge-marker.fill-surface { fill: var(--surface); }
+.tonto-edge-marker.fill-edge    { fill: var(--edge); }
+
+/* Custom edges overlay (rendered inside ReactFlow's ViewportPortal so it
+   pans/zooms with the canvas; pointer-events: none lets clicks reach nodes).
+   Z-index -1 keeps the lines BEHIND the node bodies — the portal mounts last
+   among ReactFlow viewport children, so we have to actively push the overlay
+   back. */
+.tonto-edges-overlay {
+    position: absolute;
+    inset: 0;
+    width: 1px;
+    height: 1px;
+    overflow: visible;
+    pointer-events: none;
+    z-index: -1;
+}
+/* Labels still want to sit on top of everything, including node bodies, so
+   they don't get clipped when a relation passes near a box. */
+.tonto-edges-overlay foreignObject {
+    overflow: visible;
+}
+.tonto-edges-overlay .tonto-edge-label,
+.tonto-edges-overlay .tonto-edge-spec-label,
+.tonto-edges-overlay .tonto-edge-end {
+    z-index: 1;
+}
+.tonto-edges-overlay .tonto-edge-line {
+    fill: none;
+    stroke: var(--edge);
+    stroke-width: 1.4;
+    vector-effect: non-scaling-stroke;
+}
+.tonto-edges-overlay foreignObject {
+    overflow: visible;
+}
+.react-flow .react-flow__edges,
+.react-flow .react-flow__edges svg {
+    overflow: visible !important;
+    z-index: 1;
+}
+
+@layer base {
     html,
     body,
     #root {
@@ -24,7 +169,11 @@
     }
 
     body {
-        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+        font-family: "Geist", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-feature-settings: "ss01", "cv11";
+        background-color: var(--bg);
+        color: var(--fg);
+        -webkit-font-smoothing: antialiased;
     }
 
     * {
@@ -33,28 +182,968 @@
 }
 
 @layer components {
-    .react-flow__pane {
-        cursor: grab;
+    .font-mono {
+        font-family: "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
-    .react-flow__pane.dragging {
-        cursor: grabbing;
+    /* ===== Sidebar ============================================= */
+    .tonto-sidebar {
+        background: var(--surface-2);
+        color: var(--fg);
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: hidden;
+        height: 100%;
+        width: 320px;
+        flex-shrink: 0;
     }
+
+    .tonto-sidebar-rail {
+        background: var(--surface-2);
+        border-right: 1px solid var(--line);
+        width: 44px;
+        flex-shrink: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 10px 0;
+        gap: 6px;
+    }
+
+    .tonto-rail-btn {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--fg);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+    }
+    .tonto-rail-btn:hover { border-color: var(--line-strong); background: var(--surface); }
+    .tonto-rail-btn.active { border-color: var(--accent); color: var(--accent); }
+    .tonto-rail-vert {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--fg-faint);
+        margin-top: 10px;
+        user-select: none;
+    }
+
+    .tonto-sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 12px 9px 14px;
+        border-bottom: 1px solid var(--line);
+        min-height: 44px;
+        gap: 8px;
+    }
+    .tonto-sidebar-title {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .tonto-sidebar-title .dot {
+        width: 6px; height: 6px;
+        background: var(--accent);
+        border-radius: 50%;
+    }
+
+    .tonto-icon-btn {
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--fg-muted);
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+        border-radius: var(--radius-sm);
+    }
+    .tonto-icon-btn:hover { border-color: var(--line); color: var(--fg); background: var(--surface); }
+    .tonto-icon-btn svg { display: block; }
+
+    /* Tab bar */
+    .tonto-tabbar {
+        display: flex;
+        padding: 8px 10px 6px;
+        gap: 4px;
+        border-bottom: 1px solid var(--line);
+    }
+    .tonto-tab {
+        flex: 1;
+        padding: 7px 8px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: var(--fg-muted);
+        cursor: pointer;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        user-select: none;
+        font-family: inherit;
+    }
+    .tonto-tab:hover { color: var(--fg); background: var(--surface); }
+    .tonto-tab.active {
+        color: var(--fg);
+        background: var(--surface);
+        border-color: var(--line);
+        box-shadow: var(--shadow);
+    }
+
+    .tonto-tab-body { flex: 1; overflow: auto; scrollbar-width: thin; }
+
+    /* Package tree */
+    .tonto-tree-section { padding: 8px 0 12px; }
+    .tonto-pkg-row,
+    .tonto-child-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 14px;
+        font-size: 13px;
+        line-height: 1.2;
+        user-select: none;
+        cursor: pointer;
+        border-left: 2px solid transparent;
+        font-family: inherit;
+    }
+    .tonto-pkg-row:hover,
+    .tonto-child-row:hover { background: var(--accent-soft); }
+    .tonto-pkg-row .caret {
+        width: 12px;
+        display: inline-block;
+        color: var(--fg-faint);
+        font-size: 10px;
+        text-align: center;
+    }
+    .tonto-pkg-name { flex: 1; font-weight: 500; letter-spacing: -0.005em; color: var(--fg); }
+    .tonto-pkg-count {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        color: var(--fg-faint);
+        letter-spacing: 0.04em;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        padding: 1px 5px;
+        border-radius: 2px;
+        min-width: 22px;
+        text-align: center;
+    }
+    .tonto-children {
+        margin-left: 21px;
+        padding: 2px 0;
+        border-left: 1px dashed var(--line-2);
+    }
+    .tonto-child-row {
+        padding-left: 14px;
+        padding-right: 14px;
+        font-size: 12.5px;
+    }
+    .tonto-child-kind {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 9.5px;
+        color: var(--fg-faint);
+        letter-spacing: 0.10em;
+        text-transform: uppercase;
+    }
+    .tonto-child-name { flex: 1; color: var(--fg); }
+    .tonto-child-dot {
+        width: 5px; height: 5px;
+        background: var(--cat-color, var(--line-strong));
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    /* Tri-state checkbox */
+    .tonto-tcb {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 13px;
+        height: 13px;
+        border: 1px solid var(--line-strong);
+        background: var(--surface);
+        display: inline-grid;
+        place-items: center;
+        cursor: pointer;
+        margin: 0;
+        flex-shrink: 0;
+        border-radius: 2px;
+        position: relative;
+    }
+    .tonto-tcb:checked {
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+    .tonto-tcb:checked::after {
+        content: "";
+        width: 7px;
+        height: 4px;
+        border-left: 1.5px solid var(--surface);
+        border-bottom: 1.5px solid var(--surface);
+        transform: rotate(-45deg) translate(0px, -1px);
+    }
+    .dark .tonto-tcb:checked::after { border-color: var(--bg); }
+    .tonto-tcb[data-indeterminate="true"] {
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+    .tonto-tcb[data-indeterminate="true"]::after {
+        content: "";
+        width: 7px;
+        height: 0;
+        border-bottom: 1.5px solid var(--surface);
+        transform: none;
+    }
+    .dark .tonto-tcb[data-indeterminate="true"]::after { border-color: var(--bg); }
+
+    /* View tab */
+    .tonto-view-form {
+        padding: 16px 14px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    .tonto-view-field { display: flex; flex-direction: column; gap: 7px; }
+    .tonto-view-label {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+    }
+    .tonto-view-section-title {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--fg-faint);
+        border-top: 1px solid var(--line);
+        padding-top: 12px;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .tonto-view-section-title::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(to right, var(--line), transparent);
+    }
+    .tonto-view-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 13px;
+        padding: 4px 0;
+        cursor: pointer;
+        user-select: none;
+        color: var(--fg);
+    }
+
+    .tonto-layout-pick {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+    }
+    .tonto-layout-pick button {
+        background: var(--surface);
+        border: 1px solid var(--line-2);
+        color: var(--fg-muted);
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 11px;
+        padding: 7px 4px 5px;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+    .tonto-layout-pick button:hover { border-color: var(--line-strong); color: var(--fg); }
+    .tonto-layout-pick button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .tonto-layout-pick button svg { display: block; }
+
+    /* Source tab */
+    .tonto-source-wrap {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--surface);
+    }
+    .tonto-source-header {
+        padding: 8px 14px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--fg-muted);
+        border-bottom: 1px solid var(--line);
+        background: var(--surface-2);
+        letter-spacing: 0.04em;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .tonto-source-header .meta { color: var(--fg-faint); font-size: 10px; }
+    .tonto-source-textarea {
+        flex: 1;
+        width: 100%;
+        background: var(--surface);
+        color: var(--fg);
+        border: 0;
+        outline: none;
+        resize: none;
+        padding: 12px 14px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        tab-size: 2;
+    }
+
+    /* Canvas region */
+    .tonto-canvas-region {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+        position: relative;
+        background: var(--bg);
+    }
+    .tonto-canvas-header {
+        height: 48px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        gap: 14px;
+        background: var(--surface);
+        flex-shrink: 0;
+    }
+    .tonto-diagram-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--fg);
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+    .tonto-diagram-title .ext {
+        color: var(--fg-faint);
+        font-weight: 400;
+        font-family: "Geist Mono", ui-monospace, monospace;
+    }
+    .tonto-active-packages {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.20em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+    .tonto-spacer { flex: 1; }
+    .tonto-header-actions { display: flex; align-items: center; gap: 6px; }
+
+    .tonto-action-btn {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        padding: 6px 10px;
+        background: var(--surface);
+        color: var(--fg);
+        border: 1px solid var(--line-2);
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .tonto-action-btn:hover { border-color: var(--line-strong); }
+    .tonto-action-btn svg { display: block; }
+
+    /* Node */
+    .tonto-node {
+        position: relative;
+        min-width: 14rem;
+        background: var(--node-bg, var(--surface));
+        border: 1px solid var(--node-border);
+        color: var(--fg);
+        user-select: none;
+        box-shadow: var(--shadow-card);
+        border-radius: var(--radius);
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+        transition: outline-color 0.10s ease;
+        overflow: hidden;
+    }
+    .tonto-node::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 4px;
+        background: var(--cat-color);
+        z-index: 2;
+    }
+    .tonto-node.selected { outline-color: var(--accent); }
+    .tonto-node.dashed { border-style: dashed; }
+    .tonto-node.ringed::after {
+        content: "";
+        position: absolute;
+        inset: 3px 3px 3px 7px;
+        border: 1px dashed var(--cat-color);
+        opacity: 0.45;
+        border-radius: 2px;
+        pointer-events: none;
+    }
+    .tonto-node.external { opacity: 0.78; }
+    .tonto-node-header {
+        padding: 8px 12px 9px 14px;
+        position: relative;
+        background: var(--cat-tint);
+    }
+    .tonto-node.has-attrs .tonto-node-header {
+        border-bottom: 1px solid var(--line);
+    }
+    .tonto-node-stereo {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        color: var(--cat-color);
+        line-height: 1.2;
+        font-weight: 500;
+        text-transform: lowercase;
+        opacity: 0.85;
+    }
+    .tonto-node-label {
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: -0.014em;
+        color: var(--fg);
+        line-height: 1.15;
+        margin-top: 1px;
+    }
+    .tonto-node-body { padding: 4px 0 6px; }
+    .tonto-attr-row {
+        display: flex;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 11.5px;
+        line-height: 1.6;
+        padding: 1px 12px 1px 14px;
+        color: var(--fg-2);
+    }
+    .tonto-attr-row .name { flex: 1; color: var(--fg); }
+    .tonto-attr-row .type { color: var(--fg-muted); }
+    .tonto-attr-empty {
+        padding: 4px 14px 4px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.10em;
+        text-transform: uppercase;
+        color: var(--fg-faint);
+    }
+    .tonto-external-badge {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        border: 1px solid var(--line-2);
+        padding: 1px 6px;
+        background: var(--surface);
+        border-radius: 2px;
+    }
+
+    /* Density variants */
+    .density-compact .tonto-node-header { padding: 5px 10px 7px 12px; }
+    .density-compact .tonto-node-label { font-size: 15px; }
+    .density-compact .tonto-node-stereo { font-size: 8.5px; }
+    .density-compact .tonto-attr-row { padding: 0 10px 0 12px; font-size: 11px; line-height: 1.5; }
+    .density-compact .tonto-node-body { padding: 3px 0 5px; }
+    .density-compact .tonto-pkg-row,
+    .density-compact .tonto-child-row { padding-top: 3px; padding-bottom: 3px; }
+    .density-compact .tonto-view-form { gap: 12px; padding: 12px 12px 12px; }
+
+    /* Edge labels */
+    .tonto-edge-label {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        padding: 2px 7px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--fg);
+        white-space: nowrap;
+        border-radius: 2px;
+        box-shadow: var(--shadow);
+    }
+    .tonto-edge-label .stereo {
+        color: var(--fg-muted);
+        margin-left: 5px;
+        font-size: 10px;
+    }
+    .tonto-edge-card {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        color: var(--fg-2);
+        white-space: nowrap;
+        text-shadow: 0 0 4px var(--bg), 0 0 4px var(--bg), 0 0 4px var(--bg);
+        font-weight: 500;
+    }
+    .tonto-edge-end {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 1px;
+        align-items: flex-start;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        line-height: 1.2;
+        white-space: nowrap;
+        text-shadow: 0 0 4px var(--bg), 0 0 4px var(--bg), 0 0 4px var(--bg);
+    }
+    .tonto-edge-end .end-name {
+        font-size: 10.5px;
+        color: var(--fg-2);
+        font-weight: 500;
+    }
+    .tonto-edge-end .end-card {
+        font-size: 10px;
+        color: var(--fg-muted);
+        letter-spacing: 0.02em;
+    }
+    .tonto-edge-spec-label {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        padding: 1px 6px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 9.5px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        border-radius: 2px;
+    }
+
+    /* Legend (sidebar footer variant) */
+    .tonto-legend {
+        border-top: 1px solid var(--line);
+        background: var(--surface-2);
+        flex-shrink: 0;
+    }
+    .tonto-legend-header {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        padding: 8px 14px;
+        background: transparent;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+        border: 0;
+        width: 100%;
+        text-align: left;
+    }
+    .tonto-legend-header:hover { color: var(--fg); }
+    .tonto-legend-header .caret {
+        color: var(--fg-faint);
+        font-size: 11px;
+        margin-left: 6px;
+    }
+    .tonto-legend-body {
+        padding: 6px 14px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        max-height: 180px;
+        overflow: auto;
+    }
+    .tonto-legend-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--fg-2);
+    }
+    .tonto-legend-swatch {
+        width: 12px; height: 12px;
+        border: 1px solid var(--cat-color);
+        background: var(--cat-fill);
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+    .tonto-legend-row .count { font-size: 10px; color: var(--fg-faint); }
+
+    /* Editable diagram title */
+    .tonto-diagram-title-input {
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--fg);
+        letter-spacing: -0.01em;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        padding: 2px 6px;
+        margin-left: -6px;
+        outline: none;
+        min-width: 60px;
+        max-width: 380px;
+    }
+    .tonto-diagram-title-input:hover { border-color: var(--line); }
+    .tonto-diagram-title-input:focus { border-color: var(--accent); background: var(--surface-2); }
+
+    /* Export floating button + popover */
+    .tonto-export-fab {
+        position: absolute;
+        bottom: 18px;
+        right: 18px;
+        z-index: 5;
+    }
+    .tonto-export-btn {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        background: var(--surface);
+        color: var(--fg);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        cursor: pointer;
+        box-shadow: var(--shadow-card);
+    }
+    .tonto-export-btn:hover {
+        border-color: var(--line-strong);
+        color: var(--accent);
+    }
+    .tonto-export-pop {
+        position: absolute;
+        bottom: 46px;
+        right: 0;
+        min-width: 180px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+    }
+    .tonto-export-pop-header {
+        padding: 8px 12px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        background: var(--surface-2);
+        border-bottom: 1px solid var(--line);
+    }
+    .tonto-export-pop-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: var(--fg);
+        cursor: pointer;
+        background: transparent;
+        border: 0;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+    }
+    .tonto-export-pop-item:hover { background: var(--accent-soft); color: var(--accent); }
+    .tonto-export-pop-item .kbd {
+        margin-left: auto;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 9.5px;
+        letter-spacing: 0.12em;
+        color: var(--fg-faint);
+        text-transform: uppercase;
+    }
+
+    /* Issues panel */
+    .tonto-issues-panel {
+        position: absolute;
+        bottom: 18px;
+        right: 240px;
+        background: var(--surface);
+        border: 1px solid var(--warn);
+        padding: 10px 12px 12px;
+        z-index: 5;
+        min-width: 260px;
+        max-width: 340px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-card);
+    }
+    .tonto-issues-header {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--warn);
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .tonto-issue-row {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--fg);
+        padding: 3px 0;
+        display: flex;
+        gap: 8px;
+    }
+    .tonto-issue-row .sev {
+        color: var(--warn);
+        text-transform: uppercase;
+        letter-spacing: 0.10em;
+        font-size: 10px;
+        width: 44px;
+    }
+    .tonto-issue-row .line {
+        color: var(--fg-faint);
+        width: 32px;
+    }
+
+    /* Loader */
+    .tonto-loader-overlay {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        z-index: 50;
+        background: rgba(127, 127, 127, 0.04);
+        backdrop-filter: blur(2px);
+    }
+    .tonto-loader-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        padding: 22px 28px;
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        min-width: 320px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-card);
+    }
+    .tonto-spinner {
+        width: 16px;
+        height: 16px;
+        border: 1.5px solid var(--line);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: tonto-spin 0.9s linear infinite;
+        flex-shrink: 0;
+    }
+    @keyframes tonto-spin { to { transform: rotate(360deg); } }
+    .tonto-loader-text .title { font-size: 14px; font-weight: 600; color: var(--fg); }
+    .tonto-loader-text .desc { font-size: 11.5px; color: var(--fg-muted); margin-top: 2px; font-family: "Geist Mono", ui-monospace, monospace; }
+
+    /* Settings modal */
+    .tonto-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 16, 8, 0.45);
+        backdrop-filter: blur(3px);
+        display: grid;
+        place-items: center;
+        z-index: 100;
+    }
+    .dark .tonto-modal-overlay { background: rgba(0, 0, 0, 0.55); }
+    .tonto-modal {
+        width: min(520px, 92vw);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.20), var(--shadow-card);
+        overflow: hidden;
+    }
+    .tonto-modal-header {
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--line);
+        background: var(--surface-2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .tonto-modal-title {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--fg);
+    }
+    .tonto-modal-title .label {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        white-space: nowrap;
+        border-left: 1px solid var(--line);
+        padding-left: 10px;
+        margin-left: 4px;
+    }
+    .tonto-modal-body {
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        max-height: 70vh;
+        overflow: auto;
+    }
+    .tonto-modal-footer {
+        padding: 12px 18px;
+        border-top: 1px solid var(--line);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        background: var(--surface-2);
+    }
+
+    .tonto-setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+    .tonto-setting-row .info { display: flex; flex-direction: column; gap: 2px; }
+    .tonto-setting-row .name { font-size: 13px; font-weight: 500; color: var(--fg); }
+    .tonto-setting-row .desc {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10.5px;
+        color: var(--fg-muted);
+        letter-spacing: 0.02em;
+    }
+
+    .tonto-segmented {
+        display: inline-flex;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        padding: 2px;
+        gap: 2px;
+    }
+    .tonto-segmented button {
+        background: transparent;
+        border: 0;
+        padding: 5px 11px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 10.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        cursor: pointer;
+        border-radius: 2px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .tonto-segmented button.on {
+        background: var(--surface);
+        color: var(--fg);
+        box-shadow: var(--shadow);
+    }
+    .tonto-segmented button svg { display: block; }
+
+    .tonto-swatch-row { display: inline-flex; gap: 6px; }
+    .tonto-swatch {
+        width: 20px; height: 20px;
+        border: 1px solid var(--line-strong);
+        cursor: pointer;
+        border-radius: 50%;
+        position: relative;
+        padding: 0;
+    }
+    .tonto-swatch.on::after {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border: 1.5px solid var(--fg);
+        border-radius: 50%;
+    }
+
+    /* ReactFlow integration */
+    .react-flow__pane { cursor: grab; }
+    .react-flow__pane.dragging { cursor: grabbing; }
+
+    .react-flow__background-pattern { color: var(--grid-minor); }
+
+    .no-minor-grid #tonto-grid-minor,
+    .no-minor-grid .react-flow__background[data-id="tonto-grid-minor"] { display: none; }
+
+    .tonto-canvas-vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at center, transparent 55%, var(--bg) 95%);
+        z-index: 1;
+    }
+    .no-vignette .tonto-canvas-vignette { display: none; }
 
     .react-flow__controls {
-        border-radius: 1rem;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+        border-radius: var(--radius);
         overflow: hidden;
-        border: 1px solid rgba(148, 163, 184, 0.3);
-        box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
     }
-
     .react-flow__controls button {
-        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-        background: rgba(255, 255, 255, 0.94);
-        color: #0f172a;
+        background: var(--surface);
+        color: var(--fg);
+        border-bottom: 1px solid var(--line);
+        width: 30px;
+        height: 30px;
     }
+    .react-flow__controls button:last-child { border-bottom: 0; }
+    .react-flow__controls button:hover { background: var(--accent-soft); color: var(--accent); }
+    .react-flow__controls button svg { fill: currentColor; }
 
-    .react-flow__controls button:hover {
-        background: rgba(241, 245, 249, 1);
+    .react-flow__handle {
+        width: 6px;
+        height: 6px;
+        background: var(--edge);
+        border: 0;
+        border-radius: 0;
+        opacity: 0.4;
     }
+    .react-flow__handle:hover { opacity: 1; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--line-strong); }
+    ::-webkit-scrollbar-track { background: transparent; }
 }

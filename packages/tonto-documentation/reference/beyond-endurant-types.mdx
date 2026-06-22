@@ -1,0 +1,67 @@
+---
+title: "Beyond Endurant Types"
+description: "Model events, situations, processes, and higher-order types in Tonto."
+icon: "layers"
+---
+
+Tonto is not limited to standard endurant class modeling. It also includes perdurants and higher-order types.
+
+## Events
+
+Use `event` for occurrences that unfold in time:
+
+```tonto
+event SoccerMatch
+
+kind Person
+historicalRole Player specializes Person
+
+@participation relation SoccerMatch [1] -- hasPlayer -- [2..*] Player
+```
+
+<Frame caption="Soccer match example from the legacy documentation">
+  ![Soccer match diagram](/images/diagrams/fig-diagrams-soccer-match.png)
+</Frame>
+
+## Situations
+
+Use `situation` for a state of affairs at a time:
+
+```tonto
+situation RegistrationOpen
+situation CourseFull
+```
+
+Situations are useful when the model needs to represent the existence of a state, not only the endurant objects participating in it.
+
+## Processes
+
+Use `process` for ongoing perdurants:
+
+```tonto
+process CourseDelivery
+process EnrollmentReview
+```
+
+## Higher-order types
+
+Use `type` and `powertype` for multi-level modeling:
+
+```tonto
+kind Ship
+
+powertype ShipType
+
+@instantiation relation Ship [0..*] -- instantiates -- [1] ShipType
+```
+
+<Frame caption="Ship type example from the legacy documentation">
+  ![Ship type diagram](/images/diagrams/fig-diagrams-ship.png)
+</Frame>
+
+## Modeling guidance
+
+- Use `event` when temporal participation is central to classification.
+- Use `historicalRole` when a role is grounded in a past event.
+- Use `type` or `powertype` when the domain talks about types as domain individuals.
+- Add labels and descriptions to make the modeling level explicit to reviewers.

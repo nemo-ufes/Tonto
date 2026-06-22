@@ -9,7 +9,7 @@ import { TontoManifest } from "../../model/grammar/TontoManifest.js";
 import {
     JSON_GENERATION_STEPS,
     createJsonGenerationError,
-    getJsonGenerationDocumentErrorInfos,
+    getJsonGenerationDocumentBlockingErrorInfos,
     normalizeJsonGenerationError,
 } from "../../requests/jsonGeneration.js";
 import { buildFolderDocuments } from "../../utils/buildFolderDocuments.js";
@@ -69,9 +69,9 @@ async function createModel(
         });
     }
 
-    const diagnosticInfos = getJsonGenerationDocumentErrorInfos(documents);
+    const diagnosticInfos = getJsonGenerationDocumentBlockingErrorInfos(documents);
     if (diagnosticInfos.length > 0) {
-        throw createJsonGenerationError("Could not generate JSON because the Tonto sources contain syntax or validation errors.", {
+        throw createJsonGenerationError("Could not generate JSON because the Tonto sources contain syntax or linking errors.", {
             step: JSON_GENERATION_STEPS.documentValidation,
             info: diagnosticInfos,
         });

@@ -1,0 +1,135 @@
+---
+title: "Tonto CLI"
+description: "Use tonto-cli to initialize projects, validate models, import and generate files, transform to gUFO, generate PlantUML, and install agent skills."
+icon: "terminal"
+---
+
+The CLI package is named `tonto-cli` and exposes the `tonto-cli` command.
+
+```bash
+npm install -g tonto-cli
+tonto-cli help
+```
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `tonto-cli init` | Create a new Tonto project interactively. |
+| `tonto-cli generate <dir>` | Generate OntoUML JSON from a Tonto project directory. |
+| `tonto-cli generateSingle <file>` | Generate JSON from one source file. |
+| `tonto-cli import <file>` | Generate Tonto source from an OntoUML JSON file. |
+| `tonto-cli importSingle <file>` | Generate Tonto source from one JSON file. |
+| `tonto-cli validate <dir>` | Run local project validation. |
+| `tonto-cli transform <dir>` | Transform a Tonto project to gUFO through OntoUML services. |
+| `tonto-cli plantuml <dir>` | Generate PlantUML source from a Tonto project. |
+| `tonto-cli add-skill <dir>` | Add the Tonto ontology skill to an editor or agent project. |
+
+## Initialize a project
+
+```bash
+tonto-cli init
+```
+
+The initializer prompts for project metadata, guidance target, and template. It can create:
+
+- A blank project.
+- A Cat and Dog example project.
+- Guidance files for Cursor, VS Code, Codex, Claude Code, Google/Gemini tools, or all supported targets.
+
+## Generate OntoUML JSON
+
+```bash
+tonto-cli generate .
+tonto-cli generate . --destination out-json
+```
+
+Generation reads the project manifest, loads `.tonto` files, validates syntax and model diagnostics, and writes JSON to the manifest `outFolder` unless `--destination` is provided.
+
+For single-file generation:
+
+```bash
+tonto-cli generateSingle src/main.tonto
+```
+
+## Import OntoUML JSON
+
+```bash
+tonto-cli import model.json
+tonto-cli import model.json --destination imported-project
+```
+
+Import validates the source JSON with `ontouml-js` serialization utilities and materializes Tonto source files.
+
+## Validate
+
+```bash
+tonto-cli validate .
+```
+
+By default, validation runs local language-server diagnostics.
+
+Add API validation:
+
+```bash
+tonto-cli validate . --with-api
+```
+
+API validation sends the generated model through the OntoUML validation flow.
+
+## Transform to gUFO
+
+```bash
+tonto-cli transform .
+```
+
+The transform command parses the project and requests a gUFO Turtle transformation from OntoUML services.
+
+## Generate PlantUML
+
+```bash
+tonto-cli plantuml .
+tonto-cli plantuml . --destination diagrams
+tonto-cli plantuml . --per-package
+tonto-cli plantuml . --no-external-references
+tonto-cli plantuml . --layout orthogonal
+```
+
+Supported layout values:
+
+```text
+default
+top-to-bottom
+left-to-right
+polyline
+orthogonal
+smetana
+elk
+```
+
+## Install the Tonto skill
+
+```bash
+tonto-cli add-skill .
+tonto-cli add-skill . --target codex
+tonto-cli add-skill . --target all
+```
+
+Supported targets:
+
+```text
+cursor
+vscode
+codex
+claude
+google
+all
+```
+
+The skill gives AI coding tools domain-specific instructions for understanding, extending, documenting, and reviewing Tonto ontology projects.
+
+## Troubleshooting
+
+- If generation says no source files were found, check that your project folder contains `.tonto` files outside the configured output folder.
+- If validation fails before generation, fix parser or language-server diagnostics first.
+- If API validation or gUFO transformation fails, retry local validation to separate model errors from service/network issues.

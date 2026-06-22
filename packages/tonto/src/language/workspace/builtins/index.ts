@@ -3,7 +3,7 @@ import { basicDataTypes } from "./basicDataTypes.js";
 
 const builtInLibs: BuiltInLib[] = [
     {
-        uri: "builtin://basicDataTypes.tonto",
+        uri: "builtin:///basicDataTypes.tonto",
         content: basicDataTypes,
     },
 ];

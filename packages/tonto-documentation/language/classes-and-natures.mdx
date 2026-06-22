@@ -150,10 +150,10 @@ roleMixin Customer of functional-complexes, collectives
 
 ```mermaid
 flowchart TB
-  PhysicalObject:::tontoFunctionalComplex["PhysicalObject<br/>(category of objects)"]
-  Customer:::tontoFunctionalComplex["Customer<br/>(roleMixin of functional-complexes, collectives)"]
-  Person:::tontoKind["Person<br/>(kind)"]
-  Organization:::tontoKind["Organization<br/>(kind)"]
+  PhysicalObject["PhysicalObject<br/>(category of objects)"]:::tontoFunctionalComplex
+  Customer["Customer<br/>(roleMixin of functional-complexes, collectives)"]:::tontoFunctionalComplex
+  Person["Person<br/>(kind)"]:::tontoKind
+  Organization["Organization<br/>(kind)"]:::tontoKind
 
   Person -->|"classified by"| PhysicalObject
   Person -->|"classified by"| Customer

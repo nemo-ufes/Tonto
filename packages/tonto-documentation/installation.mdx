@@ -10,7 +10,7 @@ Tonto can be used from VS Code, the terminal, or both.
 
 | Tool | Version |
 | --- | --- |
-| Node.js | `>=20.17.0` recommended for current packages and Mintlify docs. |
+| Node.js | `>=20.17.0` recommended for current packages and the Next.js documentation site. |
 | npm | `>=7.7.0` for workspaces and global installs. |
 | VS Code | `^1.92.0` for the current extension package. |
 
@@ -66,7 +66,7 @@ TPM reads `tonto.json` and installs Git-based ontology dependencies into `tonto_
 
 ## Documentation package
 
-This documentation is a Mintlify package inside the Tonto monorepo.
+This documentation is a statically exported Next.js application inside the Tonto monorepo.
 
 From the repository root:
 
@@ -76,12 +76,12 @@ npm run docs:dev
 npm run docs:check
 ```
 
-Mintlify deployment should use this monorepo path:
+The production export is written to:
 
 ```text
-/packages/tonto-documentation
+packages/tonto-documentation/out
 ```
 
 <Warning>
-Do not configure Mintlify to use the legacy `tonto-docs` symlink. That directory is kept only as migration reference material.
+GitHub Pages deployment runs through `.github/workflows/documentation.yml`. Set the repository Pages source to GitHub Actions.
 </Warning>

@@ -1,0 +1,57 @@
+import {
+  BadgeCheck,
+  BookOpen,
+  Bot,
+  Box,
+  Boxes,
+  Braces,
+  CircleSlash2,
+  Download,
+  File,
+  FileCode2,
+  FilePlus2,
+  GitBranch,
+  Grid2X2,
+  Home,
+  Library,
+  Network,
+  PackagePlus,
+  PanelTop,
+  Repeat2,
+  Rocket,
+  Shapes,
+  Terminal,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react"
+
+const icons: Record<string, LucideIcon> = {
+  home: Home,
+  rocket: Rocket,
+  download: Download,
+  "file-plus": FilePlus2,
+  network: Network,
+  braces: Braces,
+  boxes: Boxes,
+  shapes: Shapes,
+  list: Grid2X2,
+  "git-branch": GitBranch,
+  "circle-slash": CircleSlash2,
+  wrench: Wrench,
+  terminal: Terminal,
+  panel: PanelTop,
+  box: Box,
+  bot: Bot,
+  file: File,
+  "file-code": FileCode2,
+  "badge-check": BadgeCheck,
+  repeat: Repeat2,
+  "package-plus": PackagePlus,
+  "book-open": BookOpen,
+  library: Library,
+}
+
+export function DocIcon({ name, className }: { name?: string; className?: string }) {
+  const Icon = (name && icons[name]) || File
+  return <Icon aria-hidden="true" className={className} />
+}

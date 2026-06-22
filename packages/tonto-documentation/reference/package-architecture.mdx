@@ -16,7 +16,7 @@ Tonto is organized as an npm workspace monorepo.
 | `packages/webview` | React/Vite webview package for diagram experiences. |
 | `packages/sprotty-vscode` | Sprotty VS Code extension-side integration. |
 | `packages/sprotty-vscode-webview` | Sprotty webview-side integration. |
-| `packages/tonto-documentation` | Mintlify documentation package. |
+| `packages/tonto-documentation` | Next.js documentation application with a GitHub Pages static export. |
 
 ## Root scripts
 
@@ -63,7 +63,7 @@ The webview package contains the React-based diagram editor and supporting UI. I
 
 ## Documentation package
 
-The documentation package is a Mintlify site. It is intentionally a package in the workspace so docs scripts and dependency locking live with the rest of the project.
+The documentation package is a Next.js site using Tailwind CSS and shadcn/ui patterns. It remains in the workspace so documentation scripts and dependency locking live with the rest of the project. Existing MDX files and `docs.json` provide the content and navigation data.
 
 Run:
 
@@ -72,11 +72,13 @@ npm run docs:dev
 npm run docs:check
 ```
 
-For deployment, configure Mintlify with:
+The static build is generated at:
 
 ```text
-/packages/tonto-documentation
+packages/tonto-documentation/out
 ```
+
+The GitHub Actions workflow at `.github/workflows/documentation.yml` publishes this directory to GitHub Pages.
 
 ## Contributor workflow
 

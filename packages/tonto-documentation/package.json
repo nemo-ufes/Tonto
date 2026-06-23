@@ -3,17 +3,41 @@
   "displayName": "Tonto Documentation",
   "private": true,
   "type": "module",
-  "description": "Mintlify documentation for the Tonto language, CLI, VS Code extension, and package manager.",
+  "description": "Self-hosted Next.js documentation for the Tonto language and toolchain.",
   "engines": {
     "node": ">=20.17.0"
   },
   "scripts": {
-    "dev": "mint dev",
-    "preview": "mint dev",
-    "check": "mint broken-links",
-    "check:links": "mint broken-links"
+    "assets": "node scripts/sync-assets.mjs",
+    "dev": "npm run assets && next dev",
+    "build": "npm run assets && next build",
+    "preview": "npx serve out",
+    "check": "npm run build",
+    "check:links": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "lucide-react": "^0.468.0",
+    "mermaid": "^11.4.1",
+    "next": "15.5.9",
+    "next-mdx-remote": "^5.0.0",
+    "next-themes": "^0.4.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "mint": "^4.2.572"
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.5",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2"
   }
 }

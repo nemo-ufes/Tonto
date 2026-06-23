@@ -3,6 +3,8 @@ node_modules
 dist/
 out/
 lib/
+!packages/tonto-documentation/lib/
+!packages/tonto-documentation/lib/**
 coverage
 *.tsbuildinfo
 

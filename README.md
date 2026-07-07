@@ -1,172 +1,170 @@
-<div id="top"></div>
+# Tonto
 
+Tonto is a textual DSL for creating OntoUML models grounded in the Unified Foundational Ontology (UFO). It gives ontology projects a source-controlled, code-like format while keeping the modeling concepts explicit enough for validation, transformation, visualization, and reuse.
 
-<!-- [![Contributors][contributors-shield]][contributors-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url] -->
+The repository is an npm workspace that contains the Tonto language and CLI, the VS Code extension, the package manager, the documentation site, and the diagram/webview integration used by the extension.
 
+## What Tonto Provides
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/nemo-ufes/Tonto">
-    <img src="docs/images/TontoLogo.png" alt="Logo"  height="100" alt="Tonto Logo image, a blue background with TONTO written in it">
-  </a>
+- Textual syntax for OntoUML/UFO constructs such as kinds, roles, phases, relators, datatypes, enumerations, relations, and generalization sets.
+- A Langium-based language server for validation, completion, hover information, semantic highlighting, formatting, references, and editor integrations.
+- CLI commands for project initialization, JSON generation/import, local validation, gUFO transformation, and PlantUML diagram generation.
+- A VS Code extension with `.tonto` editing, command views, diagram previews, PlantUML previews, and optional `.tontodiagram` editing.
+- TPM, the Tonto Package Manager, for installing Git-based ontology dependencies declared in `tonto.json`.
+- A self-hosted documentation site built from the repository content.
 
-  <h3 align="center">An DSL for Ontology models</h3>
+## Workspace Map
 
-</div>
+```mermaid
+flowchart LR
+    User["Tonto modeler"] --> Extension["packages/extension<br/>VS Code extension"]
+    User --> CLI["packages/tonto<br/>tonto-cli"]
+    Extension --> Language["Langium language server<br/>from tonto-cli"]
+    Extension --> Webview["packages/webview<br/>diagram UI bundle"]
+    Webview --> SprottyWebview["packages/sprotty-vscode-webview"]
+    Extension --> SprottyHost["packages/sprotty-vscode"]
+    CLI --> OntoUML["OntoUML JSON"]
+    CLI --> GUFO["gUFO / Turtle"]
+    CLI --> PlantUML["PlantUML diagrams"]
+    CLI --> TPM["packages/tpm<br/>dependency install"]
+    TPM --> Dependencies["tonto_dependencies/"]
+    Docs["packages/tonto-documentation<br/>Next.js docs"] --> User
+```
 
-<div height="200">
-</div>
+## Packages
 
-&nbsp;
+| Package | npm workspace | Purpose |
+|---|---|---|
+| [Tonto CLI and language](packages/tonto/README.md) | `tonto-cli` | Grammar, generated AST, language server services, CLI commands, validators, import/export, and PlantUML generation. |
+| [VS Code extension](packages/extension/README.md) | `tonto` | Marketplace extension, language client, command views, project commands, and diagram integration. |
+| [Tonto Package Manager](packages/tpm/README.md) | `tonto-package-manager` | Git-based ontology dependency installation from `tonto.json`. |
+| [Documentation site](packages/tonto-documentation/README.md) | `tonto-documentation` | Next.js documentation site and GitHub Pages export. |
+| [Tonto diagram webview](packages/webview/README.md) | `tonto-sprotty-webview` | Private React/Vite webview bundle used by the extension for diagrams and `.tontodiagram` editing. |
+| [Sprotty VS Code host](packages/sprotty-vscode/README.md) | `sprotty-vscode` | Host-side Sprotty/VS Code integration library vendored for the extension. |
+| [Sprotty webview runtime](packages/sprotty-vscode-webview/README.md) | `sprotty-vscode-webview` | Webview-side Sprotty runtime library vendored for the diagram UI. |
 
-<!-- TABLE OF CONTENTS -->
+## Requirements
 
+- Node.js and npm. Use Node 24 or newer when developing the whole workspace because the documentation package declares `node >=24.0.0`.
+- npm 7.7.0 or newer for workspace support.
+- VS Code when developing or testing the extension.
+- Git when using TPM dependency installation.
 
-<div>
-  <h1><summary>Table of Contents</summary></h1>
-  <ol>
-    <li><a href="#about-the-project">About The Project</a></li>
-    <li><a href="#packages">Packages separation</a></li>
-    <li><a href="#built-with">Built With</a></li>
-    <li><a href="#getting-started">Getting Started</a></li>
-    <li><a href="#prerequisites">Prerequisites</a></li>
-  </ol>
-</div>
+Some publishable packages declare lower runtime minimums, but Node 24 keeps the full monorepo build and documentation workflow aligned.
 
+## Install
 
-<!-- ABOUT THE PROJECT -->
-<div id="about-the-project"> </div>
-
-## 📝 About The Project
-
-Tonto is an acronym with the words Textual and Ontology, because it is a written way of writing Ontology models. It was developed using the `Langium` tool, with `Typescript`, and creates a Visual Studio Code Extension with a Language server. 
-
-Tonto was designed as a friendly textual syntax for ontologies. It offers specialized support for constructs reflecting the UFO foundational ontology, which makes it possible to identify errors in the ontology that would otherwise pass unnoticed. The language was designed to allow transformation to a number of languages including UML (more specifically OntoUML), OWL (for gUFO-based ontologies), Alloy, Common Logic, and the TPTP syntax.
-
-### The language supports:
-- Declaration of OntoUML constructs in a easy-to-read syntax
-- Enumerations and custom datatypes
-- High-order types for multi-level taxomies
-
-As a textual syntax, the language can benefit from source control tools such as git, and ontologies can be viewed and edited without special tools. This VS Code extension is provided with support for syntax verification, syntax highlight, content assist and ontology visualization preview. The extension is integrated with the [OntoUML](https://github.com/OntoUML/OntoUML) server, to benefit from services designed for the language, such as transformation to OWL and generation of database schemas.
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
-<div id="built-with"> </div>
-
-### 🔨 Built With
-
-Here are some of the languages, frameworks, tools and libraries used in development of this application:
-
-* [Typescript](https://www.typescriptlang.org/)
-* [Langium](https://langium.org/)
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
-<!-- PACKAGES -->
-##  Packages
-
-This project is divided in 3 packages, each of them responsible for a different part of Tonto.
-
-### [Tonto Grammar and CLI](packages/tonto/)
-- This package is where Tonto Grammar, the Language Server Protocol and the CLI is defined. All elements and commands are available in this package, and you can read more about it here:
-
-### [Tonto Extension](packages/tonto-vscode/)
-- This package is responsible for the [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Lenke.tonto)
-
-### [Tonto Package Manager](packages/tonto-package-manager/)
-- This package is responsible for the `Tonto Package Manager (TPM)`. The TPM provides a way to manage ontologies as sepparate packages, simmilarly to how programming languages work.
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-#### 4.1 Visual Studio Code Extension
-
-The Tonto VS Code extension provides a rich editing experience with features like:
-
-*   Real-time syntax verification
-*   Syntax highlighting
-*   Autocompletion
-*   Code snippets
-*   Transformation to OntoUML (JSON) and gUFO-based OWL
-*   Visualization of diagrams
-
-#### 4.2 Tonto Package Manager (TPM)
-
-TPM enables managing dependencies between Tonto projects, facilitating code reuse and modular development.
-
-
-<!-- GETTING STARTED -->
-## ⌨️ Getting Started
-
-This is the instructions on setting up your project locally. To get a local copy up and running follow these simple example steps:
-
-
-<div id="prerequisites"> </div>
-
-### Prerequisites
-
-This is all the tools you need installed to run the project and the versions that are preferred
-* nodejs - v16.9.1 or higher
-* npm - 7.21.1 or higher
-* Yarn - 1.22.18 (not mandatory, but recommended)
-
-
-### ⚙️ Initializing
-#### Tasks
-This project defines tasks in order to be easier for vscode to build everything. 
-
-1. If you want to build all packages in watch mode just press `cmd` + `shift` + `b` or the equivalent command to run the build task.
-
-2. After that, select at the debug tab the `Run Extension` command or press `F5` to run the extension in a sepparate Extension Development Host.
-
-3. Create a new file with a file name suffix `.tonto` and start using Tonto 
-
- ### Packaging the extension
-
-> With these commands you can generate a .vsix file to install the extension in your VS Code or to send privately to other people to test it, without publishing it to the Marketplace
-
- ```bash
-  # Run this to generate .vsix file
-  npm run package
-  # Or
-  vsce package --pre-release --baseContentUrl https://github.com/nemo-ufes/Tonto
-
-  # Installing the extension in your vscode (requires the code extension in path)
-  code --install-extension tonto-x.x.x.vsix
- ```
-
-### Publishing
-
-You can Publish the `tonto-cli` to npm and the Visual Studio Code extension to the extension marketplace
-
-In order to publish the extension, you need to configure your azure key and your npm key locally.
-
-Then, inside the `tonto` or `tonto-vscode` folder, run the following command:
+From the repository root:
 
 ```bash
-    npm run publish
+npm install
 ```
-<!-- LICENSE -->
-## 🔐 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+## Common Commands
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+```bash
+npm run build
+npm run watch
+npm run lint
+npm run test
+npm run docs:dev
+npm run docs:check
+```
 
-<div id="contact"> </div>
+Useful package-scoped commands:
 
-<!-- CONTACT -->
-## ✉️ Contact
+```bash
+npm run langium:generate
+npm run build --workspace=tonto-cli
+npm run build --workspace=tonto
+npm run build --workspace=tonto-sprotty-webview
+npm run build --workspace=tonto-documentation
+```
 
+## Running the Extension Locally
 
-Matheus Lenke Coutinho - matheus.l.coutinho@edu.ufes.br - [Linkedin](https://www.linkedin.com/in/matheus-lenke-coutinho-492a4b15a/) - [Github](https://github.com/matheuslenke)
+1. Install dependencies from the repository root.
+2. Run the default VS Code build task with `Cmd+Shift+B`, or run `npm run watch`.
+3. Open the debug panel and launch `Run Extension`.
+4. In the Extension Development Host, open or create a `.tonto` file.
 
-<div id="additional-tools"> </div>
+The extension starts the language server from the extension bundle and registers commands for JSON generation, JSON import, validation, gUFO transformation, TPM install, project initialization, guidance generation, semantic token color setup, and diagram previews.
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+## CLI Quick Start
+
+After building or installing `tonto-cli`, create or inspect a project with:
+
+```bash
+tonto-cli init
+tonto-cli generate .
+tonto-cli validate .
+tonto-cli validate . --with-api
+tonto-cli transform .
+tonto-cli plantuml . --per-package
+```
+
+See [packages/tonto/README.md](packages/tonto/README.md) for the complete command table and syntax overview.
+
+## Project Structure
+
+A typical Tonto project contains:
+
+```text
+my-ontology/
+|-- src/
+|   `-- main.tonto
+|-- tonto.json
+|-- tonto_dependencies/
+`-- generated/
+```
+
+Minimal `.tonto` example:
+
+```tonto
+package university
+
+kind Person {
+    name: string
+}
+
+role Student specializes Person
+kind Course {
+    code: string
+}
+
+@material relation Student [0..*] -- enrollsIn -- [0..*] Course
+```
+
+## Documentation
+
+The documentation site lives in [packages/tonto-documentation](packages/tonto-documentation/README.md).
+
+```bash
+npm run docs:dev
+npm run docs:check
+```
+
+The GitHub Pages workflow builds the static site from the documentation workspace.
+
+## Packaging And Publishing
+
+Package the VS Code extension from `packages/extension`:
+
+```bash
+npm run package --workspace=tonto
+```
+
+Publish commands exist in individual package workspaces and require the appropriate npm or VS Code Marketplace credentials:
+
+```bash
+npm run publish --workspace=tonto-cli
+npm run publish --workspace=tonto
+```
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+## Contact
+
+Matheus Lenke Coutinho - matheus.l.coutinho@edu.ufes.br - [LinkedIn](https://www.linkedin.com/in/matheus-lenke-coutinho-492a4b15a/) - [GitHub](https://github.com/matheuslenke)

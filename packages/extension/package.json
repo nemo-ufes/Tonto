@@ -165,57 +165,57 @@
             "view/item/context": [
                 {
                     "command": "tonto.generateJSON",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.generateTonto",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.validateModel",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.transformModel",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.tpm.install",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.initProject",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.addGuidances",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.addSkill",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.addSemanticTokenColors",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.diagram.plantuml.open",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.diagram.plantuml.export",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 }
             ]

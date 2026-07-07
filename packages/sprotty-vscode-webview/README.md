@@ -1,12 +1,28 @@
-# Sprotty Diagrams in VS Code Webviews
+# Sprotty VS Code Webview Runtime
 
-This library helps you to implement a [VS Code webview](https://code.visualstudio.com/api/extension-guides/webview) that displays a [Sprotty](https://www.npmjs.com/package/sprotty) diagram. You can use [sprotty-vscode](https://www.npmjs.com/package/sprotty-vscode) to integrate such a webview in a VS Code extension.
+`packages/sprotty-vscode-webview` contains webview-side runtime helpers for displaying [Sprotty](https://www.npmjs.com/package/sprotty) diagrams inside VS Code. In this repository it supports the Tonto diagram UI that is bundled into the VS Code extension.
 
-# Getting Started
+This package is paired with [packages/sprotty-vscode](../sprotty-vscode/README.md), which runs on the extension-host side.
 
-The diagram itself is implemented with the Sprotty API. See the [Sprotty Wiki](https://github.com/eclipse/sprotty/wiki), the [states example](https://github.com/eclipse/sprotty-vscode/tree/master/examples/states-webview) and the [Sprotty examples](https://github.com/eclipse/sprotty/tree/master/examples) for reference.
+## Runtime Flow
 
-The next step is to implement a subclass of `SprottyStarter` and instantiate it in your entry module as shown below.
+```mermaid
+sequenceDiagram
+    participant Host as VS Code extension host
+    participant Webview as Webview bundle
+    participant Starter as SprottyStarter
+    participant Diagram as Sprotty diagram container
+
+    Host->>Webview: load webview script
+    Webview->>Starter: new Starter().start()
+    Starter->>Diagram: createContainer(identifier)
+    Diagram-->>Starter: configured Sprotty container
+    Starter-->>Host: ready for diagram messages
+```
+
+## Basic Usage
+
+Implement a subclass of `SprottyStarter` and instantiate it in the webview entry module:
 
 ```typescript
 export class ExampleSprottyStarter extends SprottyStarter {
@@ -18,8 +34,28 @@ export class ExampleSprottyStarter extends SprottyStarter {
 new ExampleSprottyStarter().start();
 ```
 
-Don't forget to call the `start` method, which initiates the communication to the host extension.
+`createExampleDiagramContainer` should create an Inversify container with the Sprotty modules and viewer options required by the diagram. Use the `clientId` in the Sprotty `baseDiv` and `hiddenDiv` IDs so multiple diagrams can coexist safely.
 
-The function `createExampleDiagramContainer` should create an [InversifyJS](https://www.npmjs.com/package/inversify) container with all necessary [Sprotty configuration](https://github.com/eclipse/sprotty/wiki/Dependency-Injection). The passed `clientId` should be used in the `baseDiv` and `hiddenDiv` ids in Sprotty's ViewerOptions.
+For diagrams connected to a language server, use `SprottyLspEditStarter`.
 
-In case you are connecting your diagram with a [language server](https://microsoft.github.io/language-server-protocol/), e.g. using [Langium](https://langium.org), you should use `SprottyLspEditStarter` as superclass.
+## Role In Tonto
+
+- Receives diagram messages from the extension host.
+- Starts the Sprotty client runtime inside the VS Code webview.
+- Supplies webview-side messaging and diagram startup helpers.
+- Is consumed by the private `tonto-sprotty-webview` package in `packages/webview`.
+
+## Development
+
+From the repository root:
+
+```bash
+npm run build --workspace=sprotty-vscode-webview
+npm run watch --workspace=sprotty-vscode-webview
+```
+
+The package emits TypeScript output to `lib`.
+
+## License
+
+This package keeps the upstream Sprotty integration license: `(EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0)`.

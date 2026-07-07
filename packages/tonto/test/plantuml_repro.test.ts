@@ -76,17 +76,20 @@ describe("PlantUML Generator Reproduction", () => {
 
     // Check if external element People.Employee is generated with correct color/stereotype
     // It should be generated because it is referenced in the relation
-    // Employee is a role, so it should be LIGHT_PINK #FFDADD
-    expect(puml).toContain(`class "People::Employee" <<role>> #FFDADD`);
+    // Employee is a role, so it should be LIGHT_PINK #FFDADD. With package grouping the
+    // module is shown by the surrounding package box, so the label is the simple name.
+    expect(puml).toContain(`package "People" {`);
+    expect(puml).toContain(`class People_Employee as "Employee" <<role>> #FFDADD`);
 
     // Check if external element University.UniversityProfessor is generated
     // UniversityProfessor is a role, so it should be LIGHT_PINK #FFDADD
-    expect(puml).toContain(`class "University::UniversityProfessor" <<role>> #FFDADD`);
+    expect(puml).toContain(`package "University" {`);
+    expect(puml).toContain(`class University_UniversityProfessor as "UniversityProfessor" <<role>> #FFDADD`);
 
     // Check relations
     // External references use longer arrows.
-    expect(puml).toContain(`"EmploymentContract" "1..*" ---- "1" "People::Employee"`);
-    expect(puml).toContain(`"EmploymentContract" "1..*" ---- "1" "University::UniversityProfessor"`);
+    expect(puml).toContain(`"EmploymentContract" "1..*" ---- "1" People_Employee`);
+    expect(puml).toContain(`"EmploymentContract" "1..*" ---- "1" University_UniversityProfessor`);
   });
 
   test("should include external relations declared outside the focused module", async () => {
@@ -113,15 +116,15 @@ describe("PlantUML Generator Reproduction", () => {
 
     const puml = generatePlantUML(peoplePackage, { showExternalReferences: true, externalReferenceModules });
 
-    expect(puml).toContain(`class "IncomingContracts::Contract" <<kind>> #FF99A3`);
-    expect(puml).toContain(`"IncomingContracts::Contract"  ---- "1" "Person" : <back:WhiteSmoke>engages</back> >`);
+    expect(puml).toContain(`class IncomingContracts_Contract as "Contract" <<kind>> #FF99A3`);
+    expect(puml).toContain(`IncomingContracts_Contract  ---- "1" "Person" : <back:WhiteSmoke>engages</back> >`);
 
     const pumlWithoutExternalReferences = generatePlantUML(peoplePackage, {
       showExternalReferences: false,
       externalReferenceModules,
     });
 
-    expect(pumlWithoutExternalReferences).not.toContain(`class "IncomingContracts::Contract" <<kind>> #FF99A3`);
+    expect(pumlWithoutExternalReferences).not.toContain(`class IncomingContracts_Contract as "Contract" <<kind>> #FF99A3`);
     expect(pumlWithoutExternalReferences).not.toContain(`engages`);
   });
 
@@ -150,7 +153,62 @@ describe("PlantUML Generator Reproduction", () => {
     const puml = generatePlantUML(peoplePackage, { showExternalReferences: true });
 
     expect(puml).toContain(`<back:WhiteSmoke>participatesIn</back>\\ninverseOf InverseAgreements.Contract.hasParticipant >`);
-    expect(puml).toContain(`"InverseAgreements::Contract" "1" ---- "*" "Person" : <back:WhiteSmoke>hasParticipant</back> >`);
-    expect(puml).toContain(`class "InverseAgreements::Contract" <<kind>> #FF99A3`);
+    expect(puml).toContain(`InverseAgreements_Contract "1" ---- "*" "Person" : <back:WhiteSmoke>hasParticipant</back> >`);
+    expect(puml).toContain(`class InverseAgreements_Contract as "Contract" <<kind>> #FF99A3`);
+  });
+
+  test("should alias qualified external specialization targets", async () => {
+    await parse(`
+        package UfoAlias
+        category Entity of objects
+        category Relator of relators
+    `, "UfoAlias");
+
+    const mainDoc = await parse(`
+        import UfoAlias
+        package AliasMain
+
+        kind Person specializes UfoAlias.Entity
+        relator IndividualPaperAuthorship specializes UfoAlias.Relator
+    `, "AliasMain");
+
+    await documentBuilder.build(langiumDocuments.all.toArray());
+
+    const mainPackage = getPrimaryContextModuleOrThrow(mainDoc.parseResult.value as Model);
+    const puml = generatePlantUML(mainPackage, { showExternalReferences: true });
+
+    expect(puml).toContain(`class UfoAlias_Entity as "Entity" <<category>>`);
+    expect(puml).toContain(`class UfoAlias_Relator as "Relator" <<category>>`);
+    expect(puml).toContain(`UfoAlias_Entity <|---- "Person"`);
+    expect(puml).toContain(`UfoAlias_Relator <|---- "IndividualPaperAuthorship"`);
+    expect(puml).not.toContain(`"UfoAlias::Entity" <|---- "Person"`);
+    expect(puml).not.toContain(`"UfoAlias::Relator" <|---- "IndividualPaperAuthorship"`);
+
+    // The focused package is not boxed, but its external references are.
+    expect(puml).toContain(`package "UfoAlias" {`);
+    expect(puml).not.toContain(`package "AliasMain" {`);
+  });
+
+  test("groups unresolved external references inside their package box", async () => {
+    // `ufo` is referenced but never defined (e.g. a library that was not loaded),
+    // so the reference stays unresolved. It must still render as `Entity` inside a
+    // `ufo` package box rather than as a loose, qualified node.
+    const mainDoc = await parse(`
+        package Sample
+        category Thing specializes ufo.Entity
+    `, "Sample");
+
+    await documentBuilder.build(langiumDocuments.all.toArray());
+
+    const mainPackage = getPrimaryContextModuleOrThrow(mainDoc.parseResult.value as Model);
+    const puml = generatePlantUML(mainPackage, { showExternalReferences: true });
+
+    expect(puml).toContain(`package "ufo" {`);
+    expect(puml).toContain(`class ufo_Entity as "Entity"`);
+    expect(puml).toContain(`ufo_Entity <|---- "Thing"`);
+
+    // With external grouping disabled, the same reference stays qualified and loose.
+    const flat = generatePlantUML(mainPackage, { showExternalReferences: true, groupExternalPackages: false });
+    expect(flat).not.toContain(`package "ufo" {`);
   });
 });

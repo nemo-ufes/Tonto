@@ -79,6 +79,32 @@ describe("TontoScopeComputation", () => {
     );
   });
 
+  it("resolves imports declared after the package declaration", async () => {
+    const { createDocument, documentBuilder } = createTestEnvironment();
+    const peopleDocument = createDocument(`
+      package People
+      kind Person
+    `, "PeoplePostPackageImport");
+    const universityDocument = createDocument(`
+      package University
+      import People
+
+      role Professor specializes People.Person
+    `, "UniversityPostPackageImport");
+
+    await documentBuilder.build([peopleDocument, universityDocument]);
+
+    const importedClassReference = universityDocument.references.find(
+      (reference) => reference.$refText === "People.Person"
+    );
+
+    expect(universityDocument.parseResult.parserErrors).toHaveLength(0);
+    expect(importedClassReference?.ref?.$type).toBe("ClassDeclaration");
+    expect(importedClassReference?.$nodeDescription?.documentUri.toString()).toBe(
+      peopleDocument.uri.toString()
+    );
+  });
+
   it("adds generalization sets to the primary module local scope", async () => {
     const { createDocument, documentBuilder } = createTestEnvironment();
     const document = createDocument(`

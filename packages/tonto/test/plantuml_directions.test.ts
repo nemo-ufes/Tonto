@@ -48,10 +48,13 @@ describe("PlantUML Generator - Directional Arrows", () => {
     
     const puml = generatePlantUML(model);
     
-    expect(puml).toContain(`"Hub" "1" -- "1" "Up"`);
-    expect(puml).toContain(`"Hub" "1" -- "1" "Down"`);
-    expect(puml).toContain(`"Hub" "1" -- "1" "Left"`);
-    expect(puml).toContain(`"Hub" "1" -- "1" "Right"`);
+    // Hub connects to four classes, so degree-based sizing gives it an alias (its code
+    // name) with a padded display label; references use that alias instead of the quoted name.
+    expect(puml).toContain(`Hub "1" -- "1" "Up"`);
+    expect(puml).toContain(`Hub "1" -- "1" "Down"`);
+    expect(puml).toContain(`Hub "1" -- "1" "Left"`);
+    expect(puml).toContain(`Hub "1" -- "1" "Right"`);
+    expect(puml).toMatch(/class Hub as "\s+Hub\s+"/);
     expect(puml).not.toContain(`-r-`);
     expect(puml).not.toContain(`-l-`);
   });

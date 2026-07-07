@@ -1,52 +1,49 @@
-# Welcome to your new Tonto project: {{projectName}}!
+# Tonto Guidance Example Project
 
-This is a sample project to help you get started with Tonto.
+This example shows the project structure created by the Tonto project initializer when guidance files are included. It is intended as a small, readable starting point for modeling a domain with Tonto and for configuring editor or agentic IDE assistance around the ontology.
 
-## What is Tonto?
+## What This Example Contains
 
-Tonto is a textual modeling language for creating well-founded ontologies based on the Unified Foundational Ontology (UFO).
+- A `tonto.json` manifest with project metadata.
+- `.tonto` source files in the project `src` folder.
+- Guidance files for tools that can use project instructions while editing the ontology.
+- A README template that explains the generated project to new users.
 
-## Getting Started
+## Project Shape
 
-A Tonto project is defined by a `tonto.json` file, which contains the project's metadata. The ontology models are defined in `.tonto` files, which are located in the `src` directory.
+```mermaid
+flowchart TD
+    Manifest["tonto.json"] --> Sources["src/*.tonto"]
+    Sources --> CLI["tonto-cli<br/>generate / validate / plantuml"]
+    Guidance[".cursor, .github, .agents,<br/>or other guidance folders"] --> Modeler["Modeler or AI assistant"]
+    Modeler --> Sources
+```
 
-### Packages
+## What Is Tonto?
 
-Each `.tonto` file represents a package. A package is a container for ontology elements.
+Tonto is a textual modeling language for creating well-founded ontologies based on the Unified Foundational Ontology (UFO). A Tonto project uses `.tonto` files to describe packages, classes, attributes, relations, datatypes, enumerations, and generalization sets.
 
-To declare a package, use the `package` keyword at the top of your file:
+## Basic Modeling Pattern
+
+Each `.tonto` file declares one package:
+
 ```tonto
 package animals
 ```
 
-### Classes
+Classes represent domain concepts. Use OntoUML/UFO stereotypes such as `kind`, `subkind`, `phase`, and `role` to make the ontological nature explicit.
 
-Classes represent concepts in your domain. You can define classes using stereotypes like `kind`, `subkind`, `phase`, and `role`.
-
-Here's an example of a `kind` class:
 ```tonto
-// Kinds are rigid types that provide an identity principle for their instances.
-// 'Animal' is a kind because being an animal is a fundamental and permanent characteristic.
 kind Animal {
-    // Attributes define the properties of a class.
-    // Here, every animal has a birthDate.
     birthDate: date
 }
+
+subkind Cat specializes Animal
+subkind Dog specializes Animal
 ```
 
-You can also create specializations using `subkind`:
-```tonto
-// Subkinds are rigid specializations of a kind.
-// 'Cat' and 'Dog' are subkinds of 'Animal' because they represent more specific, permanent types of animals.
-subkind Cat specializes Animal { }
-subkind Dog specializes Animal { }
-```
+Datatypes define structured values:
 
-### Datatypes
-
-You can define your own datatypes or use the built-in ones (`string`, `number`, `boolean`, `date`, `time`, `datetime`).
-
-Here's an example of a custom datatype:
 ```tonto
 datatype OwnerDetails {
     name: string
@@ -54,47 +51,36 @@ datatype OwnerDetails {
 }
 ```
 
-### Relations
+Relations connect classes:
 
-Relations define how classes are associated with each other.
-
-Here's an example of a relation between `Cat` and a `Person` class (assuming `Person` is defined elsewhere):
 ```tonto
-// This defines a one-to-many relationship where a Person can own multiple cats,
-// but each Cat is owned by exactly one Person.
-relation Cat [1] -- isOwnedBy -- [0..*] Person
+kind Person {
+    name: string
+}
+
+@material relation Person [0..*] -- owns -- [0..*] Animal
 ```
 
-## CLI Usage
+## Useful Commands
 
-The Tonto CLI provides several commands to help you manage your project.
+Run commands from the generated project root:
 
-### init
+```bash
+tonto-cli generate .
+tonto-cli validate .
+tonto-cli plantuml .
+```
 
-Initializes a new Tonto project.
+Initialize a new project with guidance files:
+
 ```bash
 tonto-cli init
 ```
 
-### generate
+Then choose the desired editor or agentic IDE guidance target when prompted.
 
-Generates a JSON representation of your Tonto project.
-```bash
-tonto-cli generate .
-```
+## Guidance Files
 
-### validate
+Guidance files help editors or AI assistants follow Tonto syntax and OntoUML/UFO modeling conventions. Depending on the selected target, they may be generated under folders such as `.cursor/rules`, `.github`, `.codex`, `.claude`, or `.agents`.
 
-Validates your Tonto project.
-```bash
-tonto-cli validate .
-```
-
-## Example Project
-
-This project contains a simple ontology about animals. You can find the models in the `src` directory. Feel free to modify and expand it!
-
-
-## Cursor rules
-
-This project contains Cursor rules that are specialized with helping AI Agents to build, refine and validate your ontology. They are present in the `.cursor/rules`folder. Remember that this folder needs to be at the root of your workspace.
+Keep the guidance folder at the root of the workspace so the corresponding tool can discover it.

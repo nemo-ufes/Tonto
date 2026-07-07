@@ -1,82 +1,103 @@
-<div id="top"></div>
+# Tonto VS Code Extension
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/nemo-ufes/Tonto">
-    <img src="/docs/images/TontoLogo.png" alt="Logo"  height="100" alt="Tonto Logo image, a blue background with TONTO written in it">
-  </a>
+`packages/extension` contains the VS Code extension published as `tonto`. It connects the editor UI to the Tonto language server, CLI-style project commands, TPM, PlantUML previews, and the bundled diagram webview.
 
-  <h3 align="center">Tonto Visual Studio Code Extension</h3>
+For user-facing guides, see the documentation site in [packages/tonto-documentation](../tonto-documentation/README.md).
 
-</div>
+## Features
 
-<div height="200">
-</div>
+- `.tonto` language registration, syntax highlighting, semantic tokens, and language configuration.
+- Langium language client/server activation for diagnostics, completion, hover, references, formatting, and workspace updates.
+- Tonto activity bar and Explorer command views.
+- Commands for JSON generation, JSON import, validation, gUFO transformation, TPM install, project initialization, guidance generation, and semantic token color setup.
+- PlantUML diagram preview/export commands.
+- Sprotty-based diagram preview and optional `.tontodiagram` editor.
 
-&nbsp;
+## Runtime Shape
 
-<!-- TABLE OF CONTENTS -->
+```mermaid
+flowchart LR
+    VSCode["VS Code"] --> Extension["Extension host<br/>pack/extension/main.cjs"]
+    Extension --> Client["LanguageClient"]
+    Client --> Server["Language server<br/>pack/language/main.cjs"]
+    Server --> Tonto["tonto-cli language services"]
+    Extension --> Commands["Tonto commands<br/>views + palette"]
+    Commands --> CLI["Generation, import,<br/>validation, transform"]
+    Extension --> Webview["Diagram webview<br/>pack/webview"]
+    Webview --> Model["Sprotty / React diagram UI"]
+```
 
-<div>
-  <h1><summary>Table of Contents</summary></h1>
-  <ol>
-    <li><a href="#about-the-project">About The Project</a></li>
-    <li><a href="#built-with">Built With</a></li>
-    <li><a href="#license">License</a></li>
-  </ol>
-</div>
+## Commands
 
+The extension contributes these command IDs:
 
-<!-- ABOUT THE PROJECT -->
-<div id="about-the-project"> </div>
+| Command | Title |
+|---|---|
+| `tonto.diagram.open` | Open Tonto Diagram |
+| `tonto.diagram.createFile` | New Diagram From Current Model |
+| `tonto.diagram.fit` | Fit to Screen |
+| `tonto.diagram.center` | Center selection |
+| `tonto.diagram.delete` | Delete selected element |
+| `tonto.diagram.export` | Export diagram to SVG |
+| `tonto.diagram.plantuml.open` | Open PlantUML Diagram |
+| `tonto.diagram.plantuml.openProject` | Open Ontology PlantUML Diagram |
+| `tonto.diagram.plantuml.export` | Export PlantUML |
+| `tonto.generateJSON` | Transform Tonto -> JSON |
+| `tonto.generateTonto` | Transform JSON -> Tonto |
+| `tonto.validateModel` | Validate Model |
+| `tonto.transformModel` | Transform to GUFO |
+| `tonto.tpm.install` | Install Packages (TPM) |
+| `tonto.initProject` | Init new Tonto project |
+| `tonto.addGuidances` | Add Guidances to project (Work with LLMs) |
+| `tonto.addSkill` | Add Tonto Skill to project |
+| `tonto.addSemanticTokenColors` | Add Semantic Token Colors to User Settings |
 
-## 📝 About The Project
+## Configuration
 
-Please access the [**Oficial Documentation**](https://matheuslenke.github.io/tonto-docs) website for a quick start on Tonto.
+The `.tontodiagram` editor is feature-gated through:
 
-Tonto is an acronym with the words Textual and Ontology, because it is a written way of writing Ontology models. It was developed using the `Langium` tool, with `Typescript`, and creates a Visual Studio Code Extension with a Language server. 
+```json
+{
+  "tonto.features.tontodiagram.enabled": true
+}
+```
 
-Tonto was designed as a friendly textual syntax for ontologies. It offers specialized support for constructs reflecting the UFO foundational ontology, which makes it possible to identify errors in the ontology that would otherwise pass unnoticed. The language was designed to allow transformation to a number of languages including UML (more specifically OntoUML), OWL (for gUFO-based ontologies), Alloy, Common Logic, and the TPTP syntax.
+## Development
 
-### The language supports:
-- Declaration of OntoUML constructs in a easy-to-read syntax
-- Enumerations and custom datatypes
-- High-order types for multi-level taxomies
+From the repository root:
 
-As a textual syntax, the language can benefit from source control tools such as git, and ontologies can be viewed and edited without special tools. This VS Code extension is provided with support for syntax verification, syntax highlight, content assist and ontology visualization preview. The extension is integrated with the [OntoUML](https://github.com/OntoUML/OntoUML) server, to benefit from services designed for the language, such as transformation to OWL and generation of database schemas.
+```bash
+npm install
+npm run build --workspace=tonto
+npm run watch --workspace=tonto
+```
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+The extension build also builds the private webview package:
 
+```bash
+npm --prefix packages/webview run build
+node packages/extension/esbuild.mjs
+```
 
-<div id="built-with"> </div>
+To run locally in VS Code:
 
-### 🔨 Built With
+1. Open this repository in VS Code.
+2. Run the default build task or `npm run watch --workspace=tonto`.
+3. Launch `Run Extension` from the debug panel.
+4. Open a `.tonto` file in the Extension Development Host.
 
-Here are some of the languages, frameworks, tools and libraries used in development of this application:
+## Packaging
 
-* [Typescript](https://www.typescriptlang.org/)
-* [Langium](https://langium.org/)
+```bash
+npm run package --workspace=tonto
+```
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+Publishing requires VS Code Marketplace credentials:
 
+```bash
+npm run publish --workspace=tonto
+```
 
-<!-- LICENSE -->
-<div id="license"> </div>
+## License
 
-## 🔐 License
-
-Distributed under the MIT License. See `LICENSE.md` for more information.
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-<div id="contact"> </div>
-
-<!-- CONTACT -->
-## ✉️ Contact
-
-Matheus Lenke Coutinho - matheus.l.coutinho@edu.ufes.br - [Linkedin](https://www.linkedin.com/in/matheus-lenke-coutinho-492a4b15a/) - [Github](https://github.com/matheuslenke)
-
-<div id="additional-tools"> </div>
-
-<p align="right">(<a href="#top">back to top</a>)</p>
+Distributed under the MIT License. See the repository root [LICENSE](../../LICENSE) file for more information.

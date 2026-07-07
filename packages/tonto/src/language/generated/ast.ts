@@ -272,6 +272,7 @@ export interface ContextModule extends AstNode {
     readonly $container: Statement;
     readonly $type: 'ContextModule';
     declarations: Array<Declaration>;
+    imports: Array<Import>;
     isGlobal: boolean;
     name: QualifiedName;
 }
@@ -383,7 +384,7 @@ export function isGeneralizationSet(item: unknown): item is GeneralizationSet {
 }
 
 export interface Import extends AstNode {
-    readonly $container: Statement;
+    readonly $container: ContextModule | Statement;
     readonly $type: 'Import';
     packageAlias?: string;
     referencedModel: Reference<ContextModule>;
@@ -624,6 +625,7 @@ export class TontoAstReflection extends AbstractAstReflection {
                     name: ContextModule,
                     properties: [
                         { name: 'declarations', defaultValue: [] },
+                        { name: 'imports', defaultValue: [] },
                         { name: 'isGlobal', defaultValue: false },
                         { name: 'name' }
                     ]

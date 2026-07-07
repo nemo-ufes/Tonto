@@ -1,86 +1,57 @@
-# VS Code Integration for Sprotty
+# Sprotty VS Code Host Integration
 
-This library contains glue code for [Sprotty](https://www.npmjs.com/package/sprotty) diagrams in VS Code. The diagrams can optionally be backed by a [language server](https://microsoft.github.io/language-server-protocol/).
+`packages/sprotty-vscode` contains host-side glue code for embedding [Sprotty](https://www.npmjs.com/package/sprotty) diagrams in VS Code. In this repository it is used by the Tonto extension to manage diagram webviews and communicate with the language-server-backed diagram model.
 
-A complete example with a [Langium](https://langium.org) language server is available [here](https://github.com/eclipse/sprotty-vscode/tree/master/examples/states-langium).
+This package is based on the Eclipse Sprotty VS Code integration library and is kept in the monorepo so the Tonto extension can build and package the diagram integration with the rest of the workspace.
 
-## Getting Started
+## Role In Tonto
 
-As first step, you need to implement a [webview](https://code.visualstudio.com/api/extension-guides/webview) that renders your diagrams using [sprotty-vscode-webview](https://www.npmjs.com/package/sprotty-vscode-webview). The webview package should bundle its code into a single JavaScript file (e.g. with [Webpack](https://webpack.js.org)) and put it into your VS Code extension package. The default implementation assumes that the webview code is available at the path `pack/webview.js` relative to the extension folder.
+```mermaid
+flowchart LR
+    Extension["packages/extension"] --> Host["sprotty-vscode<br/>host-side managers"]
+    Host --> Panel["VS Code webview panel<br/>or custom editor"]
+    Panel --> Webview["sprotty-vscode-webview<br/>webview runtime"]
+    Extension --> LanguageClient["Language client"]
+    LanguageClient --> LanguageServer["Tonto language server"]
+```
 
-Then you can instantiate a `WebviewPanelManager` in the `activate` hook of your extension:
+## Main Concepts
+
+- `WebviewPanelManager` manages Sprotty diagrams opened as VS Code webview panels.
+- `SprottyEditorProvider` supports custom editor integrations.
+- `SprottyViewProvider` supports diagrams inside VS Code side or bottom views.
+- LSP variants connect the diagram lifecycle to a language client when diagrams are backed by a language server.
+- `registerDefaultCommands` wires commands such as open, fit, center, export, and delete.
+
+## Minimal Host Setup
 
 ```typescript
 export function activate(context: vscode.ExtensionContext) {
     const webviewPanelManager = new WebviewPanelManager({
         extensionUri: context.extensionUri,
-        defaultDiagramType: 'mydiagram',
-        supportedFileExtensions: ['.mydiagram']
+        defaultDiagramType: "mydiagram",
+        supportedFileExtensions: [".mydiagram"]
     });
 }
 ```
 
-This service manages webviews created as _webview panels_ in the main editor area of VS Code. Alternatively, you can use `SprottyEditorProvider` to get a _custom editor provider_ that can be directly associated with a file type, or `SprottyViewProvider` to get a _webview view provider_ that can render diagrams in the view areas of VS Code, i.e. the bottom or side panels.
+When the diagram is backed by a language server, use the LSP manager/provider variants and pass the configured VS Code language client.
 
-In case you are backing your diagrams with a language server, you should use `LspWebviewPanelManager` as superclass, or respectively `LspSprottyEditorProvider` or `LspSprottyViewProvider`. In this case you need to provide a _language client_ configured to communicate with your language server.
+## Expected Webview Bundle
 
-## Adding Commands
+The default host-side implementation expects the webview bundle to be available inside the extension package. Tonto's extension builds its diagram webview from `packages/webview` into `packages/extension/pack/webview`.
 
-This library registers a few default commands that you can either [execute programmatically](https://code.visualstudio.com/api/references/vscode-api#commands.executeCommand) or expose in the user interface with package.json entries as shown below. The registration happens by calling this function:
+## Development
 
-```typescript
-registerDefaultCommands(webviewPanelManager, context, { extensionPrefix: 'example' });
+From the repository root:
+
+```bash
+npm run build --workspace=sprotty-vscode
+npm run watch --workspace=sprotty-vscode
 ```
 
-The first segment of each command id corresponds to the `extensionPrefix` option. The `when` clauses ending with `-focused` start with the Sprotty diagram type, which is usually determined by the `defaultDiagramType` option for `WebviewPanelManager` or the `viewType` option for `SprottyEditorProvider` and `SprottyViewProvider`.
+The package emits TypeScript output to `lib`.
 
-```json
-{
-  "contributes": {
-    "commands": [
-      {
-        "command": "example.diagram.open",
-        "title": "Open in Diagram",
-        "category": "Example Diagram"
-      },
-      {
-        "command": "example.diagram.fit",
-        "title": "Fit to Screen",
-        "category": "Example Diagram"
-      },
-      {
-        "command": "example.diagram.center",
-        "title": "Center selection",
-        "category": "Example Diagram"
-      },
-      {
-        "command": "example.diagram.export",
-        "title": "Export diagram to SVG",
-        "category": "Example Diagram"
-      }
-    ],
-    "menus": {
-      "commandPalette": [
-        {
-          "command": "example.diagram.open",
-          "when": "editorLangId == 'example'"
-        },
-        {
-          "command": "example.diagram.fit",
-          "when": "example-diagram-focused"
-        },
-        {
-          "command": "example.diagram.center",
-          "when": "example-diagram-focused"
-        },
-        {
-          "command": "example.diagram.export",
-          "when": "example-diagram-focused"
-        }
-      ]
-    }
-  }
-}
-```
+## License
 
-In addition to these command palette items, you can expose the commands in [menus](https://code.visualstudio.com/api/references/contribution-points#contributes.menus) and [keybindings](https://code.visualstudio.com/api/references/contribution-points#contributes.keybindings).
+This package keeps the upstream Sprotty integration license: `(EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0)`.

@@ -29,7 +29,7 @@ Statement:
 ContextModule:
 	(isGlobal?='global')? 'package' (name=QualifiedName)
 
-	declarations+=Declaration*
+	(imports+=Import | declarations+=Declaration)*
 ;
 
 Import:

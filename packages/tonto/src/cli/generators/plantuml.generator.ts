@@ -77,10 +77,59 @@ function getColor(element: ClassDeclaration): string | undefined {
 
 export interface PlantUMLOptions {
     showExternalReferences: boolean;
+    /**
+     * Group local elements inside a `package` box named after their owning module.
+     * The focused/main package is never boxed. Defaults to true.
+     */
+    showPackageNames?: boolean;
+    /** Group elements from external packages inside their own `package` box. Defaults to true. */
+    groupExternalPackages?: boolean;
+    /** Render class/datatype attributes. Defaults to true. */
+    showAttributes?: boolean;
+    /** Render relation cardinalities. Defaults to true. */
+    showCardinalities?: boolean;
+    /** Render relation names and inverseOf labels. Defaults to true. */
+    showRelationNames?: boolean;
+    /** Fill elements with their nature color. When false the diagram is monochrome. Defaults to true. */
+    showColors?: boolean;
+    /** Spacing between nodes and ranks. Defaults to "cozy". */
+    spacing?: PlantUMLSpacing;
+    /** Scale element boxes up according to how many relations connect to them. Defaults to true. */
+    sizeByDegree?: boolean;
     layout?: PlantUMLLayoutVariant;
     orthogonal?: boolean;
     externalReferenceModules?: ContextModule[];
 }
+
+export type PlantUMLSpacing = "compact" | "cozy" | "spacious";
+
+const spacingPresets: Record<PlantUMLSpacing, { nodesep: number; ranksep: number }> = {
+    compact: { nodesep: 40, ranksep: 45 },
+    cozy: { nodesep: 65, ranksep: 80 },
+    spacious: { nodesep: 100, ranksep: 130 },
+};
+
+export interface PlantUMLNatureLegendEntry {
+    color: string;
+    label: string;
+}
+
+/**
+ * Nature → color mapping rendered by the generator, exposed so the editor can
+ * draw a matching legend. Kinds use the full tone; their subtypes use a lighter
+ * tone of the same hue.
+ */
+export const plantUMLNatureLegend: PlantUMLNatureLegendEntry[] = [
+    { color: COLORS.TEAL, label: "Object" },
+    { color: COLORS.PINK, label: "Functional complex · Collective · Quantity" },
+    { color: COLORS.GREEN, label: "Relator" },
+    { color: COLORS.BLUE, label: "Quality · Mode" },
+    { color: COLORS.YELLOW, label: "Event" },
+    { color: COLORS.ORANGE, label: "Situation" },
+    { color: COLORS.PURPLE, label: "Type (high-order)" },
+    { color: COLORS.WHITE, label: "Abstract individual" },
+    { color: COLORS.GREY, label: "Unspecified nature" },
+];
 
 export type PlantUMLLayoutVariant =
     | "default"
@@ -96,23 +145,43 @@ export type PlantUMLSource = Model | ContextModule | ContextModule[] | AstNode;
 export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions = { showExternalReferences: true, orthogonal: false }): string {
     const contextModules = getPlantUMLContextModules(model);
     const focusedModule = isContextModule(model) ? model : undefined;
+    const sizeByDegree = options.sizeByDegree ?? true;
     const renderContext: PlantUMLRenderContext = {
         qualifyAllModules: contextModules.length > 1,
         includedModules: new Set(contextModules),
+        focusedModule,
+        aliases: new Map(),
+        usedAliases: new Set(),
+        showPackageNames: options.showPackageNames ?? true,
+        groupExternalPackages: options.groupExternalPackages ?? true,
+        showAttributes: options.showAttributes ?? true,
+        showColors: options.showColors ?? true,
+        relationDegrees: sizeByDegree ? computeRelationDegrees(contextModules) : new Map(),
     };
 
-    let puml = "@startuml\n";
-    puml += "set separator none\n";
-    puml += getPlantUMLLayoutDirectives(getPlantUMLLayoutVariant(options));
-    puml += "skinparam classAttributeIconSize 0\n";
-    puml += "hide empty members\n";
-    puml += "skinparam nodesep 50\n";
-    puml += "skinparam ranksep 50\n";
-    puml += "skinparam backgroundColor white\n";
-    puml += "hide circle\n";
+    const spacing = spacingPresets[options.spacing ?? "cozy"];
+
+    let header = "@startuml\n";
+    header += "set separator none\n";
+    header += getPlantUMLLayoutDirectives(getPlantUMLLayoutVariant(options));
+    header += "skinparam classAttributeIconSize 0\n";
+    header += "hide empty members\n";
+    header += `skinparam nodesep ${spacing.nodesep}\n`;
+    header += `skinparam ranksep ${spacing.ranksep}\n`;
+    header += "skinparam backgroundColor white\n";
+    header += "hide circle\n";
 
     const externalElements = new Set<ClassDeclaration>();
+    // Qualified names (e.g. "ufo::Entity") referenced but never resolved to an AST node.
+    const externalLooseNames = new Set<string>();
     const generatedRelations = new Set<ElementRelation>();
+
+    // Declarations and relations are buffered separately so that every element is
+    // declared (and parented into its package box) BEFORE any relation references it.
+    // Otherwise PlantUML implicitly creates the element at top level on first mention
+    // and never moves it into its package container.
+    let declarations = "";
+    let relations = "";
 
     function traverse(element: PlantUMLSource) {
         if (Array.isArray(element)) {
@@ -131,8 +200,26 @@ export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions
 
                 const sortedClasses = sortClasses(classes);
 
+                // Declarations, optionally grouped inside a package box.
+                const boxed = isModuleBoxed(element, renderContext);
+                if (boxed) {
+                    declarations += `package ${quotePlantUMLName(element.name)} {\n`;
+                }
                 for (const decl of sortedClasses) {
-                    puml += generateClass(decl, element, renderContext);
+                    declarations += generateClass(decl, element, renderContext);
+                }
+                for (const decl of others) {
+                    if (isDataType(decl)) {
+                        declarations += generateDataType(decl, element, renderContext);
+                    }
+                }
+                if (boxed) {
+                    declarations += "}\n";
+                }
+
+                // Relations and generalizations are buffered and emitted after every
+                // declaration so cross-package edges connect already-parented elements.
+                for (const decl of sortedClasses) {
                     // Generate generalizations
                     if (decl.specializationEndurants) {
                         for (const parentRef of decl.specializationEndurants) {
@@ -146,7 +233,7 @@ export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions
                                     const arrow = isExternal ? "<|----" : "<|--";
                                     const parentName = getDeclarationDisplayName(parentRef.ref, element, renderContext);
                                     const childName = getDeclarationDisplayName(decl, element, renderContext);
-                                    puml += `${quotePlantUMLName(parentName)} ${arrow} ${quotePlantUMLName(childName)}\n`;
+                                    relations += `${getPlantUMLReference(parentName, renderContext)} ${arrow} ${getPlantUMLReference(childName, renderContext)}\n`;
                                 }
                             } else if (parentRef.$refText) {
                                 // If we don't have the ref, we assume it might be external or unresolved.
@@ -155,8 +242,9 @@ export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions
                                 if (options.showExternalReferences) {
                                     // Unresolved refs are treated as external
                                     const parentName = formatReferenceText(parentRef.$refText);
+                                    recordLooseExternalName(externalLooseNames, parentName);
                                     const childName = getDeclarationDisplayName(decl, element, renderContext);
-                                    puml += `${quotePlantUMLName(parentName)} <|---- ${quotePlantUMLName(childName)}\n`;
+                                    relations += `${getPlantUMLReference(parentName, renderContext)} <|---- ${getPlantUMLReference(childName, renderContext)}\n`;
                                 }
                             }
                         }
@@ -164,16 +252,14 @@ export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions
                     // Generate inline relations
                     if (decl.references) {
                         decl.references.forEach((ref) => {
-                            puml += generateRelationOnce(ref, element, options, renderContext, generatedRelations, externalElements);
+                            relations += generateRelationOnce(ref, element, options, renderContext, generatedRelations, externalElements, externalLooseNames);
                         });
                     }
                 }
 
                 for (const decl of others) {
                     if (isElementRelation(decl)) {
-                        puml += generateRelationOnce(decl, element, options, renderContext, generatedRelations, externalElements);
-                    } else if (isDataType(decl)) {
-                        puml += generateDataType(decl, element, renderContext);
+                        relations += generateRelationOnce(decl, element, options, renderContext, generatedRelations, externalElements, externalLooseNames);
                     }
                 }
             }
@@ -185,25 +271,160 @@ export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions
     if (focusedModule && options.showExternalReferences) {
         const externalReferenceModules = options.externalReferenceModules ?? getSiblingContextModules(focusedModule);
         for (const relation of getIncomingExternalRelations(focusedModule, externalReferenceModules)) {
-            puml += generateRelationOnce(relation, focusedModule, options, renderContext, generatedRelations, externalElements);
+            relations += generateRelationOnce(relation, focusedModule, options, renderContext, generatedRelations, externalElements, externalLooseNames);
         }
     }
 
-    // Generate external elements
-    if (externalElements.size > 0) {
-        puml += "\n' External Elements\n";
+    // External element declarations, grouped into their own package boxes when enabled.
+    if (externalElements.size > 0 || externalLooseNames.size > 0) {
+        declarations += "\n' External Elements\n";
+        const fallbackModule = focusedModule ?? contextModules[0];
+        const groupExternal = renderContext.groupExternalPackages;
+
+        const resolvedByModule = new Map<ContextModule, ClassDeclaration[]>();
         for (const element of externalElements) {
-            puml += generateClass(element, focusedModule ?? contextModules[0], renderContext);
+            const list = resolvedByModule.get(element.$container) ?? [];
+            list.push(element);
+            resolvedByModule.set(element.$container, list);
+        }
+
+        // Unresolved references keyed by the package portion of their qualified name.
+        const looseByModule = new Map<string, string[]>();
+        for (const looseName of externalLooseNames) {
+            const moduleName = stripElementName(looseName);
+            if (!moduleName) {
+                continue;
+            }
+            const list = looseByModule.get(moduleName) ?? [];
+            list.push(looseName);
+            looseByModule.set(moduleName, list);
+        }
+
+        if (groupExternal) {
+            for (const [module, elements] of resolvedByModule) {
+                declarations += `package ${quotePlantUMLName(module.name)} {\n`;
+                for (const element of elements) {
+                    declarations += generateClass(element, fallbackModule, renderContext);
+                }
+                declarations += "}\n";
+            }
+            for (const [moduleName, looseNames] of looseByModule) {
+                declarations += `package ${quotePlantUMLName(moduleName)} {\n`;
+                for (const looseName of looseNames) {
+                    declarations += `class ${getPlantUMLDeclarationName(looseName, renderContext, true)}\n`;
+                }
+                declarations += "}\n";
+            }
+        } else {
+            for (const element of externalElements) {
+                declarations += generateClass(element, fallbackModule, renderContext);
+            }
+            for (const looseName of externalLooseNames) {
+                declarations += `class ${getPlantUMLDeclarationName(looseName, renderContext, !renderContext.qualifyAllModules)}\n`;
+            }
         }
     }
 
-    puml += "@enduml";
-    return puml;
+    return `${header}${declarations}${relations}@enduml`;
+}
+
+/** True when a module's elements should be wrapped in a `package` box. */
+function isModuleBoxed(module: ContextModule, renderContext: PlantUMLRenderContext): boolean {
+    if (module === renderContext.focusedModule) {
+        // The focused/main package is the subject of the view and is never boxed.
+        return false;
+    }
+    if (renderContext.includedModules.has(module)) {
+        return renderContext.showPackageNames;
+    }
+    return renderContext.groupExternalPackages;
+}
+
+/** Whether an element from the given module should display its short, unqualified name. */
+function shouldUseSimpleName(module: ContextModule | undefined, renderContext: PlantUMLRenderContext): boolean {
+    if (!module) {
+        return !renderContext.qualifyAllModules;
+    }
+    return module === renderContext.focusedModule
+        || isModuleBoxed(module, renderContext)
+        || !renderContext.qualifyAllModules;
+}
+
+function recordLooseExternalName(target: Set<string>, name: string): void {
+    if (name.includes("::")) {
+        target.add(name);
+    }
+}
+
+/** Returns the package portion of a `Module::Element` name, or "" when there is none. */
+function stripElementName(name: string): string {
+    const separator = name.lastIndexOf("::");
+    return separator > 0 ? name.slice(0, separator) : "";
 }
 
 interface PlantUMLRenderContext {
     qualifyAllModules: boolean;
     includedModules: Set<ContextModule>;
+    focusedModule: ContextModule | undefined;
+    aliases: Map<string, string>;
+    usedAliases: Set<string>;
+    showPackageNames: boolean;
+    groupExternalPackages: boolean;
+    showAttributes: boolean;
+    showColors: boolean;
+    relationDegrees: Map<ClassDeclaration, number>;
+}
+
+/** Counts how many relations and generalizations touch each class so hub nodes can be enlarged. */
+function computeRelationDegrees(contextModules: ContextModule[]): Map<ClassDeclaration, number> {
+    const degrees = new Map<ClassDeclaration, number>();
+    const bump = (node: AstNode | undefined) => {
+        if (node && isClassDeclaration(node)) {
+            degrees.set(node, (degrees.get(node) ?? 0) + 1);
+        }
+    };
+
+    for (const module of contextModules) {
+        for (const declaration of module.declarations) {
+            if (isClassDeclaration(declaration)) {
+                for (const parentRef of declaration.specializationEndurants) {
+                    bump(declaration);
+                    bump(parentRef.ref);
+                }
+                for (const relation of declaration.references) {
+                    bump(declaration);
+                    bump(relation.secondEnd?.ref);
+                }
+            } else if (isElementRelation(declaration)) {
+                bump(declaration.firstEnd?.ref);
+                bump(declaration.secondEnd?.ref);
+            }
+        }
+    }
+
+    return degrees;
+}
+
+/** Number of non-breaking spaces padded on each side of a label to widen its box. */
+function paddingForDegree(degree: number): number {
+    if (degree >= 7) {
+        return 8;
+    }
+    if (degree >= 5) {
+        return 5;
+    }
+    if (degree >= 3) {
+        return 3;
+    }
+    return 0;
+}
+
+function padLabel(label: string, pad: number): string {
+    if (pad <= 0) {
+        return label;
+    }
+    const spacer = " ".repeat(pad);
+    return `${spacer}${label}${spacer}`;
 }
 
 function getPlantUMLContextModules(model: PlantUMLSource): ContextModule[] {
@@ -256,22 +477,26 @@ function sortClasses(classes: ClassDeclaration[]): ClassDeclaration[] {
 
 function generateClass(element: ClassDeclaration, currentModule: ContextModule | undefined, renderContext: PlantUMLRenderContext): string {
     const elementName = getDeclarationDisplayName(element, currentModule, renderContext);
-    let classDef = `class ${quotePlantUMLName(elementName)}`;
+    const useSimpleName = shouldUseSimpleName(element.$container, renderContext);
+    const pad = paddingForDegree(renderContext.relationDegrees.get(element) ?? 0);
+    let classDef = `class ${getPlantUMLDeclarationName(elementName, renderContext, useSimpleName, pad)}`;
     const stereotype = element.classElementType?.ontologicalCategory;
     if (stereotype) {
         classDef += ` <<${stereotype}>>`;
     }
 
-    const color = getColor(element);
-    if (color) {
-        classDef += ` ${color}`;
+    if (renderContext.showColors) {
+        const color = getColor(element);
+        if (color) {
+            classDef += ` ${color}`;
+        }
     }
 
     classDef += " {\n";
 
-    if (element.attributes) {
+    if (renderContext.showAttributes && element.attributes) {
         for (const attr of element.attributes) {
-            const typeName = getReferenceDisplayName(attr.attributeTypeRef?.ref, attr.attributeTypeRef?.$refText, currentModule, renderContext) || "Unknown";
+            const typeName = getAttributeTypeLabel(attr.attributeTypeRef?.ref, attr.attributeTypeRef?.$refText, currentModule, renderContext);
             classDef += `  ${attr.name} : ${typeName}\n`;
         }
     }
@@ -280,10 +505,22 @@ function generateClass(element: ClassDeclaration, currentModule: ContextModule |
     return classDef;
 }
 
+/** Attribute type labels always use the short type name (e.g. `number`, not `Tonto.BasicDataTypes::number`). */
+function getAttributeTypeLabel(
+    element: DataTypeOrClassOrRelation | undefined,
+    refText: string | undefined,
+    currentModule: ContextModule | undefined,
+    renderContext: PlantUMLRenderContext
+): string {
+    const typeName = getReferenceDisplayName(element, refText, currentModule, renderContext);
+    return typeName ? stripModuleQualifier(typeName) : "Unknown";
+}
+
 function generateDataType(element: DataType, currentModule: ContextModule | undefined, renderContext: PlantUMLRenderContext): string {
     const elementName = getDeclarationDisplayName(element, currentModule, renderContext);
+    const useSimpleName = shouldUseSimpleName(element.$container, renderContext);
     if (element.isEnum) {
-        let enumDef = `enum ${quotePlantUMLName(elementName)} <<enum>> {\n`;
+        let enumDef = `enum ${getPlantUMLDeclarationName(elementName, renderContext, useSimpleName)} <<enum>> {\n`;
         if (element.elements) {
             for (const item of element.elements) {
                 enumDef += `  ${item.name}\n`;
@@ -293,12 +530,12 @@ function generateDataType(element: DataType, currentModule: ContextModule | unde
         return enumDef;
     }
 
-    let classDef = `class ${quotePlantUMLName(elementName)} <<DataType>>`;
+    let classDef = `class ${getPlantUMLDeclarationName(elementName, renderContext, useSimpleName)} <<DataType>>`;
     classDef += " {\n";
 
-    if (element.attributes) {
+    if (renderContext.showAttributes && element.attributes) {
         for (const attr of element.attributes) {
-            const typeName = getReferenceDisplayName(attr.attributeTypeRef?.ref, attr.attributeTypeRef?.$refText, currentModule, renderContext) || "Unknown";
+            const typeName = getAttributeTypeLabel(attr.attributeTypeRef?.ref, attr.attributeTypeRef?.$refText, currentModule, renderContext);
             classDef += `  ${attr.name} : ${typeName}\n`;
         }
     }
@@ -313,18 +550,19 @@ function generateRelationOnce(
     options: PlantUMLOptions,
     renderContext: PlantUMLRenderContext,
     generatedRelations: Set<ElementRelation>,
-    externalElements?: Set<ClassDeclaration>
+    externalElements?: Set<ClassDeclaration>,
+    externalLooseNames?: Set<string>
 ): string {
     if (generatedRelations.has(element)) {
         return "";
     }
 
     generatedRelations.add(element);
-    let relationDefinition = generateRelation(element, currentModule, options, renderContext, externalElements);
+    let relationDefinition = generateRelation(element, currentModule, options, renderContext, externalElements, externalLooseNames);
 
     const inverseRelation = element.inverseEnd?.ref;
     if (options.showExternalReferences && inverseRelation && !generatedRelations.has(inverseRelation)) {
-        relationDefinition += generateRelationOnce(inverseRelation, currentModule, options, renderContext, generatedRelations, externalElements);
+        relationDefinition += generateRelationOnce(inverseRelation, currentModule, options, renderContext, generatedRelations, externalElements, externalLooseNames);
     }
 
     return relationDefinition;
@@ -387,7 +625,8 @@ function generateRelation(
     currentModule: ContextModule,
     options: PlantUMLOptions,
     renderContext: PlantUMLRenderContext,
-    externalElements?: Set<ClassDeclaration>
+    externalElements?: Set<ClassDeclaration>,
+    externalLooseNames?: Set<string>
 ): string {
     let sourceName: string | undefined;
     let sourceContainer: ContextModule | undefined;
@@ -439,12 +678,23 @@ function generateRelation(
         }
     }
 
-    const sourceCard = element.firstCardinality ?
+    // Record unresolved external ends so they get a declaration inside a package box.
+    if (externalLooseNames) {
+        if (element.firstEnd && !element.firstEnd.ref && element.firstEnd.$refText) {
+            recordLooseExternalName(externalLooseNames, sourceName);
+        }
+        if (element.secondEnd && !element.secondEnd.ref && element.secondEnd.$refText) {
+            recordLooseExternalName(externalLooseNames, targetName);
+        }
+    }
+
+    const showCardinalities = options.showCardinalities ?? true;
+    const sourceCard = showCardinalities && element.firstCardinality ?
         (element.firstCardinality.upperBound !== undefined ? `"${element.firstCardinality.lowerBound}..${element.firstCardinality.upperBound}"` : `"${element.firstCardinality.lowerBound}"`) : "";
-    const targetCard = element.secondCardinality ?
+    const targetCard = showCardinalities && element.secondCardinality ?
         (element.secondCardinality.upperBound !== undefined ? `"${element.secondCardinality.lowerBound}..${element.secondCardinality.upperBound}"` : `"${element.secondCardinality.lowerBound}"`) : "";
 
-    const relationName = getRelationLabel(element);
+    const relationName = (options.showRelationNames ?? true) ? getRelationLabel(element) : "";
 
     // Use longer arrows for external references to push them away.
     const dash = isExternal ? "----" : "--";
@@ -460,7 +710,7 @@ function generateRelation(
         arrow = `${dash}o`;
     }
 
-    return `${quotePlantUMLName(sourceName)} ${sourceCard} ${arrow} ${targetCard} ${quotePlantUMLName(targetName)} ${relationName}\n`;
+    return `${getPlantUMLReference(sourceName, renderContext)} ${sourceCard} ${arrow} ${targetCard} ${getPlantUMLReference(targetName, renderContext)} ${relationName}\n`;
 }
 
 function getReferenceDisplayName(
@@ -505,6 +755,75 @@ function formatReferenceText(refText: string): string {
 
 function quotePlantUMLName(name: string): string {
     return `"${name.replaceAll("\"", "\\\"")}"`;
+}
+
+function getPlantUMLDeclarationName(name: string, renderContext: PlantUMLRenderContext, useSimpleName: boolean, pad = 0): string {
+    // When an element is shown inside its package box (or is the focused package),
+    // the label only needs the simple name. Otherwise we keep the `Module::`
+    // qualifier so loose cross-package elements stay unambiguous.
+    const displayName = padLabel(useSimpleName ? stripModuleQualifier(name) : name, pad);
+    // A padded display name differs from the identity, so the element must carry an
+    // alias (its code name) for references to keep resolving to the same node.
+    const alias = pad > 0 ? ensureAlias(name, renderContext) : getPlantUMLAlias(name, renderContext);
+    return alias ? `${alias} as ${quotePlantUMLName(displayName)}` : quotePlantUMLName(displayName);
+}
+
+function stripModuleQualifier(name: string): string {
+    const separator = name.lastIndexOf("::");
+    return separator >= 0 ? name.slice(separator + 2) : name;
+}
+
+function getPlantUMLReference(name: string, renderContext: PlantUMLRenderContext): string {
+    return getPlantUMLAlias(name, renderContext) ?? quotePlantUMLName(name);
+}
+
+function getPlantUMLAlias(name: string, renderContext: PlantUMLRenderContext): string | undefined {
+    const existingAlias = renderContext.aliases.get(name);
+    if (existingAlias) {
+        return existingAlias;
+    }
+
+    if (isSafePlantUMLIdentifier(name)) {
+        return undefined;
+    }
+
+    return createAlias(name, renderContext);
+}
+
+/** Like getPlantUMLAlias but always returns an alias, even for otherwise-safe names. */
+function ensureAlias(name: string, renderContext: PlantUMLRenderContext): string {
+    return renderContext.aliases.get(name) ?? createAlias(name, renderContext);
+}
+
+function createAlias(name: string, renderContext: PlantUMLRenderContext): string {
+    const baseAlias = toPlantUMLAlias(name);
+    let alias = baseAlias;
+    let suffix = 2;
+    while (renderContext.usedAliases.has(alias)) {
+        alias = `${baseAlias}_${suffix}`;
+        suffix += 1;
+    }
+
+    renderContext.aliases.set(name, alias);
+    renderContext.usedAliases.add(alias);
+    return alias;
+}
+
+function isSafePlantUMLIdentifier(name: string): boolean {
+    return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+}
+
+function toPlantUMLAlias(name: string): string {
+    const normalized = name
+        .replace(/[^A-Za-z0-9_]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "");
+
+    if (!normalized) {
+        return "plantuml_element";
+    }
+
+    return /^[A-Za-z_]/.test(normalized) ? normalized : `_${normalized}`;
 }
 
 function getRelationLabel(element: ElementRelation): string {

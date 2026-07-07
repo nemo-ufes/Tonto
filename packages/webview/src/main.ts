@@ -19,8 +19,8 @@ import { Container } from "inversify";
 import "reflect-metadata";
 import { configureModelElement } from "sprotty";
 import { SprottyDiagramIdentifier } from "sprotty-vscode-webview";
-import { PaletteButton } from "../../sprotty-vscode-webview/src/lsp/editing/code-action-popup-palette";
-import { SprottyLspEditStarter } from "../../sprotty-vscode-webview/src/lsp/editing/sprotty-lsp-edit-starter";
+import { PaletteButton } from "sprotty-vscode-webview/lib/lsp/editing/code-action-popup-palette.js";
+import { SprottyLspEditStarter } from "sprotty-vscode-webview/lib/lsp/editing/sprotty-lsp-edit-starter.js";
 import { createTontoDiagramContainer } from "./di.config";
 import { PaletteButtonView } from "./html-views";
 

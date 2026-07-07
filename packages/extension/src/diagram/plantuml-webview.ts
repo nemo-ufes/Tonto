@@ -37,6 +37,7 @@ export interface PlantUMLPanelOptions {
 
 type PlantUMLIncomingMessage =
     | { command: 'downloadCode' }
+    | { command: 'downloadSvg' }
     | { command: 'downloadPng' }
     | { command: 'setOption'; key: PlantUMLBooleanOption; value: boolean }
     | { command: 'resetOptions' }
@@ -68,8 +69,11 @@ export class PlantUMLPanel {
                     case 'downloadCode':
                         await this.downloadCode();
                         break;
+                    case 'downloadSvg':
+                        await this.downloadImage('svg');
+                        break;
                     case 'downloadPng':
-                        await this.downloadPng();
+                        await this.downloadImage('png');
                         break;
                     case 'setOption':
                         vscode.commands.executeCommand('tonto.diagram.plantuml.setOption', message.key, message.value);
@@ -138,13 +142,14 @@ export class PlantUMLPanel {
         }
     }
 
-    private async downloadPng() {
+    private async downloadImage(format: 'svg' | 'png') {
         const encoded = plantumlEncoder.encode(this._currentPlantUML);
-        const imageUrl = `https://www.plantuml.com/plantuml/png/${encoded}`;
+        const imageUrl = `https://www.plantuml.com/plantuml/${format}/${encoded}`;
+        const filterLabel = format.toUpperCase();
 
         const uri = await vscode.window.showSaveDialog({
-            defaultUri: vscode.Uri.joinPath(this._defaultSaveDirectory, `${this._defaultBaseName}.png`),
-            filters: { 'PNG': ['png'] }
+            defaultUri: vscode.Uri.joinPath(this._defaultSaveDirectory, `${this._defaultBaseName}.${format}`),
+            filters: { [filterLabel]: [format] }
         });
 
         if (uri) {
@@ -156,7 +161,7 @@ export class PlantUMLPanel {
                 await vscode.workspace.fs.writeFile(uri, new Uint8Array(buffer));
                 vscode.window.showInformationMessage(`Saved Diagram to ${uri.fsPath}`);
             } catch (e) {
-                vscode.window.showErrorMessage(`Error downloading PNG: ${e}`);
+                vscode.window.showErrorMessage(`Error downloading ${filterLabel}: ${e}`);
             }
         }
     }
@@ -748,6 +753,7 @@ export class PlantUMLPanel {
                             <span class="panel-title">Export</span>
                             <div class="export-actions">
                                 <button id="downloadCode" title="Save PlantUML source">.puml</button>
+                                <button id="downloadSvg" title="Save rendered SVG (vector, no quality loss)">.svg</button>
                                 <button id="downloadPng" title="Save rendered PNG">.png</button>
                             </div>
                             <button id="resetOptions" class="reset-btn" title="Restore all options to their defaults">Reset to defaults</button>
@@ -963,6 +969,9 @@ export class PlantUMLPanel {
                     vscode.postMessage({ command: 'downloadCode' });
                 });
 
+                document.getElementById('downloadSvg').addEventListener('click', () => {
+                    vscode.postMessage({ command: 'downloadSvg' });
+                });
                 document.getElementById('downloadPng').addEventListener('click', () => {
                     vscode.postMessage({ command: 'downloadPng' });
                 });

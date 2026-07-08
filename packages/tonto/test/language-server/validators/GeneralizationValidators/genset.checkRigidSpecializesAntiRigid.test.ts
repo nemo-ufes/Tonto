@@ -1,5 +1,5 @@
 import { EmptyFileSystem } from "langium";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTontoServices } from "../../../../src/language/tonto-module.js";
 import { validationHelper } from "../../../../src/test/tonto-test.js";
 
@@ -8,6 +8,7 @@ describe("GeneralizationValidator.checkRigidSpecializesAntiRigid", () => {
   const validate = validationHelper(services.Tonto);
 
   it("should produce error when rigid specific specializes anti-rigid general in genset", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const stub = `
     package TestPackage
     kind Person
@@ -22,6 +23,8 @@ describe("GeneralizationValidator.checkRigidSpecializesAntiRigid", () => {
       (d) => d.message.includes("rigid/semi-rigid specializing an anti-rigid")
     );
     expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(consoleError.mock.calls.flat().join("\n")).not.toContain("RangeError");
+    consoleError.mockRestore();
   });
 
   it("should produce no error when anti-rigid specific specializes rigid general in genset", async () => {

@@ -24,6 +24,8 @@ import { vetvisitsTontoFile } from '../../templates/tonto/vetvisits.js';
 
 interface InitOptions {
     catDogExample?: boolean;
+    destination?: string;
+    guidance?: string;
     template?: string;
 }
 
@@ -317,6 +319,11 @@ export function buildInitManifest(answers: InitManifestAnswers): TontoManifest {
 }
 
 async function initAction(options: InitOptions) {
+    if (options.destination || options.template || options.guidance) {
+        initializeNonInteractiveProject(options);
+        return;
+    }
+
     console.log(chalk.cyan('[Tonto: Init new project command]'));
     console.log(chalk.blue('initAction started'));
     console.log(chalk.blue(`options: ${JSON.stringify(options)}`));
@@ -500,9 +507,67 @@ function copyTemplate(templateContent: string, destinationDir: string, destinati
 export function initCommand(): Command {
     const init = new Command('init');
     init.description('Init a new Tonto project with interactive template selection')
+        .option('-d, --destination <dir>', 'Destination directory for the new project')
+        .option('-t, --template <template>', 'Template to use (blank or cat-dog)')
+        .option('-g, --guidance <target>', 'Guidance target (cursor, vscode, codex, claude, google, or all)')
         .option('--cat-dog-example', 'Initialize a project with a Cat and Dog example (legacy option).')
         .action(initAction);
     return init;
+}
+
+function initializeNonInteractiveProject(options: InitOptions): void {
+    const projectPath = path.resolve(options.destination ?? 'tonto-project');
+    if (fs.existsSync(projectPath)) {
+        throw new Error(`Project destination already exists: ${projectPath}`);
+    }
+
+    const projectName = path.basename(projectPath);
+    const template = parseTemplateOption(options.template ?? (options.catDogExample ? 'cat-dog' : 'blank'));
+    const guidanceTarget = parseGuidanceTargetOption(options.guidance ?? 'all');
+    const destinationParent = path.dirname(projectPath);
+    const projectFiles = buildInitProjectFiles(projectName, { template });
+
+    for (const projectFile of projectFiles) {
+        if (!shouldIncludeTemplatePathForGuidanceTarget(guidanceTarget, projectFile.relativePath)) {
+            continue;
+        }
+
+        const targetPath = path.join(destinationParent, projectFile.relativePath);
+        if (projectFile.type === 'dir') {
+            fs.mkdirSync(targetPath, { recursive: true });
+            continue;
+        }
+
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        fs.writeFileSync(targetPath, projectFile.content ?? '', 'utf-8');
+    }
+
+    console.log(chalk.green(`Tonto project created successfully at ${projectPath}`));
+}
+
+function parseTemplateOption(value: string): 'blank' | 'cat-dog' {
+    const normalizedValue = value.trim().toLowerCase();
+    if (normalizedValue === 'blank' || normalizedValue === 'cat-dog') {
+        return normalizedValue;
+    }
+    throw new Error(`Unsupported template '${value}'. Use blank or cat-dog.`);
+}
+
+function parseGuidanceTargetOption(value: string): GuidanceTargetChoice {
+    const normalizedValue = value.trim().toLowerCase();
+    if (
+        normalizedValue === 'cursor'
+        || normalizedValue === 'vscode'
+        || normalizedValue === 'codex'
+        || normalizedValue === 'claude'
+        || normalizedValue === 'google'
+        || normalizedValue === 'all'
+    ) {
+        return normalizedValue;
+    }
+    throw new Error(
+        `Unsupported guidance target '${value}'. Use cursor, vscode, codex, claude, google, or all.`
+    );
 }
 
 // Build list of files and directories to create for an init project without performing IO

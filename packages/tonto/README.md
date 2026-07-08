@@ -47,7 +47,7 @@ npm run build --workspace=tonto-cli
 
 | Command | Purpose |
 |---|---|
-| `tonto-cli init` | Initialize a new Tonto project. Use `--destination <dir>` and `--template <template>` for non-interactive setup. |
+| `tonto-cli init` | Initialize a new Tonto project. Use `--destination <dir>`, `--template <blank|cat-dog>`, and `--guidance <target>` for non-interactive setup. |
 | `tonto-cli generate <dir>` | Generate OntoUML JSON from a project. Use `--destination <dir>` to choose the output folder. |
 | `tonto-cli generateSingle <file>` | Generate JSON from a single `.tonto` file. |
 | `tonto-cli import <file>` | Generate a Tonto project from an OntoUML JSON file. |

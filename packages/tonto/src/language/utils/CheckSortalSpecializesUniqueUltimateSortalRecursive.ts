@@ -26,11 +26,16 @@ const checkSortalSpecializesUniqueUltimateSortalRecursive = (
     actualElement: ClassDeclaration | GeneralizationSet,
     genSets: GeneralizationSet[],
     accept: ValidationAcceptor,
-    UltimateSortalSpecializedSet: Set<string>
+    UltimateSortalSpecializedSet: Set<string>,
+    visitedElements = new Set<ClassDeclaration | GeneralizationSet>()
 ): Set<string> => {
     if (UltimateSortalSpecializedSet.size >= 2) {
         return UltimateSortalSpecializedSet;
     }
+    if (visitedElements.has(actualElement)) {
+        return UltimateSortalSpecializedSet;
+    }
+    visitedElements.add(actualElement);
     /**
    * If the element is a ClassDeclaration, then we need to check its specialization items. And we need
    * also to check all generalization sets where this class is the specific
@@ -51,7 +56,8 @@ const checkSortalSpecializesUniqueUltimateSortalRecursive = (
                     specItem,
                     genSets,
                     accept,
-                    UltimateSortalSpecializedSet
+                    UltimateSortalSpecializedSet,
+                    visitedElements
                 );
             }
         });
@@ -62,7 +68,8 @@ const checkSortalSpecializesUniqueUltimateSortalRecursive = (
                 genSet,
                 genSets,
                 accept,
-                UltimateSortalSpecializedSet
+                UltimateSortalSpecializedSet,
+                visitedElements
             );
         });
     } else if (actualElement.$type === "GeneralizationSet") {
@@ -88,7 +95,8 @@ const checkSortalSpecializesUniqueUltimateSortalRecursive = (
                     specItem,
                     genSets,
                     accept,
-                    UltimateSortalSpecializedSet
+                    UltimateSortalSpecializedSet,
+                    visitedElements
                 );
             }
         });
@@ -100,7 +108,8 @@ const checkSortalSpecializesUniqueUltimateSortalRecursive = (
                 genSet,
                 genSets,
                 accept,
-                UltimateSortalSpecializedSet
+                UltimateSortalSpecializedSet,
+                visitedElements
             );
         });
     }

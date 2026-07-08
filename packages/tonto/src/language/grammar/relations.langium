@@ -73,7 +73,6 @@ RelationStereotype returns string:
 	'participation' |
 	'historicalDependence' |
 	'creation' |
-	'manifestation' |
 	'bringsAbout' |
 	'triggers' |
 	'composition' |

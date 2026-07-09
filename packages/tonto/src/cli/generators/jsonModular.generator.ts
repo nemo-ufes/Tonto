@@ -7,25 +7,31 @@ import { JSON_GENERATION_STEPS, normalizeJsonGenerationError } from "../requests
 import { serializeProject } from "../utils/serializeProject.js";
 import { ModularGeneratorContext, parseProjectModular } from "../utils/parseProjectModular.js";
 
+type JSONModularGeneratorContext = ModularGeneratorContext & {
+    destination?: string;
+};
+
 export function generateJSONFileModular(
     models: Model[],
     tontoManifest: TontoManifest,
     folderAbsolutePath: string,
     label?: string,
-    description?: string
+    description?: string,
+    destination?: string
 ): string {
-    const ctx: ModularGeneratorContext = {
+    const ctx: JSONModularGeneratorContext = {
         models,
         manifest: tontoManifest,
         fileNode: new CompositeGeneratorNode(),
         folderAbsolutePath,
         label,
         description,
+        destination,
     };
     return generate(ctx);
 }
 
-function generate(ctx: ModularGeneratorContext): string {
+function generate(ctx: JSONModularGeneratorContext): string {
     /**
    * First we need to parse the project and create all elements
    */
@@ -44,7 +50,9 @@ function generate(ctx: ModularGeneratorContext): string {
     /**
    * Now, we convert the project to JSON and save it to a file
    */
-    const destinationFolder = path.join(ctx.folderAbsolutePath, ctx.manifest.outFolder);
+    const destinationFolder = ctx.destination
+        ? path.resolve(ctx.destination)
+        : path.join(ctx.folderAbsolutePath, ctx.manifest.outFolder);
     const destinationFile = path.join(destinationFolder, project.name.getText() + ".json");
 
     const projectSerialization = (() => {

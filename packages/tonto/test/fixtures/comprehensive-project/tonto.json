@@ -1,0 +1,11 @@
+{
+  "projectName": "comprehensive-grammar",
+  "displayName": "Comprehensive Grammar Fixture",
+  "description": "Exercises the complete public Tonto grammar and CLI generation paths.",
+  "publisher": "tonto-tests",
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {},
+  "outFolder": "out",
+  "authors": []
+}

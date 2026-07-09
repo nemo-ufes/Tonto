@@ -287,7 +287,9 @@ export class PlantUMLPanel {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://www.plantuml.com data:; script-src 'nonce-${nonce}'; style-src 'unsafe-inline' ${cspSource};">
+
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://www.plantuml.com data:; connect-src https://www.plantuml.com; script-src 'nonce-${nonce}'; style-src 'unsafe-inline' ${cspSource};">
+
             <title>Tonto PlantUML</title>
             <style>
                 :root {
@@ -556,7 +558,6 @@ export class PlantUMLPanel {
                     transform-origin: 0 0;
                     box-shadow: var(--shadow);
                     background: white;
-                    transition: transform 120ms ease-out;
                     will-change: transform;
                 }
                 .loading,
@@ -763,7 +764,7 @@ export class PlantUMLPanel {
                 <div id="viewport" class="viewport">
                     <div id="loading" class="loading">Loading PlantUML render...</div>
                     <div id="error" class="error" hidden>PlantUML render failed.</div>
-                    <img id="diagram" class="diagram" src="${imageUrl}" alt="PlantUML diagram" draggable="false" hidden>
+                    <div id="diagram" class="diagram" data-src="${imageUrl}" role="img" aria-label="PlantUML diagram" hidden></div>
                     <div id="legendDock" class="legend-dock"${state.showColors ? '' : ' hidden'}>
                         <div id="legendCard" class="legend-card" hidden>
                             <div class="legend-title">Nature colors</div>
@@ -783,7 +784,7 @@ export class PlantUMLPanel {
                 const vscode = acquireVsCodeApi();
                 const persisted = vscode.getState() || {};
                 const viewport = document.getElementById('viewport');
-                const img = document.getElementById('diagram');
+                const diagram = document.getElementById('diagram');
                 const loading = document.getElementById('loading');
                 const error = document.getElementById('error');
                 const scaleLabel = document.getElementById('scale');
@@ -801,18 +802,24 @@ export class PlantUMLPanel {
                     vscode.setState(persisted);
                 }
 
-                function setTransform(animate = true) {
+                function setTransform() {
                     saveState({ scale, translateX, translateY });
-                    img.style.transitionDuration = animate ? '120ms' : '0ms';
-                    img.style.transform = \`translate(\${translateX}px, \${translateY}px) scale(\${scale})\`;
+                    // Zoom by resizing the SVG box (the vector re-renders crisply at
+                    // every scale) and use the CSS transform only to pan. Scaling via
+                    // 'transform: scale()' would make Chromium rasterize the layer once
+                    // and stretch that bitmap, blurring the diagram like a PNG.
+                    // Size and translate are applied together with no transition so
+                    // they stay in sync and zoom-to-cursor lands exactly.
+                    diagram.style.width = (naturalSize.width * scale) + 'px';
+                    diagram.style.height = (naturalSize.height * scale) + 'px';
+                    diagram.style.transform = \`translate(\${translateX}px, \${translateY}px)\`;
                     scaleLabel.textContent = \`\${Math.round(scale * 100)}%\`;
                 }
 
+                let naturalSize = { width: 1, height: 1 };
+
                 function imageSize() {
-                    return {
-                        width: img.naturalWidth || img.width || 1,
-                        height: img.naturalHeight || img.height || 1,
-                    };
+                    return naturalSize;
                 }
 
                 function fitDiagram() {
@@ -848,27 +855,50 @@ export class PlantUMLPanel {
                     setTransform();
                 }
 
-                img.addEventListener('load', () => {
-                    loading.hidden = true;
-                    error.hidden = true;
-                    img.hidden = false;
-                    // Preserve the user's zoom/pan across option changes (the panel
-                    // rebuilds the view), but fit on the very first render.
-                    if (typeof persisted.scale === 'number') {
-                        scale = persisted.scale;
-                        translateX = persisted.translateX || 0;
-                        translateY = persisted.translateY || 0;
-                        setTransform(false);
-                    } else {
-                        fitDiagram();
+                // Inline the SVG markup instead of pointing an <img> at it:
+                // Chromium rasterizes SVGs loaded through <img> at layout size,
+                // so zooming scales a cached bitmap and blurs like a PNG.
+                async function loadDiagram() {
+                    try {
+                        const response = await fetch(diagram.dataset.src);
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        diagram.innerHTML = await response.text();
+                        const svg = diagram.querySelector('svg');
+                        if (!svg) throw new Error('Response contained no SVG');
+                        const viewBox = svg.viewBox.baseVal;
+                        naturalSize = {
+                            width: (svg.width.baseVal && svg.width.baseVal.value) || (viewBox && viewBox.width) || 1,
+                            height: (svg.height.baseVal && svg.height.baseVal.value) || (viewBox && viewBox.height) || 1,
+                        };
+                        // Let the SVG fill its box so it re-renders at the box size.
+                        if (!viewBox || !viewBox.width) {
+                            svg.setAttribute('viewBox', \`0 0 \${naturalSize.width} \${naturalSize.height}\`);
+                        }
+                        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                        svg.style.width = '100%';
+                        svg.style.height = '100%';
+                        svg.style.display = 'block';
+                        loading.hidden = true;
+                        error.hidden = true;
+                        diagram.hidden = false;
+                        // Preserve the user's zoom/pan across option changes (the panel
+                        // rebuilds the view), but fit on the very first render.
+                        if (typeof persisted.scale === 'number') {
+                            scale = persisted.scale;
+                            translateX = persisted.translateX || 0;
+                            translateY = persisted.translateY || 0;
+                            setTransform();
+                        } else {
+                            fitDiagram();
+                        }
+                    } catch (e) {
+                        loading.hidden = true;
+                        diagram.hidden = true;
+                        error.hidden = false;
                     }
-                });
+                }
 
-                img.addEventListener('error', () => {
-                    loading.hidden = true;
-                    img.hidden = true;
-                    error.hidden = false;
-                });
+                loadDiagram();
 
                 document.getElementById('zoomIn').addEventListener('click', () => {
                     zoomAt(scale * 1.2, viewport.clientWidth / 2, viewport.clientHeight / 2);
@@ -994,7 +1024,7 @@ export class PlantUMLPanel {
                     if (!panning) return;
                     translateX = event.clientX - startX;
                     translateY = event.clientY - startY;
-                    setTransform(false);
+                    setTransform();
                 });
 
                 viewport.addEventListener('wheel', (event) => {
@@ -1004,7 +1034,9 @@ export class PlantUMLPanel {
                 }, { passive: false });
 
                 window.addEventListener('resize', () => {
-                    if (!img.hidden) fitDiagram();
+                    // Keep the user's current zoom/pan on resize — refitting here
+                    // wiped their zoom whenever the panel was resized.
+                    if (!diagram.hidden) setTransform();
                 });
             </script>
         </body>

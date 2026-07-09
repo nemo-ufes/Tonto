@@ -1,7 +1,7 @@
 {
   "name": "tonto-package-manager",
   "displayName": "Tonto Package Manager",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A package manager for Tonto dependencies",
   "scripts": {
     "clean": "rimraf lib node_modules",
@@ -50,7 +50,7 @@
     "execa": "^5.1.1",
     "figlet": "^1.6.0",
     "ora": "^5.4.1",
-    "tonto-cli": "^0.4.12"
+    "tonto-cli": "^0.4.13"
   },
   "devDependencies": {
     "@types/figlet": "^1.5.6",

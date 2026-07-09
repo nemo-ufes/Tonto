@@ -1,4 +1,4 @@
-import { CompositeGeneratorNode } from "langium/generate";
+import { CompositeGeneratorNode, toString } from "langium/generate";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { OntoumlElement } from "ontouml-js";
@@ -56,7 +56,7 @@ function generate(ctx: GeneratorContext): string {
 
     try {
         const generatedFilePath = path.join(ctx.destination, ctx.fileName);
-        // fs.writeFileSync(generatedFilePath, isGeneratorNode(ctx.fileNode));
+        fs.writeFileSync(generatedFilePath, toString(ctx.fileNode));
         return generatedFilePath;
     } catch (error) {
         throw normalizeTontoGenerationError(

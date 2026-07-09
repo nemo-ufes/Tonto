@@ -4,6 +4,7 @@ import * as fs from "node:fs";
 import path from "node:path";
 import { Project, serializationUtils } from "ontouml-js";
 import { generateTontoFile } from "../../constructors/index.js";
+import { generateTontoFile as generateSingleTontoFile } from "../../tontoGenerator.js";
 import {
     createTontoGenerationError,
     formatTontoGenerationErrorMessage,
@@ -55,11 +56,20 @@ export const newImportCommand = async (opts: ImportOptions): Promise<void> => {
     importProject(opts);
 };
 
+export const newImportSingleCommand = async (opts: ImportOptions): Promise<string> => {
+    const project = loadImportProject(opts.fileName);
+    return generateSingleTontoFile(project.model.getAllPackages(), opts.fileName, opts.destination);
+};
+
 function importProject(opts: ImportOptions): string {
-    const data = readImportSource(opts.fileName);
-    validateImportSource(data, opts.fileName);
-    const project = parseImportProject(data, opts.fileName);
+    const project = loadImportProject(opts.fileName);
     return generateTontoFile(project, opts.fileName, opts.destination);
+}
+
+function loadImportProject(fileName: string): Project {
+    const data = readImportSource(fileName);
+    validateImportSource(data, fileName);
+    return parseImportProject(data, fileName);
 }
 
 function readImportSource(fileName: string): string {

@@ -2355,10 +2355,6 @@ export const TontoGrammar = (): Grammar => loadedTontoGrammar ?? (loadedTontoGra
           },
           {
             "$type": "Keyword",
-            "value": "manifestation"
-          },
-          {
-            "$type": "Keyword",
             "value": "bringsAbout"
           },
           {

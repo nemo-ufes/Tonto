@@ -1,0 +1,110 @@
+import SharedFoundation as Shared
+
+package Comprehensive
+
+datatype Code {
+  label { @en "Code" @pt-br "Codigo" }
+  description { @en "A reusable identifier." @pt-br "Um identificador reutilizavel." }
+  codeValue: string [1] { const }
+}
+
+datatype LocalizedCode of abstract-individuals specializes Code {
+  locale: string [0..1]
+}
+
+enum Priority specializes Code {
+  label { @en "Priority" }
+  description { @en "Allowed priority values." }
+  Low, Medium, High
+}
+
+class UnspecifiedClass
+event Occurrence of events
+situation CurrentSituation of situations
+process ManufacturingProcess
+
+category EntityCategory of objects, functional-complexes, collectives, quantities, relators, intrinsic-modes, extrinsic-modes, qualities
+mixin EntityMixin of functional-complexes, collectives
+phaseMixin EntityPhaseMixin of functional-complexes
+roleMixin EntityRoleMixin of functional-complexes
+historicalRoleMixin EntityHistoricalRoleMixin of functional-complexes
+
+kind Person {
+  label { @en "Person" @pt-br "Pessoa" }
+  description { @en "A human person." @pt-br "Uma pessoa humana." }
+
+  plainAttribute: string
+  exactCardinality: number [1]
+  boundedCardinality: number [0..1]
+  anyCardinality: string [*]
+  openCardinality: string [1..*]
+  orderedAttribute: string { ordered }
+  constantAttribute: string { const }
+  derivedAttribute: string { derived }
+  fullyQualifiedAttribute: SharedFoundation.SharedIdentifier [0..*] { ordered const derived }
+  globalAttribute: GlobalTypes.GlobalIdentifier
+
+  ({ ordered, const, derived } owner) [1] -- baseRelation -- [0..*] (assets) Organization
+  [1] -- specializedRelation -- [0..*] ({ subsets assets, redefines assets } specializedAssets) Organization specializes baseRelation
+  <>-- aggregationRelation -- Organization
+  <o>-- compositionRelation -- Organization
+  -- inverseAggregationRelation --<> Organization
+  -- inverseCompositionRelation --<o> Organization
+}
+
+collective Team
+quantity WaterPortion
+quality ColorQuality
+mode AccessMode
+intrinsicMode PersonalBelief
+extrinsicMode SocialStatus
+relator Employment
+type PersonType of types
+powertype PersonPowertype
+
+kind PersonInstance (instanceOf PersonType)
+subkind AdultPerson specializes Person
+phase Child specializes Person
+phase Adult specializes Person
+role Employee specializes Person
+historicalRole FormerEmployee specializes Person
+
+kind Organization {
+  [0..*] -- employs -- [0..*] Person inverseOf Person.baseRelation
+}
+
+disjoint complete genset LifeStages {
+  general Person
+  categorizer PersonType
+  specifics Child, Adult
+}
+
+disjoint genset EmploymentStates where Employee, FormerEmployee specializes Person
+
+@material relation Person [1] -- materialRelation -- [*] Organization
+@derivation relation Person -- derivationRelation -- Organization
+@comparative relation Person -- comparativeRelation -- Organization
+@mediation relation Person -- mediationRelation -- Organization
+@characterization relation Person -- characterizationRelation -- Organization
+@externalDependence relation Person -- externalDependenceRelation -- Organization
+@componentOf relation Person -- componentOfRelation -- Organization
+@memberOf relation Person -- memberOfRelation -- Organization
+@subCollectionOf relation Person -- subCollectionOfRelation -- Organization
+@subQuantityOf relation Person -- subQuantityOfRelation -- Organization
+@instantiation relation Person -- instantiationRelation -- Organization
+@termination relation Person -- terminationRelation -- Organization
+@participational relation Person -- participationalRelation -- Organization
+@participation relation Person -- participationRelation -- Organization
+@historicalDependence relation Person -- historicalDependenceRelation -- Organization
+@creation relation Person -- creationRelation -- Organization
+@manifestation relation Person -- manifestationRelation -- Organization
+@bringsAbout relation Person -- bringsAboutRelation -- Organization
+@triggers relation Person -- triggersRelation -- Organization
+@composition relation Person -- compositionStereotypeRelation -- Organization
+@aggregation relation Person -- aggregationStereotypeRelation -- Organization
+@inherence relation Person -- inherenceRelation -- Organization
+@value relation Person -- valueRelation -- Organization
+@formal relation Person -- formalRelation -- Organization
+@constitution relation Person -- constitutionRelation -- Organization
+@customRelation relation Person -- customRelation -- Organization
+@"custom relation stereotype" relation Person -- quotedCustomRelation -- Organization

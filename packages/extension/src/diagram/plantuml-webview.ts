@@ -287,7 +287,9 @@ export class PlantUMLPanel {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://www.plantuml.com data:; connect-src https://www.plantuml.com; script-src 'nonce-${nonce}'; style-src 'unsafe-inline' ${cspSource};">
+
             <title>Tonto PlantUML</title>
             <style>
                 :root {
@@ -556,9 +558,6 @@ export class PlantUMLPanel {
                     transform-origin: 0 0;
                     box-shadow: var(--shadow);
                     background: white;
-                    /* No CSS transition: the box resizes instantly on zoom while
-                       the transform only translates. Animating the translate (but
-                       not the size) desynced them and made zoom-to-cursor drift. */
                     will-change: transform;
                 }
                 .loading,

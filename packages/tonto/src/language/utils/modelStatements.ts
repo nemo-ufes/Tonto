@@ -6,8 +6,16 @@ export function getModelStatements(model: Model): Statement[] {
 }
 
 export function getModelImports(model: Model): Import[] {
-    return getModelStatements(model)
-        .flatMap((statement) => statement.import ? [statement.import] : []);
+    const imports: Import[] = [];
+    for (const statement of getModelStatements(model)) {
+        if (statement.import) {
+            imports.push(statement.import);
+        }
+        if (statement.contextModule) {
+            imports.push(...statement.contextModule.imports);
+        }
+    }
+    return imports;
 }
 
 export function getModelContextModules(model: Model): ContextModule[] {

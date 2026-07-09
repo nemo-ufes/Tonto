@@ -2,13 +2,12 @@ import { Command } from "commander";
 import { TontoLanguageMetaData } from "../language/index.js";
 import { TontoActions } from "./actions/actions.js";
 import { addSkillCommand } from "./actions/commands/addSkillCommand.js";
+import { initCommand } from "./actions/commands/initCommand.js";
 
-export const cliVersion = "0.4.0";
+export const cliVersion = "0.4.13";
 
-export default function (): void {
+export function createCli(actions = new TontoActions()): Command {
     const program = new Command();
-
-    const actions = new TontoActions();
 
     program
         .name("tonto-cli")
@@ -30,8 +29,8 @@ export default function (): void {
             "<file>",
             `Generate on single file projects providing source file (possible file extensions: ${fileExtensions})`
         )
-        .option("-d", "--d <destination>", "Destination of generated JSON file")
-        .action(actions.generateAction)
+        .option("-d, --destination <dir>", "Destination of generated JSON file")
+        .action(actions.generateSingleAction)
         .description("Generate JSON from your project or a single file");
 
     program
@@ -45,8 +44,8 @@ export default function (): void {
         .command("importSingle")
         .argument("<file>", "source file (possible file extensions: json)")
         .option("-d, --destination <dir>", "destination directory of generating")
-        .description("generates a tonto file from a JSON file")
-        .action(actions.importAction);
+        .description("generates a single tonto file from a JSON file")
+        .action(actions.importSingleAction);
 
     // program
     //   .command("viewDiagram")
@@ -77,16 +76,14 @@ export default function (): void {
         .description("Generate PlantUML diagram source from your Tonto project")
         .action(actions.generatePlantUMLAction);
 
-    program
-        .command('init')
-        .description('Initialize a new Tonto project.')
-        .option("-d, --destination <dir>", "Destination directory of generating")
-        .option("-t, --template <template>", "Template to use for the project")
-        .action(actions.initAction);
-
+    program.addCommand(initCommand());
     program.addCommand(addSkillCommand());
 
-    program.parseAsync(process.argv);
+    return program;
+}
+
+export default async function main(argv = process.argv): Promise<void> {
+    await createCli().parseAsync(argv);
 }
 
 export * from "./actions/index.js";

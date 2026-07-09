@@ -13,83 +13,118 @@ import { createTpmInstallCommands } from "../commands/TpmInstallCommand.js";
 import { createValidationSatusBarItem } from "../commands/validationCommand.js";
 import { TontoFeature, TontoFeatureToggleController } from "../configuration/tonto-feature-toggles.js";
 import { activateDiagram } from "../diagram/activateDiagram.js";
+import { registerAutoOpenTontoDiagramPreview } from "../diagram-editor/auto-open-tontodiagram-preview.js";
 import { registerCreateTontoDiagramCommand } from "../diagram-editor/create-tontodiagram-command.js";
 import { registerTontoDiagramCompletionProvider } from "../diagram-editor/tontodiagram-completion-provider.js";
 import { TontoDiagramEditorProvider } from "../diagram-editor/tonto-diagram-editor-provider.js";
 import { setOutputChannel } from "./outputChannel.js";
 import { TontoLibraryFileSystemProvider } from "./TontoLibraryFileSystemProvider.js";
 
-// Commands to show inside the `tontoCommandsExplorer` view
-const TONTO_EXPLORER_COMMANDS = [
-    "tonto.generateJSON",
-    "tonto.generateTonto",
-    "tonto.transformModel",
-    "tonto.validateModel",
-    "tonto.tpm.install",
-    "tonto.initProject",
-    "tonto.addGuidances",
-    "tonto.addSkill",
-    "tonto.addSemanticTokenColors",
-    "tonto.diagram.plantuml.openProject",
+// Commands to show inside the `tontoCommandsExplorer` view, grouped by context
+interface TontoCommandDefinition {
+    id: string;
+    label: string;
+    icon: string;
+}
+
+interface TontoCommandGroup {
+    label: string;
+    icon: string;
+    commands: TontoCommandDefinition[];
+}
+
+const TONTO_COMMAND_GROUPS: TontoCommandGroup[] = [
+    {
+        label: "Project",
+        icon: "folder-library",
+        commands: [
+            { id: "tonto.initProject", label: "Init new Tonto project", icon: "new-folder" },
+            { id: "tonto.tpm.install", label: "Install Packages (TPM)", icon: "package" },
+        ],
+    },
+    {
+        label: "Model",
+        icon: "symbol-class",
+        commands: [
+            { id: "tonto.validateModel", label: "Validate Model", icon: "check" },
+        ],
+    },
+    {
+        label: "Transformations",
+        icon: "arrow-swap",
+        commands: [
+            { id: "tonto.generateJSON", label: "Transform Tonto -> JSON", icon: "json" },
+            { id: "tonto.generateTonto", label: "Transform JSON -> Tonto", icon: "file-code" },
+            { id: "tonto.transformModel", label: "Transform Tonto -> gUFO", icon: "globe" },
+        ],
+    },
+    {
+        label: "Diagrams",
+        icon: "type-hierarchy",
+        commands: [
+            { id: "tonto.diagram.plantuml.openProject", label: "Open Ontology PlantUML Diagram", icon: "symbol-structure" },
+        ],
+    },
+    {
+        label: "AI & LLMs",
+        icon: "sparkle",
+        commands: [
+            { id: "tonto.addGuidances", label: "Add Guidances to project (LLMs)", icon: "book" },
+            { id: "tonto.addSkill", label: "Add Tonto skill to project", icon: "lightbulb" },
+        ],
+    },
+    {
+        label: "Editor",
+        icon: "settings-gear",
+        commands: [
+            { id: "tonto.addSemanticTokenColors", label: "Add Semantic Token Colors", icon: "symbol-color" },
+        ],
+    },
 ];
 
 class TontoCommandItem extends vscode.TreeItem {
-    constructor(public override readonly id: string, label: string) {
-        super(label, vscode.TreeItemCollapsibleState.None);
+    constructor(public override readonly id: string, definition: TontoCommandDefinition) {
+        super(definition.label, vscode.TreeItemCollapsibleState.None);
         this.contextValue = "tontoCommand";
+        this.iconPath = new vscode.ThemeIcon(definition.icon);
         this.command = {
-            command: id,
-            title: label,
+            command: definition.id,
+            title: definition.label,
             arguments: [],
         };
     }
 }
 
-class TontoCommandsProvider implements vscode.TreeDataProvider<TontoCommandItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<TontoCommandItem | undefined | void> = new vscode.EventEmitter();
-    readonly onDidChangeTreeData: vscode.Event<TontoCommandItem | undefined | void> = this._onDidChangeTreeData.event;
+class TontoCommandGroupItem extends vscode.TreeItem {
+    constructor(public readonly group: TontoCommandGroup) {
+        super(group.label, vscode.TreeItemCollapsibleState.Collapsed);
+        this.contextValue = "tontoCommandGroup";
+        this.iconPath = new vscode.ThemeIcon(group.icon);
+    }
+}
 
-    getTreeItem(element: TontoCommandItem): vscode.TreeItem {
+type TontoCommandTreeItem = TontoCommandItem | TontoCommandGroupItem;
+
+class TontoCommandsProvider implements vscode.TreeDataProvider<TontoCommandTreeItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<TontoCommandTreeItem | undefined | void> = new vscode.EventEmitter();
+    readonly onDidChangeTreeData: vscode.Event<TontoCommandTreeItem | undefined | void> = this._onDidChangeTreeData.event;
+
+    getTreeItem(element: TontoCommandTreeItem): vscode.TreeItem {
         return element;
     }
 
-    getChildren(element?: TontoCommandItem): Thenable<TontoCommandItem[]> {
+    getChildren(element?: TontoCommandTreeItem): Thenable<TontoCommandTreeItem[]> {
+        if (element instanceof TontoCommandGroupItem) {
+            return Promise.resolve(element.group.commands.map(cmd => new TontoCommandItem(cmd.id, cmd)));
+        }
         if (element) {
             return Promise.resolve([]);
         }
-        const items = TONTO_EXPLORER_COMMANDS.map(cmd => new TontoCommandItem(cmd, this.titleFor(cmd)));
-        return Promise.resolve(items);
+        return Promise.resolve(TONTO_COMMAND_GROUPS.map(group => new TontoCommandGroupItem(group)));
     }
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
-    }
-
-    private titleFor(cmd: string): string {
-        switch (cmd) {
-            case "tonto.generateJSON":
-                return "Transform Tonto -> JSON";
-            case "tonto.generateTonto":
-                return "Transform JSON -> Tonto";
-            case "tonto.validateModel":
-                return "Validate Model";
-            case "tonto.transformModel":
-                return "Transform Tonto -> gUFO";
-            case "tonto.tpm.install":
-                return "Install Packages (TPM)";
-            case "tonto.initProject":
-                return "Init new Tonto project";
-            case "tonto.addGuidances":
-                return "Add Guidances to project (LLMs)";
-            case "tonto.addSkill":
-                return "Add Tonto skill to project";
-            case "tonto.addSemanticTokenColors":
-                return "Add Semantic Token Colors";
-            case "tonto.diagram.plantuml.openProject":
-                return "Open Ontology PlantUML Diagram";
-            default:
-                return cmd;
-        }
     }
 }
 
@@ -129,6 +164,7 @@ export function activate(context: vscode.ExtensionContext): void {
     featureToggles.registerFeature(TontoFeature.TontoDiagramVisualization, () => vscode.Disposable.from(
         registerCreateTontoDiagramCommand(),
         TontoDiagramEditorProvider.register(context),
+        registerAutoOpenTontoDiagramPreview(),
         registerTontoDiagramCompletionProvider(),
     ));
 
@@ -137,7 +173,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const commandsProvider = new TontoCommandsProvider();
     const treeView = vscode.window.createTreeView("tontoCommandsExplorer", {
         treeDataProvider: commandsProvider,
-        showCollapseAll: false,
+        showCollapseAll: true,
     });
     context.subscriptions.push(treeView);
 
@@ -145,7 +181,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // so the Commands view appears inside the `Tonto` view container.
     const treeViewSidebar = vscode.window.createTreeView("tontoCommands", {
         treeDataProvider: commandsProvider,
-        showCollapseAll: false,
+        showCollapseAll: true,
     });
     context.subscriptions.push(treeViewSidebar);
 

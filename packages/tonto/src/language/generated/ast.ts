@@ -197,7 +197,7 @@ export function isQualifiedName(item: unknown): item is QualifiedName {
 export type RelationStereotype = 'aggregation' | 'bringsAbout' | 'characterization' | 'comparative' | 'componentOf' | 'composition' | 'constitution' | 'creation' | 'derivation' | 'externalDependence' | 'formal' | 'historicalDependence' | 'inherence' | 'instantiation' | 'manifestation' | 'material' | 'mediation' | 'memberOf' | 'participation' | 'participational' | 'subCollectionOf' | 'subQuantityOf' | 'termination' | 'triggers' | 'value' | string;
 
 export function isRelationStereotype(item: unknown): item is RelationStereotype {
-    return item === 'material' || item === 'derivation' || item === 'comparative' || item === 'mediation' || item === 'characterization' || item === 'externalDependence' || item === 'componentOf' || item === 'memberOf' || item === 'subCollectionOf' || item === 'subQuantityOf' || item === 'instantiation' || item === 'termination' || item === 'participational' || item === 'participation' || item === 'historicalDependence' || item === 'creation' || item === 'manifestation' || item === 'bringsAbout' || item === 'triggers' || item === 'composition' || item === 'aggregation' || item === 'inherence' || item === 'value' || item === 'formal' || item === 'manifestation' || item === 'constitution' || (typeof item === 'string' && (/[_a-zA-Z][\w_\-~$#@/\d]*/.test(item) || /"[^"]*"|'[^']*'/.test(item)));
+    return item === 'material' || item === 'derivation' || item === 'comparative' || item === 'mediation' || item === 'characterization' || item === 'externalDependence' || item === 'componentOf' || item === 'memberOf' || item === 'subCollectionOf' || item === 'subQuantityOf' || item === 'instantiation' || item === 'termination' || item === 'participational' || item === 'participation' || item === 'historicalDependence' || item === 'creation' || item === 'bringsAbout' || item === 'triggers' || item === 'composition' || item === 'aggregation' || item === 'inherence' || item === 'value' || item === 'formal' || item === 'manifestation' || item === 'constitution' || (typeof item === 'string' && (/[_a-zA-Z][\w_\-~$#@/\d]*/.test(item) || /"[^"]*"|'[^']*'/.test(item)));
 }
 
 export type Sortal = 'historicalRole' | 'phase' | 'role' | 'subkind';
@@ -272,6 +272,7 @@ export interface ContextModule extends AstNode {
     readonly $container: Statement;
     readonly $type: 'ContextModule';
     declarations: Array<Declaration>;
+    imports: Array<Import>;
     isGlobal: boolean;
     name: QualifiedName;
 }
@@ -383,7 +384,7 @@ export function isGeneralizationSet(item: unknown): item is GeneralizationSet {
 }
 
 export interface Import extends AstNode {
-    readonly $container: Statement;
+    readonly $container: ContextModule | Statement;
     readonly $type: 'Import';
     packageAlias?: string;
     referencedModel: Reference<ContextModule>;
@@ -624,6 +625,7 @@ export class TontoAstReflection extends AbstractAstReflection {
                     name: ContextModule,
                     properties: [
                         { name: 'declarations', defaultValue: [] },
+                        { name: 'imports', defaultValue: [] },
                         { name: 'isGlobal', defaultValue: false },
                         { name: 'name' }
                     ]

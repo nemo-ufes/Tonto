@@ -3,7 +3,7 @@
     "displayName": "Tonto",
     "publisher": "lenke",
     "description": "Tonto is a DSL for creating OntoUML models",
-    "version": "0.4.11",
+    "version": "0.4.12",
     "license": "MIT",
     "type": "module",
     "repository": {
@@ -165,57 +165,57 @@
             "view/item/context": [
                 {
                     "command": "tonto.generateJSON",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.generateTonto",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.validateModel",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.transformModel",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.tpm.install",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.initProject",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.addGuidances",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.addSkill",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.addSemanticTokenColors",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.diagram.plantuml.open",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 },
                 {
                     "command": "tonto.diagram.plantuml.export",
-                    "when": "view == 'tontoCommandsExplorer' || view == 'tontoCommands'",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
                 }
             ]
@@ -427,8 +427,8 @@
         "sprotty-elk": "^1.2.0",
         "sprotty-vscode": "file:../sprotty-vscode",
         "sprotty-vscode-webview": "file:../sprotty-vscode-webview",
-        "tonto-cli": "^0.4.12",
-        "tonto-package-manager": "~0.3.2",
+        "tonto-cli": "^0.4.13",
+        "tonto-package-manager": "~0.3.3",
         "uuid": "^9.0.1",
         "vite": "^5.4.19",
         "vscode-languageclient": "^9.0.1",

@@ -1,43 +1,24 @@
-<div id="top"></div>
+# Tonto Package Manager
 
+`packages/tpm` contains the `tpm` command-line tool. TPM installs ontology dependencies declared in a Tonto project manifest (`tonto.json`) from Git repositories into the local `tonto_dependencies` folder.
 
-<!-- [![Contributors][contributors-shield]][contributors-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url] -->
+Use TPM when a Tonto project depends on reusable ontology packages that live in another Git repository, a subdirectory of a repository, a branch, or a version tag.
 
+## Dependency Flow
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/nemo-ufes/Tonto">
-    <img src="../../docs/images/TontoLogo.png" alt="Logo"  height="100" alt="Tonto Logo image, a blue background with TONTO written in it">
-  </a>
+```mermaid
+flowchart LR
+    Manifest["tonto.json<br/>dependencies"] --> TPM["tpm install"]
+    TPM --> Git["Git repository<br/>branch or tag"]
+    Git --> Temp["temporary clone"]
+    Temp --> Directory{"directory<br/>configured?"}
+    Directory -->|yes| Subdir["copy selected project"]
+    Directory -->|no| RepoRoot["copy repository root"]
+    Subdir --> Output["tonto_dependencies/<dependency>"]
+    RepoRoot --> Output
+```
 
-  <h3 align="center">Tonto Package Manager</h3>
-
-</div>
-
-<div height="200">
-</div>
-
-&nbsp;
-
-<!-- TABLE OF CONTENTS -->
-
-
-
-<!-- ABOUT THE PROJECT -->
-<div id="about-the-project"> </div>
-
-# 📝 About The Project
-
-Tonto Package Manager is a Package Manager created to help you manage your Tonto projects. With
- it, it's possible to modularize your OntoUML projects, creating a better organization and 
- separation of contexts. Each tonto project needs a `tonto.json` manifest file that provides 
- necessary information to TPM works properly. All dependencies are installed in the `tonto_dependencies` folder.
-
-## The manifest file tonto.json
+## Manifest Format
 
 ```json
 {
@@ -48,91 +29,83 @@ Tonto Package Manager is a Package Manager created to help you manage your Tonto
   "license": "MIT",
   "dependencies": {
     "SWO": {
-      "url": "https://github.com/matheuslenke/tonto-example-models.git",
+      "url": "https://github.com/example/tonto-example-models.git",
       "directory": "SWO",
       "branch": "feature/test-tonto-reference"
     },
     "SPO": {
-      "url": "https://github.com/matheuslenke/tonto-example-models.git",
-      "directory": "SPO"
+      "url": "https://github.com/example/tonto-example-models.git",
+      "directory": "SPO",
+      "version": "1.0.1"
     }
   },
-  "outFolder": "outDirectory"
+  "outFolder": "generated"
 }
 ```
-Here, you can see how you can define your project and it's dependencies. You can define
- dependencies using a branch or a version tag created on the repository, and even defining a 
- directory in case you have multiple projects in the same repository.
 
- ### Dependency definition
- 
-```json
-"dependencies": {
-  "DependencyA": {
-    "url": "https://github.com/name/repo-name.git",
-    "directory": "A",
-    "branch": "feature/testA"
-  },
-  "DependencyB": {
-    "url": "https://github.com/name/repo-name.git",
-    "directory": "B",
-    "version": "1.0.1"
-  },
-  "DependencyC": {
-    "url": "https://github.com/name/repo-name.git",
-    "directory": "C"
-  },
-  "DependencyD": {
-    "url": "https://github.com/name/repo-name.git"
-  }
-```
-Observations:
+Dependency fields:
 
-- In case you **don't** define any version or branch, it get's the master branch of your repository.
-- If you define a version, there must exist a tag in this repository with the exact same name
-- Sometimes you might need to delete the tonto_modules folder and install everything again
-# 🔨 Commands
-Description of the available commands at TPM
+| Field | Required | Meaning |
+|---|---|---|
+| `url` | Yes | Git repository URL. |
+| `directory` | No | Subdirectory inside the repository that contains the dependency project. |
+| `branch` | No | Branch to clone. |
+| `version` | No | Git tag to clone. |
 
-## Install
-The first and most important one is the install command. With it, TPM will download your dependencies from a github repository. You can use it like that at the root directory of your project, the same containing the tonto.json file.
+If neither `branch` nor `version` is defined, TPM clones the repository's default branch.
+
+## Commands
+
+Install dependencies for the current project:
+
 ```bash
 tpm install
 ```
 
-## Add dependency
-This command adds a dependency. The commands inside of "<>" are required, however the commands inside of "[]" are optional.
+Install dependencies for another project directory:
+
 ```bash
-tpm add -n <dependencyName> -u <gitUrl> -v [projectVersion] -d [DependencyDirectory]
+tpm install --dir path/to/project
+tpm i --dir path/to/project
 ```
 
-## Help
-This command shows help for any command if you need to get more info
+Add a dependency to `tonto.json`:
+
+```bash
+tpm add . \
+  --name SharedOntology \
+  --url https://github.com/example/shared-ontology.git \
+  --version 1.0.0 \
+  --dir ontology-package
+```
+
+Show command help:
+
 ```bash
 tpm help
 tpm install help
 tpm add help
 ```
 
+## Development
 
+From the repository root:
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+```bash
+npm run build --workspace=tonto-package-manager
+npm run test --workspace=tonto-package-manager
+npm run watch --workspace=tonto-package-manager
+```
 
-<!-- LICENSE -->
-## 🔐 License
+The package exposes the `tpm` binary from `bin/cli.js` and imports the Tonto CLI package for manifest and project support.
 
-Distributed under the MIT License. See the repository's root `LICENSE` file for more information.
+## Troubleshooting
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+- Delete `tonto_dependencies` and run `tpm install` again if a dependency checkout becomes stale.
+- Use `version` only when the referenced Git repository has a matching tag.
+- Use `directory` when the dependency repository contains more than one Tonto project.
+- Make sure Git is installed and available on `PATH`.
 
-<div id="contact"> </div>
+## License
 
-<!-- CONTACT -->
-## ✉️ Contact
-
-
-Matheus Lenke Coutinho - matheus.l.coutinho@edu.ufes.br - [Linkedin](https://www.linkedin.com/in/matheus-lenke-coutinho-492a4b15a/) - [Github](https://github.com/matheuslenke)
-
-<div id="additional-tools"> </div>
-
-<p align="right">(<a href="#top">back to top</a>)</p>
+Distributed under the MIT License. See the repository root [LICENSE](../../LICENSE) file for more information.

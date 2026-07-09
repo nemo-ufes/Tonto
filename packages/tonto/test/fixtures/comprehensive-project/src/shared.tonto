@@ -1,0 +1,7 @@
+package SharedFoundation
+
+datatype SharedIdentifier
+
+kind SharedEntity {
+  identifier: SharedIdentifier [1] { const }
+}

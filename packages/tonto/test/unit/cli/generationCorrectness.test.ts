@@ -142,10 +142,14 @@ describe("generation correctness", () => {
 
         expect(generatedFilePaths).toEqual([path.join(tempDir, "diagrams/full-ontology.puml")]);
         const contents = fs.readFileSync(generatedFilePaths[0], "utf-8");
-        expect(contents).toContain(`class "Alpha::Person" <<kind>> #FF99A3`);
-        expect(contents).toContain(`class "Beta::Course" <<kind>> #FF99A3`);
-        expect(contents).toContain(`"Alpha::Person" "1" -- "*" "Beta::Course" : <back:WhiteSmoke>enrolledIn</back> >`);
-        expect(contents.match(/class "Alpha::Person"/g)).toHaveLength(1);
+        // Elements are grouped inside their package box; labels are the simple name
+        // while the alias keeps the qualified identity unique across packages.
+        expect(contents).toContain(`package "Alpha" {`);
+        expect(contents).toContain(`class Alpha_Person as "Person" <<kind>> #FF99A3`);
+        expect(contents).toContain(`package "Beta" {`);
+        expect(contents).toContain(`class Beta_Course as "Course" <<kind>> #FF99A3`);
+        expect(contents).toContain(`Alpha_Person "1" -- "*" Beta_Course : <back:WhiteSmoke>enrolledIn</back> >`);
+        expect(contents.match(/class Alpha_Person as "Person"/g)).toHaveLength(1);
     });
 
     it("should generate separate PlantUML files per package", async () => {
@@ -171,10 +175,17 @@ describe("generation correctness", () => {
         const alphaContents = fs.readFileSync(path.join(destination, "Alpha.puml"), "utf-8");
         const betaContents = fs.readFileSync(path.join(destination, "Beta.puml"), "utf-8");
 
+        // The focused package of each file is the subject and is not boxed; only the
+        // external packages it references are wrapped in a container.
+        expect(alphaContents).not.toContain(`package "Alpha" {`);
         expect(alphaContents).toContain(`class "Person" <<kind>> #FF99A3`);
-        expect(alphaContents).toContain(`class "Beta::Course" <<kind>> #FF99A3`);
-        expect(alphaContents).toContain(`"Person" "1" ---- "*" "Beta::Course" : <back:WhiteSmoke>enrolledIn</back> >`);
+        expect(alphaContents).toContain(`package "Beta" {`);
+        expect(alphaContents).toContain(`class Beta_Course as "Course" <<kind>> #FF99A3`);
+        expect(alphaContents).toContain(`"Person" "1" ---- "*" Beta_Course : <back:WhiteSmoke>enrolledIn</back> >`);
+        expect(betaContents).not.toContain(`package "Beta" {`);
         expect(betaContents).toContain(`class "Course" <<kind>> #FF99A3`);
-        expect(betaContents).toContain(`"Alpha::Person" "1" ---- "*" "Course" : <back:WhiteSmoke>enrolledIn</back> >`);
+        expect(betaContents).toContain(`package "Alpha" {`);
+        expect(betaContents).toContain(`class Alpha_Person as "Person" <<kind>> #FF99A3`);
+        expect(betaContents).toContain(`Alpha_Person "1" ---- "*" "Course" : <back:WhiteSmoke>enrolledIn</back> >`);
     });
 });

@@ -14,7 +14,7 @@ import {
 import * as vscode from 'vscode';
 import { URI } from 'vscode-uri';
 import { PlantUMLPanel } from '../diagram/plantuml-webview.js';
-import { promptForProjectFolder } from './project-location.js';
+import { promptForProjectFolder, resolveCommandFolderFromContext } from './project-location.js';
 
 type TontoServices = ReturnType<typeof createTontoServices>["Tonto"];
 type PlantUMLLayoutVariant =
@@ -27,28 +27,77 @@ type PlantUMLLayoutVariant =
     | 'elk';
 
 const plantUMLLayoutOptions: Array<{ value: PlantUMLLayoutVariant; label: string }> = [
+    { value: 'orthogonal', label: 'Orthogonal' },
     { value: 'default', label: 'Default' },
     { value: 'top-to-bottom', label: 'Top to bottom' },
     { value: 'left-to-right', label: 'Left to right' },
     { value: 'polyline', label: 'Polyline' },
-    { value: 'orthogonal', label: 'Orthogonal' },
     { value: 'smetana', label: 'Smetana' },
     { value: 'elk', label: 'ELK' },
 ];
+
+type PlantUMLSpacing = 'compact' | 'cozy' | 'spacious';
+
+const plantUMLSpacingOptions: Array<{ value: PlantUMLSpacing; label: string }> = [
+    { value: 'compact', label: 'Compact' },
+    { value: 'cozy', label: 'Cozy' },
+    { value: 'spacious', label: 'Spacious' },
+];
+
+function isPlantUMLSpacing(value: unknown): value is PlantUMLSpacing {
+    return typeof value === 'string' && plantUMLSpacingOptions.some((option) => option.value === value);
+}
 
 type PlantUMLPanelTarget =
     | { kind: 'document'; uri: vscode.Uri }
     | { kind: 'project'; uri: vscode.Uri; defaultBaseName: string; title: string };
 
+type PlantUMLBooleanOption =
+    | 'showExternalReferences'
+    | 'showPackageNames'
+    | 'groupExternalPackages'
+    | 'showAttributes'
+    | 'showCardinalities'
+    | 'showRelationNames'
+    | 'showColors'
+    | 'sizeByDegree';
+
+const defaultBooleanOptions: Record<PlantUMLBooleanOption, boolean> = {
+    showExternalReferences: true,
+    showPackageNames: true,
+    groupExternalPackages: true,
+    showAttributes: true,
+    showCardinalities: true,
+    showRelationNames: true,
+    showColors: true,
+    sizeByDegree: true,
+};
+
+const defaultLayoutVariant: PlantUMLLayoutVariant = 'orthogonal';
+const defaultSpacing: PlantUMLSpacing = 'cozy';
+
+function isPlantUMLBooleanOption(value: unknown): value is PlantUMLBooleanOption {
+    return typeof value === 'string' && Object.prototype.hasOwnProperty.call(defaultBooleanOptions, value);
+}
+
 export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
-    let showExternalReferences = true;
-    let layoutVariant: PlantUMLLayoutVariant = 'default';
+    const booleanOptions: Record<PlantUMLBooleanOption, boolean> = { ...defaultBooleanOptions };
+    let layoutVariant: PlantUMLLayoutVariant = defaultLayoutVariant;
+    let spacing: PlantUMLSpacing = defaultSpacing;
     let currentPanelTarget: PlantUMLPanelTarget | undefined;
 
+    const getGeneratorOptions = () => ({
+        ...booleanOptions,
+        layoutVariant,
+        spacing,
+    });
+
     const getPanelState = () => ({
-        showExternalReferences,
+        ...booleanOptions,
         layoutVariant,
         layoutOptions: plantUMLLayoutOptions,
+        spacing,
+        spacingOptions: plantUMLSpacingOptions,
     });
 
     const updateCurrentDiagram = async () => {
@@ -58,14 +107,8 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
 
         try {
             const plantuml = currentPanelTarget.kind === 'document'
-                ? await buildPlantUmlForDocument(await vscode.workspace.openTextDocument(currentPanelTarget.uri), {
-                    showExternalReferences,
-                    layoutVariant,
-                })
-                : await buildPlantUmlForProject(currentPanelTarget.uri, {
-                    showExternalReferences,
-                    layoutVariant,
-                });
+                ? await buildPlantUmlForDocument(await vscode.workspace.openTextDocument(currentPanelTarget.uri), getGeneratorOptions())
+                : await buildPlantUmlForProject(currentPanelTarget.uri, getGeneratorOptions());
 
             if (plantuml) {
                 PlantUMLPanel.currentPanel.update(plantuml, getPanelState());
@@ -83,10 +126,7 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
             }
 
             try {
-                const plantuml = await buildPlantUmlForDocument(document, {
-                    showExternalReferences,
-                    layoutVariant,
-                });
+                const plantuml = await buildPlantUmlForDocument(document, getGeneratorOptions());
                 if (!plantuml) {
                     vscode.window.showErrorMessage('Please fix syntax errors before generating diagram.');
                     return;
@@ -102,21 +142,23 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('tonto.diagram.plantuml.openProject', async () => {
-            const folderUri = await promptForProjectFolder({
-                singleWorkspacePlaceholder: 'Select the Tonto project to visualize',
-                multiWorkspacePlaceholder: 'Select the Tonto project to visualize',
-                openLabel: 'Select Tonto Project',
-            });
+        vscode.commands.registerCommand('tonto.diagram.plantuml.openProject', async (resource?: vscode.Uri) => {
+            const folderUri = resource
+                ? await resolveCommandFolderFromContext({
+                    uri: resource,
+                    missingContextMessage: 'Select a Tonto project or file to visualize.',
+                })
+                : await promptForProjectFolder({
+                    singleWorkspacePlaceholder: 'Select the Tonto project to visualize',
+                    multiWorkspacePlaceholder: 'Select the Tonto project to visualize',
+                    openLabel: 'Select Tonto Project',
+                });
             if (!folderUri) {
                 return;
             }
 
             try {
-                const plantuml = await buildPlantUmlForProject(folderUri, {
-                    showExternalReferences,
-                    layoutVariant,
-                });
+                const plantuml = await buildPlantUmlForProject(folderUri, getGeneratorOptions());
                 if (!plantuml) {
                     return;
                 }
@@ -141,15 +183,6 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('tonto.diagram.plantuml.toggleOrthogonalLines', async () => {
-            layoutVariant = layoutVariant === 'orthogonal' ? 'default' : 'orthogonal';
-            if (PlantUMLPanel.currentPanel) {
-                await updateCurrentDiagram();
-            }
-        })
-    );
-
-    context.subscriptions.push(
         vscode.commands.registerCommand('tonto.diagram.plantuml.setLayoutVariant', async (nextLayoutVariant: PlantUMLLayoutVariant) => {
             if (!isPlantUMLLayoutVariant(nextLayoutVariant)) {
                 return;
@@ -163,8 +196,36 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('tonto.diagram.plantuml.toggleExternalRefs', async () => {
-            showExternalReferences = !showExternalReferences;
+        vscode.commands.registerCommand('tonto.diagram.plantuml.setSpacing', async (nextSpacing: unknown) => {
+            if (!isPlantUMLSpacing(nextSpacing)) {
+                return;
+            }
+
+            spacing = nextSpacing;
+            if (PlantUMLPanel.currentPanel) {
+                await updateCurrentDiagram();
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('tonto.diagram.plantuml.setOption', async (key: unknown, value: unknown) => {
+            if (!isPlantUMLBooleanOption(key)) {
+                return;
+            }
+
+            booleanOptions[key] = Boolean(value);
+            if (PlantUMLPanel.currentPanel) {
+                await updateCurrentDiagram();
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('tonto.diagram.plantuml.resetOptions', async () => {
+            Object.assign(booleanOptions, defaultBooleanOptions);
+            layoutVariant = defaultLayoutVariant;
+            spacing = defaultSpacing;
             if (PlantUMLPanel.currentPanel) {
                 await updateCurrentDiagram();
             }
@@ -236,9 +297,22 @@ function getActiveTontoDocument(): vscode.TextDocument | undefined {
     return document;
 }
 
+interface PlantUMLBuildOptions {
+    showExternalReferences?: boolean;
+    showPackageNames?: boolean;
+    groupExternalPackages?: boolean;
+    showAttributes?: boolean;
+    showCardinalities?: boolean;
+    showRelationNames?: boolean;
+    showColors?: boolean;
+    sizeByDegree?: boolean;
+    layoutVariant?: PlantUMLLayoutVariant;
+    spacing?: PlantUMLSpacing;
+}
+
 async function buildPlantUmlForDocument(
     document: vscode.TextDocument,
-    options: { showExternalReferences?: boolean; layoutVariant?: PlantUMLLayoutVariant } = {}
+    options: PlantUMLBuildOptions = {}
 ): Promise<string | undefined> {
     const services = createTontoServices(NodeFileSystem).Tonto;
     const langiumDocuments = services.shared.workspace.LangiumDocuments;
@@ -262,7 +336,15 @@ async function buildPlantUmlForDocument(
         .toArray();
     const plantUmlOptions = {
         showExternalReferences: options.showExternalReferences ?? true,
-        layout: options.layoutVariant ?? 'default',
+        showPackageNames: options.showPackageNames ?? true,
+        groupExternalPackages: options.groupExternalPackages ?? true,
+        showAttributes: options.showAttributes ?? true,
+        showCardinalities: options.showCardinalities ?? true,
+        showRelationNames: options.showRelationNames ?? true,
+        showColors: options.showColors ?? true,
+        sizeByDegree: options.sizeByDegree ?? true,
+        layout: options.layoutVariant ?? defaultLayoutVariant,
+        spacing: options.spacing ?? defaultSpacing,
         externalReferenceModules,
     };
     const currentModule = getPrimaryContextModuleOrThrow(langiumDoc.parseResult.value as Model);
@@ -272,7 +354,7 @@ async function buildPlantUmlForDocument(
 
 async function buildPlantUmlForProject(
     folderUri: vscode.Uri,
-    options: { showExternalReferences?: boolean; layoutVariant?: PlantUMLLayoutVariant } = {}
+    options: PlantUMLBuildOptions = {}
 ): Promise<string | undefined> {
     const services = createTontoServices(NodeFileSystem).Tonto;
     const { allFiles, documents } = await buildFolderDocuments(folderUri.fsPath, services, {
@@ -305,7 +387,15 @@ async function buildPlantUmlForProject(
 
     return generatePlantUML(contextModules, {
         showExternalReferences: options.showExternalReferences ?? true,
-        layout: options.layoutVariant ?? 'default',
+        showPackageNames: options.showPackageNames ?? true,
+        groupExternalPackages: options.groupExternalPackages ?? true,
+        showAttributes: options.showAttributes ?? true,
+        showCardinalities: options.showCardinalities ?? true,
+        showRelationNames: options.showRelationNames ?? true,
+        showColors: options.showColors ?? true,
+        sizeByDegree: options.sizeByDegree ?? true,
+        layout: options.layoutVariant ?? defaultLayoutVariant,
+        spacing: options.spacing ?? defaultSpacing,
     });
 }
 

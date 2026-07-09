@@ -15,7 +15,7 @@ import {
 import { buildFolderDocuments } from "../../utils/buildFolderDocuments.js";
 import { readOrCreateDefaultTontoManifest } from "../../utils/readManifest.js";
 
-export const generateCommand = async (fileName: string, destination: string): Promise<string | undefined> => {
+export const generateCommand = async (fileName: string, destination?: string): Promise<string> => {
     const services = createTontoServices({ ...NodeFileSystem }).Tonto;
     const model = await extractAstNode<Model>(fileName, services);
     const generatedFilePath = generateJSONFile(model, fileName, destination);
@@ -23,7 +23,12 @@ export const generateCommand = async (fileName: string, destination: string): Pr
 };
 
 // TODO: Make this function generate file on folder
-export async function generateModularCommand(dir: string, label?: string, description?: string): Promise<string | undefined> {
+export async function generateModularCommand(
+    dir: string,
+    label?: string,
+    description?: string,
+    destination?: string
+): Promise<string> {
     const services = createTontoServices({ ...NodeFileSystem }).Tonto;
     let manifest: TontoManifest;
 
@@ -38,7 +43,7 @@ export async function generateModularCommand(dir: string, label?: string, descri
     }
 
     console.log(chalk.bold("tonto.json file parsed successfully."));
-    const createdFile = await createModel(dir, manifest, services, label, description);
+    const createdFile = await createModel(dir, manifest, services, label, description, destination);
 
     console.log(chalk.green("JSON File generated successfully: "));
     return createdFile;
@@ -49,8 +54,9 @@ async function createModel(
     manifest: TontoManifest,
     services: TontoServices,
     label?: string,
-    description?: string
-): Promise<string | undefined> {
+    description?: string,
+    destination?: string
+): Promise<string> {
     const { allFiles, documents, folderAbsolutePath, models } = await buildFolderDocuments(dir, services, {
         manifest,
         validation: true,
@@ -77,5 +83,5 @@ async function createModel(
         });
     }
 
-    return generateJSONFileModular(models, manifest, folderAbsolutePath, label, description);
+    return generateJSONFileModular(models, manifest, folderAbsolutePath, label, description, destination);
 }

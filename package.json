@@ -3,7 +3,7 @@
     "private": true,
     "engineStrict": true,
     "description": "Tonto is a DSL for creating OntoUML models",
-    "version": "0.4.11",
+    "version": "0.4.12",
     "license": "MIT",
     "repository": {
         "type": "git",
@@ -28,7 +28,8 @@
         "docs:dev": "npm run dev --workspace=tonto-documentation",
         "docs:check": "npm run check --workspace=tonto-documentation",
         "langium:generate": "langium generate --workspace=tonto-cli",
-        "langium:watch": "langium generate --watch --workspace=tonto-cli"
+        "langium:watch": "langium generate --watch --workspace=tonto-cli",
+        "release:publish": "bash scripts/publish-release.sh"
     },
     "devDependencies": {
         "@biomejs/biome": "2.1.3",

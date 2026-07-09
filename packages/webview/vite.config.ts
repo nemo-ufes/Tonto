@@ -9,6 +9,12 @@ export default defineConfig({
         outDir: "../extension/pack/webview",
         sourcemap: true,
         cssCodeSplit: false,
+        // The workspace symlink to sprotty-vscode-webview resolves outside of
+        // node_modules, so its CommonJS lib must be included explicitly —
+        // otherwise raw `require()` calls end up in the browser bundle.
+        commonjsOptions: {
+            include: [/node_modules/, /sprotty-vscode-webview[\\/]lib/],
+        },
         rollupOptions: {
             input: {
                 sprotty: resolve(__dirname, "src/main.ts"),

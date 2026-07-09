@@ -34,6 +34,24 @@ require_file() {
   [[ -f "$1" ]] || fail "missing release artifact: $1"
 }
 
+ensure_artifact() {
+  local artifact_path="$1"
+  local artifact_name
+  local artifact_dir
+
+  if [[ -f "$artifact_path" ]]; then
+    return
+  fi
+
+  artifact_name="$(basename "$artifact_path")"
+  artifact_dir="$(dirname "$artifact_path")"
+
+  echo "$artifact_path is missing; downloading $artifact_name from GitHub release $RELEASE_VERSION."
+  run mkdir -p "$artifact_dir"
+  run gh release download "$RELEASE_VERSION" --repo "$REPO" --pattern "$artifact_name" --dir "$artifact_dir" --clobber
+  require_file "$artifact_path"
+}
+
 package_version() {
   node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).version)" "$1"
 }
@@ -65,10 +83,6 @@ assert_package_version "packages/extension/package.json" "$RELEASE_VERSION"
 assert_package_version "packages/tonto/package.json" "$CLI_VERSION"
 assert_package_version "packages/tpm/package.json" "$TPM_VERSION"
 
-require_file "$CLI_TARBALL"
-require_file "$TPM_TARBALL"
-require_file "$VSIX_PATH"
-
 pr_state="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq ".state")"
 pr_merged_at="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json mergedAt --jq ".mergedAt")"
 [[ "$pr_state" == "MERGED" && "$pr_merged_at" != "null" ]] ||
@@ -84,6 +98,10 @@ run git merge-base --is-ancestor "$merge_commit" HEAD
 
 gh release view "$RELEASE_VERSION" --repo "$REPO" >/dev/null ||
   fail "GitHub release $RELEASE_VERSION does not exist. Expected the prepared draft release to exist."
+
+ensure_artifact "$CLI_TARBALL"
+ensure_artifact "$TPM_TARBALL"
+ensure_artifact "$VSIX_PATH"
 
 release_is_draft="$(gh release view "$RELEASE_VERSION" --repo "$REPO" --json isDraft --jq ".isDraft")"
 [[ "$release_is_draft" == "true" ]] || echo "GitHub release $RELEASE_VERSION is already public; continuing."

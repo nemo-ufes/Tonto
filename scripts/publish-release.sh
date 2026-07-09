@@ -34,6 +34,10 @@ require_file() {
   [[ -f "$1" ]] || fail "missing release artifact: $1"
 }
 
+has_vsce_publisher_login() {
+  npx vsce ls-publishers 2>/dev/null | grep -Eiq "^lenke$"
+}
+
 ensure_artifact() {
   local artifact_path="$1"
   local artifact_name
@@ -108,8 +112,9 @@ release_is_draft="$(gh release view "$RELEASE_VERSION" --repo "$REPO" --json isD
 
 run npm whoami
 
-[[ -n "${VSCE_PAT:-}" ]] || fail "VSCE_PAT is not set"
-[[ -n "${OVSX_PAT:-}" ]] || fail "OVSX_PAT is not set"
+if [[ -z "${VSCE_PAT:-}" ]] && ! has_vsce_publisher_login; then
+  fail "VSCE_PAT is not set and no stored vsce login for publisher lenke was found. Run: npx vsce login lenke"
+fi
 
 if npm_version_is_published "$CLI_PACKAGE" "$CLI_VERSION"; then
   echo "$CLI_PACKAGE@$CLI_VERSION is already published on npm; skipping npm publish."
@@ -123,8 +128,23 @@ else
   run npm publish "$TPM_TARBALL" --tag latest
 fi
 
-run npx vsce publish --packagePath "$VSIX_PATH" --pat "$VSCE_PAT" --skip-duplicate
-run npx ovsx publish "$VSIX_PATH" --pat "$OVSX_PAT" --skip-duplicate
+vsce_publish_args=(publish --packagePath "$VSIX_PATH" --skip-duplicate)
+if [[ -n "${VSCE_PAT:-}" ]]; then
+  vsce_publish_args+=(--pat "$VSCE_PAT")
+else
+  echo "VSCE_PAT is not set; using stored vsce login for publisher lenke."
+fi
+
+run npx vsce "${vsce_publish_args[@]}"
+
+ovsx_publish_args=(publish "$VSIX_PATH" --skip-duplicate)
+if [[ -n "${OVSX_PAT:-}" ]]; then
+  ovsx_publish_args+=(--pat "$OVSX_PAT")
+else
+  echo "OVSX_PAT is not set; using stored ovsx login if available."
+fi
+
+run npx ovsx "${ovsx_publish_args[@]}"
 
 if [[ "$release_is_draft" == "true" ]]; then
   run gh release edit "$RELEASE_VERSION" --repo "$REPO" --draft=false --latest --target main

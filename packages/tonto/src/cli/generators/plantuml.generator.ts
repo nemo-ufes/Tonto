@@ -14,65 +14,12 @@ import {
 } from "../../language/generated/ast.js";
 import { getModelContextModules } from "../../language/utils/modelStatements.js";
 import { tontoNatureUtils } from "../../language/utils/tontoNatureUtils.js";
-
-const COLORS = {
-    GREEN: "#99FF99",
-    LIGHT_GREEN: "#D3FFD3",
-    PINK: "#FF99A3",
-    LIGHT_PINK: "#FFDADD",
-    BLUE: "#70D7FF",
-    LIGHT_BLUE: "#C0EDFF",
-    TEAL: "#67C3CB",
-    LIGHT_TEAL: "#DDEDEE",
-    WHITE: "#FFFFFF",
-    YELLOW: "#FCFCD4",
-    ORANGE: "#FCE0C0",
-    PURPLE: "#D3D3FC",
-    GREY: "#E0E0E0"
-};
-
-const mainColorMap: Record<string, string> = {
-    "objects": COLORS.TEAL,
-    "functional-complexes": COLORS.PINK,
-    "collectives": COLORS.PINK,
-    "quantities": COLORS.PINK,
-    "relators": COLORS.GREEN,
-    "qualities": COLORS.BLUE,
-    "modes": COLORS.BLUE,
-    "events": COLORS.YELLOW,
-    "situations": COLORS.ORANGE,
-    "types": COLORS.PURPLE,
-    "abstract-individuals": COLORS.WHITE,
-    "none": COLORS.GREY
-};
-
-const alternativeColorMap: Record<string, string> = {
-    "objects": COLORS.LIGHT_TEAL,
-    "functional-complexes": COLORS.LIGHT_PINK,
-    "collectives": COLORS.LIGHT_PINK,
-    "quantities": COLORS.LIGHT_PINK,
-    "relators": COLORS.LIGHT_GREEN,
-    "qualities": COLORS.LIGHT_BLUE,
-    "modes": COLORS.LIGHT_BLUE,
-    "events": COLORS.YELLOW,
-    "situations": COLORS.ORANGE,
-    "types": COLORS.PURPLE,
-    "abstract-individuals": COLORS.WHITE,
-    "none": COLORS.GREY
-};
+import { TONTO_SEMANTIC_TOKEN_COLORS } from "../../language/lsp/tonto-semantic-token-provider.js";
 
 function getColor(element: ClassDeclaration): string | undefined {
     const natureResult = tontoNatureUtils.getTontoNature(element);
-    
-    if (natureResult.nature === "none") {
-        return COLORS.GREY;
-    }
-
-    if (natureResult.isKind) {
-        return mainColorMap[natureResult.nature];
-    } else {
-        return alternativeColorMap[natureResult.nature];
-    }
+    const semanticToken = tontoNatureUtils.getSemanticTokenFromNature(natureResult);
+    return TONTO_SEMANTIC_TOKEN_COLORS[semanticToken];
 }
 
 export interface PlantUMLOptions {
@@ -84,6 +31,10 @@ export interface PlantUMLOptions {
     showPackageNames?: boolean;
     /** Group elements from external packages inside their own `package` box. Defaults to true. */
     groupExternalPackages?: boolean;
+    /** Include only these packages when generating a full multi-package diagram. Defaults to all packages. */
+    includedPackageNames?: string[];
+    /** Show the owning package in card labels, such as `University::Room`. Defaults to true. */
+    showPackageNamesInCards?: boolean;
     /** Render class/datatype attributes. Defaults to true. */
     showAttributes?: boolean;
     /** Render relation cardinalities. Defaults to true. */
@@ -116,19 +67,18 @@ export interface PlantUMLNatureLegendEntry {
 
 /**
  * Nature → color mapping rendered by the generator, exposed so the editor can
- * draw a matching legend. Kinds use the full tone; their subtypes use a lighter
- * tone of the same hue.
+ * draw a matching legend. These values come directly from the semantic-token palette.
  */
 export const plantUMLNatureLegend: PlantUMLNatureLegendEntry[] = [
-    { color: COLORS.TEAL, label: "Object" },
-    { color: COLORS.PINK, label: "Functional complex · Collective · Quantity" },
-    { color: COLORS.GREEN, label: "Relator" },
-    { color: COLORS.BLUE, label: "Quality · Mode" },
-    { color: COLORS.YELLOW, label: "Event" },
-    { color: COLORS.ORANGE, label: "Situation" },
-    { color: COLORS.PURPLE, label: "Type (high-order)" },
-    { color: COLORS.WHITE, label: "Abstract individual" },
-    { color: COLORS.GREY, label: "Unspecified nature" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoObjects, label: "Object" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoKind, label: "Functional complex kind · Collective · Quantity" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoFunctionalComplex, label: "Functional complex subtype" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoRelator, label: "Relator" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoQuality, label: "Quality · Mode" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoEvent, label: "Event" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoSituation, label: "Situation" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoType, label: "Type (high-order)" },
+    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoNone, label: "Unspecified nature" },
 ];
 
 export type PlantUMLLayoutVariant =
@@ -143,16 +93,25 @@ export type PlantUMLLayoutVariant =
 export type PlantUMLSource = Model | ContextModule | ContextModule[] | AstNode;
 
 export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions = { showExternalReferences: true, orthogonal: false }): string {
-    const contextModules = getPlantUMLContextModules(model);
+    const allContextModules = getPlantUMLContextModules(model);
+    const includedPackageNames = options.includedPackageNames ? new Set(options.includedPackageNames) : undefined;
+    const contextModules = includedPackageNames
+        ? allContextModules.filter((contextModule) => includedPackageNames.has(contextModule.name))
+        : allContextModules;
+    const excludedPackageNames = includedPackageNames
+        ? new Set(allContextModules.filter((contextModule) => !includedPackageNames.has(contextModule.name)).map((contextModule) => contextModule.name))
+        : new Set<string>();
     const focusedModule = isContextModule(model) ? model : undefined;
     const sizeByDegree = options.sizeByDegree ?? true;
     const renderContext: PlantUMLRenderContext = {
         qualifyAllModules: contextModules.length > 1,
         includedModules: new Set(contextModules),
+        excludedPackageNames,
         focusedModule,
         aliases: new Map(),
         usedAliases: new Set(),
         showPackageNames: options.showPackageNames ?? true,
+        showPackageNamesInCards: options.showPackageNamesInCards ?? true,
         groupExternalPackages: options.groupExternalPackages ?? true,
         showAttributes: options.showAttributes ?? true,
         showColors: options.showColors ?? true,
@@ -185,7 +144,7 @@ export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions
 
     function traverse(element: PlantUMLSource) {
         if (Array.isArray(element)) {
-            for (const contextModule of element) {
+            for (const contextModule of contextModules) {
                 traverse(contextModule);
             }
         } else if (isModel(element)) {
@@ -224,6 +183,9 @@ export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions
                     if (decl.specializationEndurants) {
                         for (const parentRef of decl.specializationEndurants) {
                             if (parentRef.ref) {
+                                if (isExcludedModule(parentRef.ref.$container, renderContext)) {
+                                    continue;
+                                }
                                 // Check if parent is in the same module or if we show external refs
                                 const isExternal = parentRef.ref.$container !== element && !renderContext.includedModules.has(parentRef.ref.$container);
                                 if (options.showExternalReferences || !isExternal) {
@@ -236,6 +198,9 @@ export function generatePlantUML(model: PlantUMLSource, options: PlantUMLOptions
                                     relations += `${getPlantUMLReference(parentName, renderContext)} ${arrow} ${getPlantUMLReference(childName, renderContext)}\n`;
                                 }
                             } else if (parentRef.$refText) {
+                                if (isExcludedReferenceName(parentRef.$refText, renderContext)) {
+                                    continue;
+                                }
                                 // If we don't have the ref, we assume it might be external or unresolved.
                                 // If we want to be strict about "external", we might skip this if !showExternalReferences
                                 // But usually $refText means it's not resolved in the AST, so it's likely external/missing.
@@ -342,12 +307,10 @@ function isModuleBoxed(module: ContextModule, renderContext: PlantUMLRenderConte
 
 /** Whether an element from the given module should display its short, unqualified name. */
 function shouldUseSimpleName(module: ContextModule | undefined, renderContext: PlantUMLRenderContext): boolean {
-    if (!module) {
-        return !renderContext.qualifyAllModules;
+    if (!renderContext.showPackageNamesInCards) {
+        return true;
     }
-    return module === renderContext.focusedModule
-        || isModuleBoxed(module, renderContext)
-        || !renderContext.qualifyAllModules;
+    return !renderContext.qualifyAllModules || module === renderContext.focusedModule;
 }
 
 function recordLooseExternalName(target: Set<string>, name: string): void {
@@ -365,10 +328,12 @@ function stripElementName(name: string): string {
 interface PlantUMLRenderContext {
     qualifyAllModules: boolean;
     includedModules: Set<ContextModule>;
+    excludedPackageNames: Set<string>;
     focusedModule: ContextModule | undefined;
     aliases: Map<string, string>;
     usedAliases: Set<string>;
     showPackageNames: boolean;
+    showPackageNamesInCards: boolean;
     groupExternalPackages: boolean;
     showAttributes: boolean;
     showColors: boolean;
@@ -647,6 +612,16 @@ function generateRelation(
 
     if (!sourceName || !targetName) return "";
 
+    if (
+        isExcludedModule(sourceContainer, renderContext)
+        || isExcludedModule(targetContainer, renderContext)
+        || isExcludedModule(relationContainer, renderContext)
+        || isExcludedReferenceName(sourceName, renderContext)
+        || isExcludedReferenceName(targetName, renderContext)
+    ) {
+        return "";
+    }
+
     // Check external references
     const isSourceExternal = sourceContainer && sourceContainer !== currentModule;
     const isTargetExternal = targetContainer && targetContainer !== currentModule;
@@ -885,4 +860,13 @@ function getReferenceModule(element: DataTypeOrClassOrRelation | undefined): Con
         return getRelationModule(element);
     }
     return undefined;
+}
+
+function isExcludedModule(module: ContextModule | undefined, renderContext: PlantUMLRenderContext): boolean {
+    return module !== undefined && renderContext.excludedPackageNames.has(module.name);
+}
+
+function isExcludedReferenceName(name: string, renderContext: PlantUMLRenderContext): boolean {
+    const moduleName = stripElementName(formatReferenceText(name));
+    return moduleName !== "" && renderContext.excludedPackageNames.has(moduleName);
 }

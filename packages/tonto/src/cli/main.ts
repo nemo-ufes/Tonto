@@ -4,7 +4,7 @@ import { TontoActions } from "./actions/actions.js";
 import { addSkillCommand } from "./actions/commands/addSkillCommand.js";
 import { initCommand } from "./actions/commands/initCommand.js";
 
-export const cliVersion = "0.4.13";
+export const cliVersion = "0.4.14";
 
 export function createCli(actions = new TontoActions()): Command {
     const program = new Command();

@@ -7,6 +7,7 @@ import * as path from 'path';
 export interface PlantUMLPanelState {
     showExternalReferences: boolean;
     showPackageNames: boolean;
+    showPackageNamesInCards: boolean;
     groupExternalPackages: boolean;
     showAttributes: boolean;
     showCardinalities: boolean;
@@ -17,11 +18,14 @@ export interface PlantUMLPanelState {
     layoutOptions: Array<{ value: string; label: string }>;
     spacing: string;
     spacingOptions: Array<{ value: string; label: string }>;
+    availablePackageNames: string[];
+    selectedPackageNames: string[];
 }
 
 type PlantUMLBooleanOption =
     | 'showExternalReferences'
     | 'showPackageNames'
+    | 'showPackageNamesInCards'
     | 'groupExternalPackages'
     | 'showAttributes'
     | 'showCardinalities'
@@ -40,6 +44,7 @@ type PlantUMLIncomingMessage =
     | { command: 'downloadSvg' }
     | { command: 'downloadPng' }
     | { command: 'setOption'; key: PlantUMLBooleanOption; value: boolean }
+    | { command: 'setVisiblePackages'; packageNames: string[] }
     | { command: 'resetOptions' }
     | { command: 'setLayoutVariant'; layoutVariant: string }
     | { command: 'setSpacing'; spacing: string };
@@ -77,6 +82,9 @@ export class PlantUMLPanel {
                         break;
                     case 'setOption':
                         vscode.commands.executeCommand('tonto.diagram.plantuml.setOption', message.key, message.value);
+                        break;
+                    case 'setVisiblePackages':
+                        vscode.commands.executeCommand('tonto.diagram.plantuml.setVisiblePackages', message.packageNames);
                         break;
                     case 'resetOptions':
                         vscode.commands.executeCommand('tonto.diagram.plantuml.resetOptions');
@@ -215,6 +223,12 @@ export class PlantUMLPanel {
                 value: state.showPackageNames,
             },
             {
+                key: 'showPackageNamesInCards',
+                label: 'Package name in cards',
+                hint: 'Show University::Room instead of Room',
+                value: state.showPackageNamesInCards,
+            },
+            {
                 key: 'groupExternalPackages',
                 label: 'External package groups',
                 hint: 'Box elements borrowed from other packages',
@@ -265,8 +279,30 @@ export class PlantUMLPanel {
             .map((entry) => `<span style="background:${escapeHtml(entry.color)}"></span>`)
             .join('');
 
-        // Badge counts options that hide something, so a clean default shows no badge.
-        const hiddenCount = displayToggles.filter((toggle) => !toggle.value).length;
+        const selectedPackageNames = new Set(state.selectedPackageNames);
+        const packageRows = state.availablePackageNames
+            .map((packageName) => `
+                <label class="package-row" title="Show or hide ${escapeHtml(packageName)}">
+                    <input type="checkbox" data-package="${escapeHtml(packageName)}"${selectedPackageNames.has(packageName) ? ' checked' : ''}>
+                    <span>${escapeHtml(packageName)}</span>
+                </label>`)
+            .join('');
+        const packageSection = state.availablePackageNames.length > 1
+            ? `<div class="panel-section">
+                    <div class="panel-heading-row">
+                        <span class="panel-title">Packages <span class="package-count">${selectedPackageNames.size}/${state.availablePackageNames.length}</span></span>
+                        <span class="package-actions">
+                            <button id="selectAllPackages" type="button">All</button>
+                            <button id="selectNoPackages" type="button">None</button>
+                        </span>
+                    </div>
+                    <div class="package-list">${packageRows}</div>
+                </div>`
+            : '';
+
+        // Badge counts options and packages that hide content, so a clean default shows no badge.
+        const hiddenCount = displayToggles.filter((toggle) => !toggle.value).length
+            + state.availablePackageNames.filter((packageName) => !selectedPackageNames.has(packageName)).length;
         const toggleRows = displayToggles
             .map((toggle) => `
                 <label class="switch-row" title="${escapeHtml(toggle.hint)}">
@@ -467,6 +503,54 @@ export class PlantUMLPanel {
                     letter-spacing: 0.07em;
                     text-transform: uppercase;
                     color: var(--muted);
+                }
+                .panel-heading-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                }
+                .package-count {
+                    font-variant-numeric: tabular-nums;
+                }
+                .package-actions {
+                    display: inline-flex;
+                    gap: 4px;
+                }
+                .package-actions button {
+                    min-width: 40px;
+                    min-height: 28px;
+                    padding: 0 8px;
+                    color: var(--muted);
+                    font-size: 10px;
+                }
+                .package-list {
+                    max-height: min(220px, 32vh);
+                    overflow-y: auto;
+                    padding: 4px;
+                    border-radius: 8px;
+                    background: var(--surface-muted);
+                    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+                }
+                .package-row {
+                    min-height: 40px;
+                    display: flex;
+                    align-items: center;
+                    gap: 9px;
+                    padding: 0 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    overflow-wrap: anywhere;
+                }
+                .package-row:hover {
+                    background: rgba(255, 255, 255, 0.72);
+                }
+                .package-row input {
+                    width: 16px;
+                    height: 16px;
+                    flex: 0 0 auto;
+                    accent-color: var(--accent);
                 }
                 .switch-row {
                     display: flex;
@@ -746,6 +830,7 @@ export class PlantUMLPanel {
                             <select id="layoutVariant" title="Edge routing / layout engine" aria-label="PlantUML layout">${layoutOptions}</select>
                             <select id="spacing" title="Spacing between elements" aria-label="Diagram spacing">${spacingOptions}</select>
                         </div>
+                        ${packageSection}
                         <div class="panel-section">
                             <span class="panel-title">Display</span>
                             ${toggleRows}
@@ -769,7 +854,7 @@ export class PlantUMLPanel {
                         <div id="legendCard" class="legend-card" hidden>
                             <div class="legend-title">Nature colors</div>
                             <ul class="legend-list">${legendRows}</ul>
-                            <div class="legend-note">Kinds use the full tone; their subtypes use a lighter tone of the same hue.</div>
+                            <div class="legend-note">Colors match the Tonto semantic-token palette.</div>
                         </div>
                         <button id="legendButton" class="legend-button" aria-expanded="false" aria-controls="legendCard" title="Show the nature color legend">
                             <span class="legend-button-swatches">${legendSwatchPreview}</span>
@@ -954,6 +1039,35 @@ export class PlantUMLPanel {
                         });
                     });
                 });
+
+                function postVisiblePackages() {
+                    const packageNames = Array.from(optionsPanel.querySelectorAll('input[data-package]:checked'))
+                        .map((input) => input.dataset.package);
+                    vscode.postMessage({ command: 'setVisiblePackages', packageNames });
+                }
+
+                optionsPanel.querySelectorAll('input[data-package]').forEach((input) => {
+                    input.addEventListener('change', postVisiblePackages);
+                });
+
+                const selectAllPackages = document.getElementById('selectAllPackages');
+                const selectNoPackages = document.getElementById('selectNoPackages');
+                if (selectAllPackages) {
+                    selectAllPackages.addEventListener('click', () => {
+                        optionsPanel.querySelectorAll('input[data-package]').forEach((input) => {
+                            input.checked = true;
+                        });
+                        postVisiblePackages();
+                    });
+                }
+                if (selectNoPackages) {
+                    selectNoPackages.addEventListener('click', () => {
+                        optionsPanel.querySelectorAll('input[data-package]').forEach((input) => {
+                            input.checked = false;
+                        });
+                        postVisiblePackages();
+                    });
+                }
 
                 // The legend is a webview-only overlay that expands from a docked button,
                 // so it toggles instantly without rebuilding the diagram. The dock is only

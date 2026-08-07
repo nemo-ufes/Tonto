@@ -72,19 +72,19 @@ describe("PlantUML Generator Reproduction", () => {
     expect(puml).toContain(`set separator none`);
 
     // Check if EmploymentContract is generated
-    expect(puml).toContain(`class "EmploymentContract" <<relator>> #99FF99`);
+    expect(puml).toContain(`class "EmploymentContract" <<relator>> #45E72B`);
 
     // Check if external element People.Employee is generated with correct color/stereotype
     // It should be generated because it is referenced in the relation
-    // Employee is a role, so it should be LIGHT_PINK #FFDADD. With package grouping the
+    // Employee is a role, so it uses the functional-complex semantic token color. With package grouping the
     // module is shown by the surrounding package box, so the label is the simple name.
     expect(puml).toContain(`package "People" {`);
-    expect(puml).toContain(`class People_Employee as "Employee" <<role>> #FFDADD`);
+    expect(puml).toContain(`class People_Employee as "Employee" <<role>> #F46A6A`);
 
     // Check if external element University.UniversityProfessor is generated
-    // UniversityProfessor is a role, so it should be LIGHT_PINK #FFDADD
+    // UniversityProfessor is a role, so it uses the functional-complex semantic token color.
     expect(puml).toContain(`package "University" {`);
-    expect(puml).toContain(`class University_UniversityProfessor as "UniversityProfessor" <<role>> #FFDADD`);
+    expect(puml).toContain(`class University_UniversityProfessor as "UniversityProfessor" <<role>> #F46A6A`);
 
     // Check relations
     // External references use longer arrows.
@@ -116,7 +116,7 @@ describe("PlantUML Generator Reproduction", () => {
 
     const puml = generatePlantUML(peoplePackage, { showExternalReferences: true, externalReferenceModules });
 
-    expect(puml).toContain(`class IncomingContracts_Contract as "Contract" <<kind>> #FF99A3`);
+    expect(puml).toContain(`class IncomingContracts_Contract as "Contract" <<kind>> #CD6872`);
     expect(puml).toContain(`IncomingContracts_Contract  ---- "1" "Person" : <back:WhiteSmoke>engages</back> >`);
 
     const pumlWithoutExternalReferences = generatePlantUML(peoplePackage, {
@@ -124,7 +124,7 @@ describe("PlantUML Generator Reproduction", () => {
       externalReferenceModules,
     });
 
-    expect(pumlWithoutExternalReferences).not.toContain(`class IncomingContracts_Contract as "Contract" <<kind>> #FF99A3`);
+    expect(pumlWithoutExternalReferences).not.toContain(`class IncomingContracts_Contract as "Contract" <<kind>> #CD6872`);
     expect(pumlWithoutExternalReferences).not.toContain(`engages`);
   });
 
@@ -154,7 +154,7 @@ describe("PlantUML Generator Reproduction", () => {
 
     expect(puml).toContain(`<back:WhiteSmoke>participatesIn</back>\\ninverseOf InverseAgreements.Contract.hasParticipant >`);
     expect(puml).toContain(`InverseAgreements_Contract "1" ---- "*" "Person" : <back:WhiteSmoke>hasParticipant</back> >`);
-    expect(puml).toContain(`class InverseAgreements_Contract as "Contract" <<kind>> #FF99A3`);
+    expect(puml).toContain(`class InverseAgreements_Contract as "Contract" <<kind>> #CD6872`);
   });
 
   test("should alias qualified external specialization targets", async () => {
@@ -210,5 +210,65 @@ describe("PlantUML Generator Reproduction", () => {
     // With external grouping disabled, the same reference stays qualified and loose.
     const flat = generatePlantUML(mainPackage, { showExternalReferences: true, groupExternalPackages: false });
     expect(flat).not.toContain(`package "ufo" {`);
+  });
+
+  test("filters full diagrams by package without reintroducing hidden packages as external references", async () => {
+    const visibleDoc = await parse(`
+        import PackageFilterHidden
+        package PackageFilterVisible
+
+        kind VisibleRoom {
+            [1] -- connectsTo -- [1] PackageFilterHidden.HiddenBuilding
+        }
+    `, "PackageFilterVisible");
+    const hiddenDoc = await parse(`
+        package PackageFilterHidden
+        kind HiddenBuilding
+    `, "PackageFilterHidden");
+
+    await documentBuilder.build(langiumDocuments.all.toArray());
+
+    const visiblePackage = getPrimaryContextModuleOrThrow(visibleDoc.parseResult.value as Model);
+    const hiddenPackage = getPrimaryContextModuleOrThrow(hiddenDoc.parseResult.value as Model);
+    const puml = generatePlantUML([visiblePackage, hiddenPackage], {
+      showExternalReferences: true,
+      includedPackageNames: ["PackageFilterVisible"],
+    });
+
+    expect(puml).toContain(`VisibleRoom`);
+    expect(puml).not.toContain(`PackageFilterHidden`);
+    expect(puml).not.toContain(`HiddenBuilding`);
+    expect(puml).not.toContain(`connectsTo`);
+  });
+
+  test("can hide package qualifiers in full-diagram card labels without changing node identity", async () => {
+    const firstDoc = await parse(`
+        package CardLabelsOne
+        kind Room
+    `, "CardLabelsOne");
+    const secondDoc = await parse(`
+        package CardLabelsTwo
+        kind Room
+    `, "CardLabelsTwo");
+
+    await documentBuilder.build(langiumDocuments.all.toArray());
+
+    const modules = [firstDoc, secondDoc]
+      .map((document) => getPrimaryContextModuleOrThrow(document.parseResult.value as Model));
+    const qualified = generatePlantUML(modules, {
+      showExternalReferences: true,
+      showPackageNames: false,
+      showPackageNamesInCards: true,
+    });
+    const simple = generatePlantUML(modules, {
+      showExternalReferences: true,
+      showPackageNames: false,
+      showPackageNamesInCards: false,
+    });
+
+    expect(qualified).toContain(`class CardLabelsOne_Room as "CardLabelsOne::Room"`);
+    expect(qualified).toContain(`class CardLabelsTwo_Room as "CardLabelsTwo::Room"`);
+    expect(simple).toContain(`class CardLabelsOne_Room as "Room"`);
+    expect(simple).toContain(`class CardLabelsTwo_Room as "Room"`);
   });
 });

@@ -17,6 +17,7 @@ import { registerAutoOpenTontoDiagramPreview } from "../diagram-editor/auto-open
 import { registerCreateTontoDiagramCommand } from "../diagram-editor/create-tontodiagram-command.js";
 import { registerTontoDiagramCompletionProvider } from "../diagram-editor/tontodiagram-completion-provider.js";
 import { TontoDiagramEditorProvider } from "../diagram-editor/tonto-diagram-editor-provider.js";
+import { registerTontoMetadataFolding } from "../editor/tonto-metadata-folding.js";
 import { setOutputChannel } from "./outputChannel.js";
 import { TontoLibraryFileSystemProvider } from "./TontoLibraryFileSystemProvider.js";
 
@@ -78,6 +79,11 @@ const TONTO_COMMAND_GROUPS: TontoCommandGroup[] = [
         icon: "settings-gear",
         commands: [
             { id: "tonto.addSemanticTokenColors", label: "Add Semantic Token Colors", icon: "symbol-color" },
+            {
+                id: "tonto.editor.toggleLabelAndDescriptionFolding",
+                label: "Toggle Label and Description Folding",
+                icon: "fold",
+            },
         ],
     },
 ];
@@ -156,6 +162,7 @@ export function activate(context: vscode.ExtensionContext): void {
     createValidationSatusBarItem(context, validateStatusBarItem, outputChannel);
     createTransformToGufoSatusBarItem(context, transformToGufoStatusBarItem);
     createTpmInstallCommands(context, tpmInstallStatusBarItem);
+    registerTontoMetadataFolding(context);
     activateDiagram(context, languageClient);
     registerPlantUMLCommands(context);
 

@@ -3,7 +3,7 @@
     "displayName": "Tonto",
     "publisher": "lenke",
     "description": "Tonto is a DSL for creating OntoUML models",
-    "version": "0.4.12",
+    "version": "0.4.13",
     "license": "MIT",
     "type": "module",
     "repository": {
@@ -209,6 +209,11 @@
                     "group": "navigation"
                 },
                 {
+                    "command": "tonto.editor.toggleLabelAndDescriptionFolding",
+                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
+                    "group": "navigation"
+                },
+                {
                     "command": "tonto.diagram.plantuml.open",
                     "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
@@ -234,6 +239,12 @@
                     "default": false,
                     "scope": "window",
                     "markdownDescription": "Enable Tonto new diagram visualization with `.tontodiagram` (Alpha feature)."
+                },
+                "tonto.editor.autoFoldLabelsAndDescriptions": {
+                    "type": "boolean",
+                    "default": false,
+                    "scope": "window",
+                    "markdownDescription": "Automatically fold multiline `label` and `description` blocks when a Tonto editor becomes active."
                 }
             }
         },
@@ -338,6 +349,11 @@
                 "category": "Tonto"
             },
             {
+                "command": "tonto.editor.toggleLabelAndDescriptionFolding",
+                "title": "Toggle Label and Description Folding",
+                "category": "Tonto"
+            },
+            {
                 "command": "tonto.diagram.plantuml.open",
                 "title": "Open PlantUML Diagram",
                 "category": "Tonto"
@@ -427,7 +443,7 @@
         "sprotty-elk": "^1.2.0",
         "sprotty-vscode": "file:../sprotty-vscode",
         "sprotty-vscode-webview": "file:../sprotty-vscode-webview",
-        "tonto-cli": "^0.4.13",
+        "tonto-cli": "^0.4.14",
         "tonto-package-manager": "~0.3.3",
         "uuid": "^9.0.1",
         "vite": "^5.4.19",

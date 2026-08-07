@@ -55,6 +55,7 @@ type PlantUMLPanelTarget =
 type PlantUMLBooleanOption =
     | 'showExternalReferences'
     | 'showPackageNames'
+    | 'showPackageNamesInCards'
     | 'groupExternalPackages'
     | 'showAttributes'
     | 'showCardinalities'
@@ -65,6 +66,7 @@ type PlantUMLBooleanOption =
 const defaultBooleanOptions: Record<PlantUMLBooleanOption, boolean> = {
     showExternalReferences: true,
     showPackageNames: true,
+    showPackageNamesInCards: true,
     groupExternalPackages: true,
     showAttributes: true,
     showCardinalities: true,
@@ -85,11 +87,16 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
     let layoutVariant: PlantUMLLayoutVariant = defaultLayoutVariant;
     let spacing: PlantUMLSpacing = defaultSpacing;
     let currentPanelTarget: PlantUMLPanelTarget | undefined;
+    let availablePackageNames: string[] = [];
+    let selectedPackageNames = new Set<string>();
 
     const getGeneratorOptions = () => ({
         ...booleanOptions,
         layoutVariant,
         spacing,
+        includedPackageNames: currentPanelTarget?.kind === 'project'
+            ? Array.from(selectedPackageNames)
+            : undefined,
     });
 
     const getPanelState = () => ({
@@ -98,6 +105,8 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
         layoutOptions: plantUMLLayoutOptions,
         spacing,
         spacingOptions: plantUMLSpacingOptions,
+        availablePackageNames,
+        selectedPackageNames: Array.from(selectedPackageNames),
     });
 
     const updateCurrentDiagram = async () => {
@@ -106,12 +115,21 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
         }
 
         try {
-            const plantuml = currentPanelTarget.kind === 'document'
-                ? await buildPlantUmlForDocument(await vscode.workspace.openTextDocument(currentPanelTarget.uri), getGeneratorOptions())
-                : await buildPlantUmlForProject(currentPanelTarget.uri, getGeneratorOptions());
+            if (currentPanelTarget.kind === 'document') {
+                const plantuml = await buildPlantUmlForDocument(
+                    await vscode.workspace.openTextDocument(currentPanelTarget.uri),
+                    getGeneratorOptions()
+                );
+                if (plantuml) {
+                    PlantUMLPanel.currentPanel.update(plantuml, getPanelState());
+                }
+                return;
+            }
 
-            if (plantuml) {
-                PlantUMLPanel.currentPanel.update(plantuml, getPanelState());
+            const result = await buildPlantUmlForProject(currentPanelTarget.uri, getGeneratorOptions());
+            if (result) {
+                availablePackageNames = result.packageNames;
+                PlantUMLPanel.currentPanel.update(result.plantuml, getPanelState());
             }
         } catch (e) {
             console.error('Error updating diagram:', e);
@@ -126,6 +144,9 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
             }
 
             try {
+                currentPanelTarget = undefined;
+                availablePackageNames = [];
+                selectedPackageNames = new Set();
                 const plantuml = await buildPlantUmlForDocument(document, getGeneratorOptions());
                 if (!plantuml) {
                     vscode.window.showErrorMessage('Please fix syntax errors before generating diagram.');
@@ -158,10 +179,16 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
             }
 
             try {
-                const plantuml = await buildPlantUmlForProject(folderUri, getGeneratorOptions());
-                if (!plantuml) {
+                currentPanelTarget = undefined;
+                availablePackageNames = [];
+                selectedPackageNames = new Set();
+                const result = await buildPlantUmlForProject(folderUri, getGeneratorOptions());
+                if (!result) {
                     return;
                 }
+
+                availablePackageNames = result.packageNames;
+                selectedPackageNames = new Set(result.packageNames);
 
                 const projectName = path.basename(folderUri.fsPath) || 'ontology';
                 currentPanelTarget = {
@@ -170,7 +197,7 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
                     defaultBaseName: `${projectName}-ontology`,
                     title: `PlantUML: ${projectName} ontology`,
                 };
-                PlantUMLPanel.createOrShow(context.extensionUri, plantuml, folderUri, getPanelState(), {
+                PlantUMLPanel.createOrShow(context.extensionUri, result.plantuml, folderUri, getPanelState(), {
                     defaultBaseName: currentPanelTarget.defaultBaseName,
                     defaultSaveDirectory: folderUri,
                     title: currentPanelTarget.title,
@@ -178,6 +205,20 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
             } catch (e) {
                 console.error(e);
                 vscode.window.showErrorMessage('Error generating ontology diagram: ' + formatPlantUMLErrorMessage(e), { modal: true });
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('tonto.diagram.plantuml.setVisiblePackages', async (packageNames: unknown) => {
+            if (!Array.isArray(packageNames) || !packageNames.every((packageName) => typeof packageName === 'string')) {
+                return;
+            }
+
+            const available = new Set(availablePackageNames);
+            selectedPackageNames = new Set(packageNames.filter((packageName) => available.has(packageName)));
+            if (PlantUMLPanel.currentPanel && currentPanelTarget?.kind === 'project') {
+                await updateCurrentDiagram();
             }
         })
     );
@@ -224,6 +265,7 @@ export function registerPlantUMLCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('tonto.diagram.plantuml.resetOptions', async () => {
             Object.assign(booleanOptions, defaultBooleanOptions);
+            selectedPackageNames = new Set(availablePackageNames);
             layoutVariant = defaultLayoutVariant;
             spacing = defaultSpacing;
             if (PlantUMLPanel.currentPanel) {
@@ -300,6 +342,7 @@ function getActiveTontoDocument(): vscode.TextDocument | undefined {
 interface PlantUMLBuildOptions {
     showExternalReferences?: boolean;
     showPackageNames?: boolean;
+    showPackageNamesInCards?: boolean;
     groupExternalPackages?: boolean;
     showAttributes?: boolean;
     showCardinalities?: boolean;
@@ -308,6 +351,12 @@ interface PlantUMLBuildOptions {
     sizeByDegree?: boolean;
     layoutVariant?: PlantUMLLayoutVariant;
     spacing?: PlantUMLSpacing;
+    includedPackageNames?: string[];
+}
+
+interface PlantUMLProjectBuildResult {
+    packageNames: string[];
+    plantuml: string;
 }
 
 async function buildPlantUmlForDocument(
@@ -337,6 +386,7 @@ async function buildPlantUmlForDocument(
     const plantUmlOptions = {
         showExternalReferences: options.showExternalReferences ?? true,
         showPackageNames: options.showPackageNames ?? true,
+        showPackageNamesInCards: options.showPackageNamesInCards ?? true,
         groupExternalPackages: options.groupExternalPackages ?? true,
         showAttributes: options.showAttributes ?? true,
         showCardinalities: options.showCardinalities ?? true,
@@ -355,7 +405,7 @@ async function buildPlantUmlForDocument(
 async function buildPlantUmlForProject(
     folderUri: vscode.Uri,
     options: PlantUMLBuildOptions = {}
-): Promise<string | undefined> {
+): Promise<PlantUMLProjectBuildResult | undefined> {
     const services = createTontoServices(NodeFileSystem).Tonto;
     const { allFiles, documents } = await buildFolderDocuments(folderUri.fsPath, services, {
         validation: true,
@@ -385,9 +435,12 @@ async function buildPlantUmlForProject(
         return undefined;
     }
 
-    return generatePlantUML(contextModules, {
+    const packageNames = Array.from(new Set(contextModules.map((contextModule) => contextModule.name)))
+        .sort((left, right) => left.localeCompare(right));
+    const plantuml = generatePlantUML(contextModules, {
         showExternalReferences: options.showExternalReferences ?? true,
         showPackageNames: options.showPackageNames ?? true,
+        showPackageNamesInCards: options.showPackageNamesInCards ?? true,
         groupExternalPackages: options.groupExternalPackages ?? true,
         showAttributes: options.showAttributes ?? true,
         showCardinalities: options.showCardinalities ?? true,
@@ -396,7 +449,10 @@ async function buildPlantUmlForProject(
         sizeByDegree: options.sizeByDegree ?? true,
         layout: options.layoutVariant ?? defaultLayoutVariant,
         spacing: options.spacing ?? defaultSpacing,
+        includedPackageNames: options.includedPackageNames,
     });
+
+    return { packageNames, plantuml };
 }
 
 function isPlantUMLLayoutVariant(value: unknown): value is PlantUMLLayoutVariant {

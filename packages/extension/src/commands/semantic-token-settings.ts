@@ -1,3 +1,5 @@
+import { TONTO_SEMANTIC_TOKEN_COLORS } from "tonto-cli";
+
 export type SemanticTokenColorRule = {
     foreground?: string;
     fontStyle?: string;
@@ -11,71 +13,71 @@ export type SemanticTokenColorCustomizations = {
 
 export const TONTO_SEMANTIC_TOKEN_COLOR_RULES: Record<string, SemanticTokenColorRule> = {
     tontoKind: {
-        foreground: "#CD6872",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoKind,
         fontStyle: "bold",
     },
     tontoQualityKind: {
-        foreground: "#19B0F1",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoQualityKind,
         fontStyle: "bold",
     },
     tontoQuantityKind: {
-        foreground: "#CD6872",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoQuantityKind,
         fontStyle: "bold",
     },
     tontoCollectiveKind: {
-        foreground: "#CD6872",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoCollectiveKind,
         fontStyle: "bold",
     },
     tontoRelatorKind: {
-        foreground: "#45e72b",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoRelatorKind,
         fontStyle: "bold",
     },
     tontoEvent: {
-        foreground: "#d1ca3c",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoEvent,
         fontStyle: "bold",
     },
     tontoModeKind: {
-        foreground: "#19b0f1",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoModeKind,
         fontStyle: "bold",
     },
     tontoMode: {
-        foreground: "#19b0f1",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoMode,
         fontStyle: "italic",
     },
     tontoSituation: {
-        foreground: "#fca90d",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoSituation,
         fontStyle: "bold",
     },
     tontoType: {
-        foreground: "#9b69b1",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoType,
         fontStyle: "bold",
     },
     tontoObjects: {
-        foreground: "#67C3CB",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoObjects,
         fontStyle: "italic",
     },
     tontoFunctionalComplex: {
-        foreground: "#f46a6a",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoFunctionalComplex,
         fontStyle: "italic",
     },
     tontoQuality: {
-        foreground: "#19b0f1",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoQuality,
         fontStyle: "italic",
     },
     tontoQuantity: {
-        foreground: "#CD6872",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoQuantity,
         fontStyle: "italic",
     },
     tontoCollective: {
-        foreground: "#CD6872",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoCollective,
         fontStyle: "italic",
     },
     tontoRelator: {
-        foreground: "#45e72b",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoRelator,
         fontStyle: "italic",
     },
     tontoNone: {
-        foreground: "#a1a1a1",
+        foreground: TONTO_SEMANTIC_TOKEN_COLORS.tontoNone,
     },
 };
 

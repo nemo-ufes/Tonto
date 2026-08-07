@@ -84,19 +84,15 @@ describe("PlantUML Generator", () => {
     
     const puml = generatePlantUML(model);
     
-    // Person (kind) -> PINK #FF99A3
-    expect(puml).toContain(`class "Person" <<kind>> #FF99A3`);
+    // Colors must match the semantic token emitted for each nature.
+    expect(puml).toContain(`class "Person" <<kind>> #CD6872`);
     
-    // Man (subkind of Person) -> LIGHT_PINK #FFDADD
-    expect(puml).toContain(`class "Man" <<subkind>> #FFDADD`);
+    expect(puml).toContain(`class "Man" <<subkind>> #F46A6A`);
     
-    // Employment (relator) -> GREEN #99FF99
-    expect(puml).toContain(`class "Employment" <<relator>> #99FF99`);
+    expect(puml).toContain(`class "Employment" <<relator>> #45E72B`);
 
-    // Employee (role of Person) -> LIGHT_PINK #FFDADD
-    expect(puml).toContain(`class "Employee" <<role>> #FFDADD`);
+    expect(puml).toContain(`class "Employee" <<role>> #F46A6A`);
 
-    // PhysicalThing (category of objects) -> LIGHT_TEAL #DDEDEE
-    expect(puml).toContain(`class "PhysicalThing" <<category>> #DDEDEE`);
+    expect(puml).toContain(`class "PhysicalThing" <<category>> #67C3CB`);
   });
 });

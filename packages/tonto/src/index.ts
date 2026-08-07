@@ -10,6 +10,7 @@ export * from "./cli/requests/ontoumljsValidator.js";
 
 
 export * from "./language/lsp/semantic-token-types.js";
+export * from "./language/lsp/tonto-semantic-token-provider.js";
 export * from "./language/lsp/tonto-language-server.js";
 export * from "./diagram-spec/index.js";
 

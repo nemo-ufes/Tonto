@@ -5,6 +5,27 @@ import * as ast from "../generated/ast.js";
 import { tontoNatureUtils } from "../utils/tontoNatureUtils.js";
 import { TontoSemanticTokenTypes } from "./semantic-token-types.js";
 
+/** Canonical colors for the semantic token types emitted by this provider. */
+export const TONTO_SEMANTIC_TOKEN_COLORS: Readonly<Record<string, string>> = {
+    tontoKind: "#CD6872",
+    tontoQualityKind: "#19B0F1",
+    tontoQuantityKind: "#CD6872",
+    tontoCollectiveKind: "#CD6872",
+    tontoRelatorKind: "#45E72B",
+    tontoEvent: "#D1CA3C",
+    tontoModeKind: "#19B0F1",
+    tontoMode: "#19B0F1",
+    tontoSituation: "#FCA90D",
+    tontoType: "#9B69B1",
+    tontoObjects: "#67C3CB",
+    tontoFunctionalComplex: "#F46A6A",
+    tontoQuality: "#19B0F1",
+    tontoQuantity: "#CD6872",
+    tontoCollective: "#CD6872",
+    tontoRelator: "#45E72B",
+    tontoNone: "#A1A1A1",
+};
+
 /*
  * This SemanticTokenProvider extension is made so we can create our own SemanticToken
  * definitions for the members of the Tonto AST

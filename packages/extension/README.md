@@ -10,6 +10,7 @@ For user-facing guides, see the documentation site in [packages/tonto-documentat
 - Langium language client/server activation for diagnostics, completion, hover, references, formatting, and workspace updates.
 - Tonto activity bar and Explorer command views.
 - Commands for JSON generation, JSON import, validation, gUFO transformation, TPM install, project initialization, guidance generation, and semantic token color setup.
+- Optional automatic folding for multilingual `label` and `description` blocks.
 - PlantUML diagram preview/export commands.
 - Sprotty-based diagram preview and optional `.tontodiagram` editor.
 
@@ -51,6 +52,7 @@ The extension contributes these command IDs:
 | `tonto.addGuidances` | Add Guidances to project (Work with LLMs) |
 | `tonto.addSkill` | Add Tonto Skill to project |
 | `tonto.addSemanticTokenColors` | Add Semantic Token Colors to User Settings |
+| `tonto.editor.toggleLabelAndDescriptionFolding` | Toggle Label and Description Folding |
 
 ## Configuration
 
@@ -61,6 +63,19 @@ The `.tontodiagram` editor is feature-gated through:
   "tonto.features.tontodiagram.enabled": true
 }
 ```
+
+Multiline `label` and `description` blocks can be folded automatically when a
+Tonto editor becomes active:
+
+```json
+{
+  "tonto.editor.autoFoldLabelsAndDescriptions": true
+}
+```
+
+The setting is disabled by default and can also be changed with **Tonto: Toggle
+Label and Description Folding**. Folding changes only the editor presentation;
+it does not modify the `.tonto` document or generated ontology artifacts.
 
 ## Development
 

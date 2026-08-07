@@ -7769,8 +7769,8 @@ to-regex-range@^5.0.1:
   dependencies:
     is-number "^7.0.0"
 
-tonto-cli@^0.4.13, "tonto-cli@file:../tonto", "tonto-cli@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/tonto":
-  version "0.4.13"
+tonto-cli@^0.4.13, tonto-cli@^0.4.14, "tonto-cli@file:../tonto", "tonto-cli@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/tonto":
+  version "0.4.14"
   resolved "file:packages/tonto"
   dependencies:
     "@inquirer/prompts" "^7.8.6"
@@ -7842,7 +7842,7 @@ tonto-package-manager@~0.3.3, "tonto-package-manager@file:/Users/matheuslenke/de
     tonto-cli "file:../tonto"
 
 "tonto@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/extension":
-  version "0.4.12"
+  version "0.4.13"
   resolved "file:packages/extension"
   dependencies:
     chalk "^5.3.0"
@@ -7855,7 +7855,7 @@ tonto-package-manager@~0.3.3, "tonto-package-manager@file:/Users/matheuslenke/de
     sprotty-elk "^1.2.0"
     sprotty-vscode "file:../sprotty-vscode"
     sprotty-vscode-webview "file:../sprotty-vscode-webview"
-    tonto-cli "^0.4.13"
+    tonto-cli "^0.4.14"
     tonto-package-manager "~0.3.3"
     uuid "^9.0.1"
     vite "^5.4.19"

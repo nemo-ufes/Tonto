@@ -14,7 +14,8 @@ export enum CommandIds {
     initProject = "tonto.initProject",
     addGuidances = "tonto.addGuidances",
     addSkill = "tonto.addSkill",
-    addSemanticTokenColors = "tonto.addSemanticTokenColors"
+    addSemanticTokenColors = "tonto.addSemanticTokenColors",
+    toggleLabelAndDescriptionFolding = "tonto.editor.toggleLabelAndDescriptionFolding"
 }
 
 export const commandPalletteIds = [
@@ -28,5 +29,6 @@ export const commandPalletteIds = [
     CommandIds.addGuidances,
     CommandIds.addSkill,
     CommandIds.addSemanticTokenColors,
+    CommandIds.toggleLabelAndDescriptionFolding,
     CommandIds.initProject,
 ];

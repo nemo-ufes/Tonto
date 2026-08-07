@@ -3,9 +3,9 @@
 set -euo pipefail
 
 REPO="${REPO:-nemo-ufes/Tonto}"
-PR_NUMBER="${PR_NUMBER:-34}"
-RELEASE_VERSION="${RELEASE_VERSION:-0.4.12}"
-CLI_VERSION="${CLI_VERSION:-0.4.13}"
+PR_NUMBER="${PR_NUMBER:-}"
+RELEASE_VERSION="${RELEASE_VERSION:-0.4.13}"
+CLI_VERSION="${CLI_VERSION:-0.4.14}"
 TPM_VERSION="${TPM_VERSION:-0.3.3}"
 
 CLI_PACKAGE="tonto-cli"
@@ -81,6 +81,7 @@ require_command npm
 require_command npx
 
 [[ -z "$(git status --porcelain)" ]] || fail "working tree is not clean"
+[[ -n "$PR_NUMBER" ]] || fail "PR_NUMBER is required. Run: PR_NUMBER=<merged-release-pr> npm run release:publish"
 
 assert_package_version "package.json" "$RELEASE_VERSION"
 assert_package_version "packages/extension/package.json" "$RELEASE_VERSION"

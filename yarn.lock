@@ -6140,7 +6140,7 @@ onetime@^6.0.0:
 
 "ontouml-js@github:matheuslenke/ontouml-js#feature/include-types-in-build":
   version "0.5.0"
-  resolved "git+ssh://git@github.com/matheuslenke/ontouml-js.git#3ac6d342974dc0092c33f86df68f06721c29f76d"
+  resolved "git+ssh://git@github.com/matheuslenke/ontouml-js.git#8a83000d1d306cac28df28bbb27f1ec82a5a3529"
   dependencies:
     "@babel/runtime" "^7.12.13"
     "@types/n3" "^1.4.4"

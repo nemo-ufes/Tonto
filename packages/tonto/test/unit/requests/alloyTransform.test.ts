@@ -105,6 +105,20 @@ describe("validateProjectForAlloyTransform", () => {
 });
 
 describe("getAlloyModules", () => {
+  it("names each file after its Alloy module declaration", async () => {
+    // `main` does `open world_structure[World]`, and Alloy resolves `open foo` to foo.als
+    // next to it. If the file names drift from the module declarations, the generated
+    // project stops loading in the Analyzer — so pin them to the generated content.
+    const project = new Project();
+    project.createModel().createKind("Person");
+
+    const { result } = asResult(await TransformTontoToAlloy(project));
+
+    for (const { name, content } of getAlloyModules(result)) {
+      expect(content).toMatch(new RegExp(`^module ${name}\\b`, "m"));
+    }
+  });
+
   it("orders main last, since it imports the other two", () => {
     const modules = getAlloyModules({
       mainModule: "main",

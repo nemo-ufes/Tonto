@@ -28,6 +28,7 @@ describe("CLI integration", () => {
             "importSingle",
             "validate",
             "transform",
+            "transformToAlloy",
             "plantuml",
             "init",
             "add-skill",

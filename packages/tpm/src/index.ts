@@ -1,15 +1,19 @@
 import { Command } from "commander";
 import figlet from "figlet";
+import { createRequire } from "node:module";
 import { installAction } from "./actions/installAction.js";
 import { addDependencyAction } from "./actions/addDependencyAction.js";
 
-export default function (): void {
+const require = createRequire(import.meta.url);
+const packageVersion = (require("../package.json") as { version: string }).version;
+
+export function createTpmProgram(): Command {
   const program = new Command();
 
   program
     .name("tpm")
     .description("Tonto Package Manager: A Package Manager to manage dependencies in your Tonto project")
-    .version("0.2.5")
+    .version(packageVersion)
     .addHelpText("before", figlet.textSync("TPM"));
 
   program
@@ -41,7 +45,11 @@ export default function (): void {
     .argument("<projectURL>", "Dependency name to uninstall")
     .description("Remove a dependency from your project");
 
-  program.parseAsync(process.argv);
+  return program;
+}
+
+export default async function (argv: readonly string[] = process.argv): Promise<void> {
+  await createTpmProgram().parseAsync([...argv]);
 }
 
 export * from "./actions/installAction.js";

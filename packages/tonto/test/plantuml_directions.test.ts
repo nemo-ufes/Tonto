@@ -58,4 +58,42 @@ describe("PlantUML Generator - Directional Arrows", () => {
     expect(puml).not.toContain(`-r-`);
     expect(puml).not.toContain(`-l-`);
   });
+
+  test("should widen crowded targets so PlantUML can spread connection points", async () => {
+    const tontoCode = `
+      package TestPackage
+
+      kind Person
+      role Student specializes Person
+      role Employee specializes Person
+      phase Child specializes Person
+      phase Adult specializes Person
+      kind University {
+        [1] -- enrolls -- [*] Person
+      }
+      kind Company {
+        [1] -- employs -- [*] Person
+      }
+      kind Family {
+        [1] -- includes -- [*] Person
+      }
+      kind Government {
+        [1] -- registers -- [*] Person
+      }
+    `;
+
+    const validationResult = await validate(tontoCode);
+    const model = validationResult.document.parseResult.value;
+
+    const spread = generatePlantUML(model, { showExternalReferences: true, sizeByDegree: true });
+    const natural = generatePlantUML(model, { showExternalReferences: true, sizeByDegree: false });
+
+    // Person has eight connections, so its label receives twelve spaces on each
+    // side. Its alias remains the identity used by every generated link.
+    expect(spread).toContain(`class Person as "${" ".repeat(12)}Person${" ".repeat(12)}"`);
+    expect(spread.match(/^Person <\|--/gm)).toHaveLength(4);
+    expect(spread.match(/-- "\*" Person :/g)).toHaveLength(4);
+    expect(natural).toContain(`class "Person"`);
+    expect(natural).not.toContain(`class Person as`);
+  });
 });

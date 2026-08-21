@@ -7813,7 +7813,7 @@ tonto-cli@^0.4.13, tonto-cli@^0.4.14, "tonto-cli@file:../tonto", "tonto-cli@file
     tailwind-merge "^2.6.0"
 
 tonto-package-manager@~0.3.3, "tonto-package-manager@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/tpm":
-  version "0.3.3"
+  version "0.3.4"
   resolved "file:packages/tpm"
   dependencies:
     "@inquirer/prompts" "^7.8.6"

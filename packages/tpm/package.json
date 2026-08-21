@@ -1,7 +1,7 @@
 {
   "name": "tonto-package-manager",
   "displayName": "Tonto Package Manager",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "A package manager for Tonto dependencies",
   "scripts": {
     "clean": "rimraf lib node_modules",

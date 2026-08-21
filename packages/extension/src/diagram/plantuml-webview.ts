@@ -260,8 +260,8 @@ export class PlantUMLPanel {
             },
             {
                 key: 'sizeByDegree',
-                label: 'Size by relations',
-                hint: 'Enlarge elements that have many relations',
+                label: 'Spread connection points',
+                hint: 'Widen highly connected elements so links can reach different points',
                 value: state.sizeByDegree,
             },
         ];
@@ -854,7 +854,7 @@ export class PlantUMLPanel {
                         <div id="legendCard" class="legend-card" hidden>
                             <div class="legend-title">Nature colors</div>
                             <ul class="legend-list">${legendRows}</ul>
-                            <div class="legend-note">Colors match the Tonto semantic-token palette.</div>
+                            <div class="legend-note">Kinds use the full tone; their subtypes use a lighter tone of the same hue.</div>
                         </div>
                         <button id="legendButton" class="legend-button" aria-expanded="false" aria-controls="legendCard" title="Show the nature color legend">
                             <span class="legend-button-swatches">${legendSwatchPreview}</span>

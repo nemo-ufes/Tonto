@@ -14,12 +14,56 @@ import {
 } from "../../language/generated/ast.js";
 import { getModelContextModules } from "../../language/utils/modelStatements.js";
 import { tontoNatureUtils } from "../../language/utils/tontoNatureUtils.js";
-import { TONTO_SEMANTIC_TOKEN_COLORS } from "../../language/lsp/tonto-semantic-token-provider.js";
+
+const COLORS = {
+    GREEN: "#99FF99",
+    LIGHT_GREEN: "#D3FFD3",
+    PINK: "#FF99A3",
+    LIGHT_PINK: "#FFDADD",
+    BLUE: "#70D7FF",
+    LIGHT_BLUE: "#C0EDFF",
+    TEAL: "#67C3CB",
+    LIGHT_TEAL: "#DDEDEE",
+    WHITE: "#FFFFFF",
+    YELLOW: "#FCFCD4",
+    ORANGE: "#FCE0C0",
+    PURPLE: "#D3D3FC",
+    GREY: "#E0E0E0",
+};
+
+const mainColorMap: Record<string, string> = {
+    objects: COLORS.TEAL,
+    "functional-complexes": COLORS.PINK,
+    collectives: COLORS.PINK,
+    quantities: COLORS.PINK,
+    relators: COLORS.GREEN,
+    qualities: COLORS.BLUE,
+    modes: COLORS.BLUE,
+    events: COLORS.YELLOW,
+    situations: COLORS.ORANGE,
+    types: COLORS.PURPLE,
+    "abstract-individuals": COLORS.WHITE,
+    none: COLORS.GREY,
+};
+
+const alternativeColorMap: Record<string, string> = {
+    objects: COLORS.LIGHT_TEAL,
+    "functional-complexes": COLORS.LIGHT_PINK,
+    collectives: COLORS.LIGHT_PINK,
+    quantities: COLORS.LIGHT_PINK,
+    relators: COLORS.LIGHT_GREEN,
+    qualities: COLORS.LIGHT_BLUE,
+    modes: COLORS.LIGHT_BLUE,
+    events: COLORS.YELLOW,
+    situations: COLORS.ORANGE,
+    types: COLORS.PURPLE,
+    "abstract-individuals": COLORS.WHITE,
+    none: COLORS.GREY,
+};
 
 function getColor(element: ClassDeclaration): string | undefined {
     const natureResult = tontoNatureUtils.getTontoNature(element);
-    const semanticToken = tontoNatureUtils.getSemanticTokenFromNature(natureResult);
-    return TONTO_SEMANTIC_TOKEN_COLORS[semanticToken];
+    return natureResult.isKind ? mainColorMap[natureResult.nature] : alternativeColorMap[natureResult.nature];
 }
 
 export interface PlantUMLOptions {
@@ -45,7 +89,7 @@ export interface PlantUMLOptions {
     showColors?: boolean;
     /** Spacing between nodes and ranks. Defaults to "cozy". */
     spacing?: PlantUMLSpacing;
-    /** Scale element boxes up according to how many relations connect to them. Defaults to true. */
+    /** Widen highly connected elements so PlantUML can spread links across more border space. Defaults to true. */
     sizeByDegree?: boolean;
     layout?: PlantUMLLayoutVariant;
     orthogonal?: boolean;
@@ -67,18 +111,19 @@ export interface PlantUMLNatureLegendEntry {
 
 /**
  * Nature → color mapping rendered by the generator, exposed so the editor can
- * draw a matching legend. These values come directly from the semantic-token palette.
+ * draw a matching legend. Kinds use the full tone; their subtypes use a lighter
+ * tone of the same hue.
  */
 export const plantUMLNatureLegend: PlantUMLNatureLegendEntry[] = [
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoObjects, label: "Object" },
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoKind, label: "Functional complex kind · Collective · Quantity" },
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoFunctionalComplex, label: "Functional complex subtype" },
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoRelator, label: "Relator" },
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoQuality, label: "Quality · Mode" },
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoEvent, label: "Event" },
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoSituation, label: "Situation" },
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoType, label: "Type (high-order)" },
-    { color: TONTO_SEMANTIC_TOKEN_COLORS.tontoNone, label: "Unspecified nature" },
+    { color: COLORS.TEAL, label: "Object" },
+    { color: COLORS.PINK, label: "Functional complex · Collective · Quantity" },
+    { color: COLORS.GREEN, label: "Relator" },
+    { color: COLORS.BLUE, label: "Quality · Mode" },
+    { color: COLORS.YELLOW, label: "Event" },
+    { color: COLORS.ORANGE, label: "Situation" },
+    { color: COLORS.PURPLE, label: "Type (high-order)" },
+    { color: COLORS.WHITE, label: "Abstract individual" },
+    { color: COLORS.GREY, label: "Unspecified nature" },
 ];
 
 export type PlantUMLLayoutVariant =
@@ -370,18 +415,16 @@ function computeRelationDegrees(contextModules: ContextModule[]): Map<ClassDecla
     return degrees;
 }
 
-/** Number of non-breaking spaces padded on each side of a label to widen its box. */
+/**
+ * Number of non-breaking spaces padded on each side of a label to widen its box.
+ *
+ * PlantUML does not expose arbitrary border ports for class links. Giving Graphviz
+ * progressively more border space is therefore the least invasive way to keep
+ * links to hub elements from converging on the same point. Two connections do not
+ * need extra room; after that, each connection adds two spaces up to a sensible cap.
+ */
 function paddingForDegree(degree: number): number {
-    if (degree >= 7) {
-        return 8;
-    }
-    if (degree >= 5) {
-        return 5;
-    }
-    if (degree >= 3) {
-        return 3;
-    }
-    return 0;
+    return degree <= 2 ? 0 : Math.min((degree - 2) * 2, 18);
 }
 
 function padLabel(label: string, pad: number): string {

@@ -329,6 +329,11 @@
                 "category": "Tonto"
             },
             {
+                "command": "tonto.transformToAlloy",
+                "title": "Transform to Alloy",
+                "category": "Tonto"
+            },
+            {
                 "command": "tonto.tpm.install",
                 "title": "Install Packages (TPM)",
                 "category": "Tonto"

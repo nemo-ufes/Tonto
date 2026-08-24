@@ -4,6 +4,7 @@ import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } f
 import { createAddGuidancesCommand } from "../commands/addGuidancesCommand.js";
 import { createAddSemanticTokenColorsCommand } from "../commands/addSemanticTokenColorsCommand.js";
 import { createAddSkillCommand } from "../commands/addSkillCommand.js";
+import { registerTransformToAlloyCommands } from "../commands/alloyTransformCommand.js";
 import { createTransformToGufoSatusBarItem } from "../commands/gufoTransformCommand.js";
 import { createInitCommand } from "../commands/initCommand.js";
 import { createGenerateJsonStatusBarItem } from "../commands/JsonGenerationCommands.js";
@@ -57,6 +58,7 @@ const TONTO_COMMAND_GROUPS: TontoCommandGroup[] = [
             { id: "tonto.generateJSON", label: "Transform Tonto -> JSON", icon: "json" },
             { id: "tonto.generateTonto", label: "Transform JSON -> Tonto", icon: "file-code" },
             { id: "tonto.transformModel", label: "Transform Tonto -> gUFO", icon: "globe" },
+            { id: "tonto.transformToAlloy", label: "Transform Tonto -> Alloy", icon: "beaker" },
         ],
     },
     {
@@ -161,6 +163,7 @@ export function activate(context: vscode.ExtensionContext): void {
     createTontoGenerationStatusBarItem(context, generateTontoStatusBarItem);
     createValidationSatusBarItem(context, validateStatusBarItem, outputChannel);
     createTransformToGufoSatusBarItem(context, transformToGufoStatusBarItem);
+    registerTransformToAlloyCommands(context);
     createTpmInstallCommands(context, tpmInstallStatusBarItem);
     registerTontoMetadataFolding(context);
     activateDiagram(context, languageClient);

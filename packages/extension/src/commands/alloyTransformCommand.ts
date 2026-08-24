@@ -1,10 +1,10 @@
 import * as fs from "node:fs";
-import * as path from "node:path";
 import {
     AlloyResultResponse, ErrorAlloyResultResponse, isAlloyResultResponse,
-    formatAlloyErrorMessage, getAlloyModules, readOrCreateDefaultTontoManifest, transformToAlloyCommand
+    formatAlloyErrorMessage, readOrCreateDefaultTontoManifest, transformToAlloyCommand
 } from "tonto-cli";
 import * as vscode from "vscode";
+import { getAlloyOutputDirectory, resolveAlloyOutputFiles } from "./alloyOutputFiles.js";
 import { CommandIds } from "./commandIds.js";
 import {
     promptForProjectFolder,
@@ -59,23 +59,16 @@ async function transformModel(directoryUri: vscode.Uri, label?: string, descript
 
                 const alloyResult = response as AlloyResultResponse;
                 const manifest = readOrCreateDefaultTontoManifest(directoryUri.fsPath);
-                const folderAbsolutePath = path.resolve(directoryUri.fsPath);
+                const outputFiles = resolveAlloyOutputFiles(
+                    alloyResult.result,
+                    directoryUri.fsPath,
+                    manifest.outFolder
+                );
 
-                // The modules reference each other with `open`, and Alloy resolves `open foo`
-                // to foo.als beside the importing file, so they need a directory of their own.
-                const outputPath = path.join(folderAbsolutePath, manifest.outFolder, "alloy");
-                fs.mkdirSync(outputPath, { recursive: true });
+                fs.mkdirSync(getAlloyOutputDirectory(directoryUri.fsPath, manifest.outFolder), { recursive: true });
+                outputFiles.forEach(({ filePath, content }) => fs.writeFileSync(filePath, content));
 
-                let mainModulePath: string | undefined;
-                for (const { name, content } of getAlloyModules(alloyResult.result)) {
-                    const filePath = path.join(outputPath, `${name}.als`);
-                    fs.writeFileSync(filePath, content);
-                    if (name === "main") {
-                        mainModulePath = filePath;
-                    }
-                }
-
-                await showGeneratedModel(mainModulePath);
+                await showGeneratedModel(outputFiles.find((file) => file.isEntryPoint)?.filePath);
             } catch (error) {
                 const message = error instanceof Error ? error.message : "Error transforming model to Alloy";
                 vscode.window.showErrorMessage(message);

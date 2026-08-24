@@ -32,6 +32,16 @@ describe("Alloy transformation command registration", () => {
         expect(contributedCommands.has(CommandIds.transformTontoFromButton)).toBe(false);
     });
 
+    it("appears in the sidebar's Transformations group", () => {
+        const mainSource = fs.readFileSync(path.resolve(currentDirectory, "../../../src/extension/main.ts"), "utf8");
+        const transformationsGroup = mainSource.slice(
+            mainSource.indexOf("label: \"Transformations\""),
+            mainSource.indexOf("label: \"Diagrams\"")
+        );
+
+        expect(transformationsGroup).toContain(CommandIds.transformToAlloy);
+    });
+
     it("does not collide with the gUFO transformation ids", () => {
         expect(CommandIds.transformToAlloy).not.toBe(CommandIds.transformTonto);
         expect(contributedCommands.get(CommandIds.transformTonto)?.title).toBe("Transform to GUFO");

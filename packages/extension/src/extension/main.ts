@@ -58,6 +58,7 @@ const TONTO_COMMAND_GROUPS: TontoCommandGroup[] = [
             { id: "tonto.generateJSON", label: "Transform Tonto -> JSON", icon: "json" },
             { id: "tonto.generateTonto", label: "Transform JSON -> Tonto", icon: "file-code" },
             { id: "tonto.transformModel", label: "Transform Tonto -> gUFO", icon: "globe" },
+            { id: "tonto.transformToAlloy", label: "Transform Tonto -> Alloy", icon: "beaker" },
         ],
     },
     {

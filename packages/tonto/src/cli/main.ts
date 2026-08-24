@@ -67,6 +67,12 @@ export function createCli(actions = new TontoActions()): Command {
         .action(actions.transformToGufoAction);
 
     program
+        .command("transformToAlloy")
+        .argument("<dir>", "Directory of the actual project")
+        .description("Transform your Tonto project to Alloy with the ontouml-js API")
+        .action(actions.transformToAlloyAction);
+
+    program
         .command("plantuml")
         .argument("<dir>", "Directory of the actual project")
         .option("-d, --destination <dir>", "Destination directory for generated PlantUML files")
@@ -91,6 +97,8 @@ export * from "./requests/jsonGeneration.js";
 export * from "./requests/tontoGeneration.js";
 export * from "./model/grammar/TontoManifest.js";
 export * from "./requests/gufoTransform.js";
+export * from "./requests/alloyTransform.js";
+export * from "./actions/commands/generateAlloyCommand.js";
 export * from "./requests/ontoumljsValidator.js";
 export * from "./utils/buildFolderDocuments.js";
 export * from "./utils/readManifest.js";

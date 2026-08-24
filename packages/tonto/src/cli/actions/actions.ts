@@ -1,12 +1,14 @@
 import chalk from "chalk";
 import * as fs from "node:fs";
 import path from "path";
+import { ErrorAlloyResultResponse, formatAlloyErrorMessage, getAlloyModules } from "../requests/alloyTransform.js";
 import { ErrorGufoResultResponse, GufoResultResponse, formatGufoErrorMessage } from "../requests/gufoTransform.js";
 import { formatJsonGenerationErrorMessage } from "../requests/jsonGeneration.js";
 import { formatTontoGenerationErrorMessage } from "../requests/tontoGeneration.js";
 import { ErrorResultResponse, ValidationReturn } from "../requests/ontoumljsValidator.js";
 import { readOrCreateDefaultTontoManifest } from "../utils/readManifest.js";
 import { generateCommand, generateModularCommand } from "./commands/generateCommand.js";
+import { isAlloyResultResponse, transformToAlloyCommand } from "./commands/generateAlloyCommand.js";
 import { isGufoResultResponse, transformToGufoCommand } from "./commands/generateGufoCommand.js";
 import { generatePlantUMLCommand } from "./commands/generatePlantUMLCommand.js";
 import { ImportOptions, newImportCommand, newImportSingleCommand } from "./commands/importCommand.js";
@@ -120,6 +122,50 @@ export class TontoActions {
                 markCommandFailed();
             }
             console.log(chalk.bold.green("Transformation to Gufo finished"));
+        } catch (error) {
+            console.log(chalk.red(error));
+            markCommandFailed();
+        }
+    }
+
+    async transformToAlloyAction(dirName: string): Promise<void> {
+        if (!dirName) {
+            console.log(chalk.red("Directory not provided!"));
+            return;
+        }
+        console.log(chalk.bold("Transforming to Alloy..."));
+
+        try {
+            const manifest = readOrCreateDefaultTontoManifest(dirName);
+            const response = await transformToAlloyCommand(dirName);
+
+            if (isAlloyResultResponse(response)) {
+                // The modules cross-reference each other with `open`, so they belong in one
+                // directory of their own rather than loose in outFolder.
+                const outputPath = path.join(dirName, manifest.outFolder, "alloy");
+                fs.mkdirSync(outputPath, { recursive: true });
+
+                for (const { name, content } of getAlloyModules(response.result)) {
+                    const filePath = path.join(outputPath, `${name}.als`);
+                    fs.writeFileSync(filePath, content);
+                    console.log(chalk.green(`  ${path.relative(dirName, filePath)}`));
+                }
+            } else {
+                const errorResponse = response as ErrorAlloyResultResponse;
+                const details = errorResponse.info ?? [];
+
+                if (details.length > 0) {
+                    details.forEach((errorInfo) => {
+                        console.log(chalk.bold.redBright(`[${errorInfo.severity}] ${errorInfo.title}:`));
+                        console.log(chalk.red(errorInfo.description));
+                    });
+                } else {
+                    console.log(chalk.red(formatAlloyErrorMessage(errorResponse)));
+                }
+                markCommandFailed();
+                return;
+            }
+            console.log(chalk.bold.green("Transformation to Alloy finished"));
         } catch (error) {
             console.log(chalk.red(error));
             markCommandFailed();

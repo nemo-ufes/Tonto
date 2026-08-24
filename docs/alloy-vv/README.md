@@ -14,13 +14,21 @@ orientado pelo Prof. Dr. João Paulo A. Almeida.
 | Etapa | Situação |
 |---|---|
 | CLI `tonto transformToAlloy` gera `.als` | ✅ disponível |
-| Comando na paleta do VS Code | ⬜ planejado |
+| Comando na paleta do VS Code | ✅ disponível |
 | Geração de instâncias dentro do editor | ⬜ planejado |
 | Visualização de mundos possíveis | ⬜ planejado |
 
 ---
 
 ## Uso
+
+### No VS Code
+
+Rode **Tonto: Transform to Alloy** na paleta de comandos, ou use a entrada
+*Transform Tonto → Alloy* no grupo **Transformations** da barra lateral do Tonto. Ao
+terminar, a notificação oferece abrir o `main.als` gerado.
+
+### Na linha de comando
 
 ```bash
 tonto-cli transformToAlloy <diretório-do-projeto>
@@ -77,11 +85,18 @@ versões — está em discussão com o NEMO e não foi aplicada aqui.
 A cadeia espelha a da transformação para gUFO, uma camada por responsabilidade:
 
 ```
-main.ts                                    registra o subcomando "transformToAlloy"
- └─ actions/actions.ts                     saída no console e escrita dos arquivos
-     └─ actions/commands/generateAlloyCommand.ts    .tonto → Project OntoUML
-         └─ requests/alloyTransform.ts              Project → Alloy
+packages/extension
+ └─ commands/alloyTransformCommand.ts      paleta, barra lateral, notificações
+                    │
+packages/tonto      │  (ambos chamam a mesma camada de comando)
+ └─ cli/main.ts     │                      registra o subcomando "transformToAlloy"
+     └─ actions/actions.ts                 saída no console e escrita dos arquivos
+         └─ actions/commands/generateAlloyCommand.ts    .tonto → Project OntoUML
+             └─ requests/alloyTransform.ts              Project → Alloy
 ```
+
+A extensão não duplica conhecimento de Alloy: importa `transformToAlloyCommand`,
+`isAlloyResultResponse` e `getAlloyModules` do `tonto-cli`.
 
 ### O adapter é isolado de propósito
 

@@ -15,7 +15,7 @@ orientado pelo Prof. Dr. João Paulo A. Almeida.
 |---|---|
 | CLI `tonto transformToAlloy` gera `.als` | ✅ disponível |
 | Comando na paleta do VS Code | ✅ disponível |
-| Geração de instâncias dentro do editor | ⬜ planejado |
+| Geração de instâncias dentro do editor | ✅ disponível |
 | Visualização de mundos possíveis | ⬜ planejado |
 
 ---
@@ -27,6 +27,26 @@ orientado pelo Prof. Dr. João Paulo A. Almeida.
 Rode **Tonto: Transform to Alloy** na paleta de comandos, ou use a entrada
 *Transform Tonto → Alloy* no grupo **Transformations** da barra lateral do Tonto. Ao
 terminar, a notificação oferece abrir o `main.als` gerado.
+
+### Gerando instâncias
+
+**Tonto: Generate Instances (Alloy)** na paleta, ou pelo grupo **Model** da barra lateral.
+Escolha um predicado — `singleWorld`, `linearWorlds` ou `multipleWorlds` — e a instância
+aparece num painel, com um botão para avançar para a próxima.
+
+Esse comando **não escreve arquivo**: a transformação acontece em memória, porque gerar
+instâncias é uma pergunta sobre o modelo, não um artefato. Use *Transform to Alloy* quando
+quiser os `.als` em disco.
+
+Requer o servidor [`ontouml-alloy-lsp`](https://github.com/gabrielzborges/ontouml-alloy-lsp).
+Enquanto ele não é empacotado junto com a extensão, aponte para uma compilação local:
+
+```jsonc
+// settings.json
+"tonto.alloy.serverPath": "<repo>/build/install/ontouml-alloy-lsp/bin/ontouml-alloy-lsp"
+```
+
+`tonto.alloy.javaPath` define o Java usado; por padrão, `JAVA_HOME` e depois o `PATH`.
 
 ### Na linha de comando
 

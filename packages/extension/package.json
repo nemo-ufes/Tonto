@@ -245,6 +245,16 @@
                     "default": false,
                     "scope": "window",
                     "markdownDescription": "Automatically fold multiline `label` and `description` blocks when a Tonto editor becomes active."
+                },
+                "tonto.alloy.serverPath": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "Path to the `ontouml-alloy-lsp` server: a `.jar`, or the launcher script produced by `./gradlew installDist`. Required until the server is bundled with the extension."
+                },
+                "tonto.alloy.javaPath": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "Java executable used to run the Alloy server. Defaults to `JAVA_HOME`, then `java` on the `PATH`."
                 }
             }
         },
@@ -331,6 +341,11 @@
             {
                 "command": "tonto.transformToAlloy",
                 "title": "Transform to Alloy",
+                "category": "Tonto"
+            },
+            {
+                "command": "tonto.generateInstances",
+                "title": "Generate Instances (Alloy)",
                 "category": "Tonto"
             },
             {
@@ -452,6 +467,7 @@
         "tonto-package-manager": "~0.3.3",
         "uuid": "^9.0.1",
         "vite": "^5.4.19",
+        "vscode-jsonrpc": "^8.2.0",
         "vscode-languageclient": "^9.0.1",
         "vscode-languageserver": "^9.0.1",
         "vscode-languageserver-types": "^3.17.3",

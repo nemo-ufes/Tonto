@@ -8308,7 +8308,7 @@ vitest@^1.4.0:
     vite-node "0.34.6"
     why-is-node-running "^2.2.2"
 
-vscode-jsonrpc@8.2.0:
+vscode-jsonrpc@^8.2.0, vscode-jsonrpc@8.2.0:
   version "8.2.0"
   resolved "https://registry.npmjs.org/vscode-jsonrpc/-/vscode-jsonrpc-8.2.0.tgz"
   integrity sha512-C+r0eKJUIfiDIfwJhria30+TYWPtuHJXHtI7J0YlOmKAo7ogxP20T0zxB7HZQIFhIyvoBPwWskjxrvAtfjyZfA==

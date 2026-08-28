@@ -4,6 +4,8 @@ import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } f
 import { createAddGuidancesCommand } from "../commands/addGuidancesCommand.js";
 import { createAddSemanticTokenColorsCommand } from "../commands/addSemanticTokenColorsCommand.js";
 import { createAddSkillCommand } from "../commands/addSkillCommand.js";
+import { AlloyLspClient } from "../alloy/alloyLspClient.js";
+import { registerGenerateInstancesCommand } from "../commands/alloyInstanceCommand.js";
 import { registerTransformToAlloyCommands } from "../commands/alloyTransformCommand.js";
 import { createTransformToGufoSatusBarItem } from "../commands/gufoTransformCommand.js";
 import { createInitCommand } from "../commands/initCommand.js";
@@ -49,6 +51,7 @@ const TONTO_COMMAND_GROUPS: TontoCommandGroup[] = [
         icon: "symbol-class",
         commands: [
             { id: "tonto.validateModel", label: "Validate Model", icon: "check" },
+            { id: "tonto.generateInstances", label: "Generate Instances (Alloy)", icon: "debug-start" },
         ],
     },
     {
@@ -137,6 +140,7 @@ class TontoCommandsProvider implements vscode.TreeDataProvider<TontoCommandTreeI
 }
 
 let languageClient: LanguageClient;
+let alloyLspClient: AlloyLspClient | undefined;
 let generateTontoStatusBarItem!: vscode.StatusBarItem;
 let generateJsonStatusBarItem!: vscode.StatusBarItem;
 let generateDiagramStatusBarItem!: vscode.StatusBarItem;
@@ -164,6 +168,12 @@ export function activate(context: vscode.ExtensionContext): void {
     createValidationSatusBarItem(context, validateStatusBarItem, outputChannel);
     createTransformToGufoSatusBarItem(context, transformToGufoStatusBarItem);
     registerTransformToAlloyCommands(context);
+
+    // One server process for the whole session, started on first use so a user who never
+    // generates instances never pays for a JVM.
+    alloyLspClient = new AlloyLspClient(context, vscode.window.createOutputChannel("Tonto Alloy"));
+    context.subscriptions.push(alloyLspClient);
+    registerGenerateInstancesCommand(context, alloyLspClient);
     createTpmInstallCommands(context, tpmInstallStatusBarItem);
     registerTontoMetadataFolding(context);
     activateDiagram(context, languageClient);
@@ -199,6 +209,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
 // This function is called when the extension is deactivated.
 export function deactivate(): Thenable<void> | undefined {
+    // Ahead of the early return below, so the Java process is always released.
+    void alloyLspClient?.shutdown();
+
     if (languageClient) {
         return languageClient.stop();
     }

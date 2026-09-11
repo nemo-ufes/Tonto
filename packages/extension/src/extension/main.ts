@@ -171,9 +171,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // One server process for the whole session, started on first use so a user who never
     // generates instances never pays for a JVM.
-    alloyLspClient = new AlloyLspClient(context, vscode.window.createOutputChannel("Tonto Alloy"));
+    const alloyOutput = vscode.window.createOutputChannel("Tonto Alloy");
+    context.subscriptions.push(alloyOutput);
+    alloyLspClient = new AlloyLspClient(context, alloyOutput);
     context.subscriptions.push(alloyLspClient);
-    registerGenerateInstancesCommand(context, alloyLspClient);
+    registerGenerateInstancesCommand(context, alloyLspClient, alloyOutput);
     createTpmInstallCommands(context, tpmInstallStatusBarItem);
     registerTontoMetadataFolding(context);
     activateDiagram(context, languageClient);

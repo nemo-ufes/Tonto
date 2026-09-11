@@ -1,3 +1,4 @@
+import * as fs from "node:fs";
 import * as vscode from "vscode";
 import { createNonce, renderInstance, toPayload } from "./alloyInstanceView.js";
 import { AlloyLspClient } from "./alloyLspClient.js";
@@ -19,6 +20,7 @@ export class AlloyInstancePanel {
     private constructor(
         private readonly context: vscode.ExtensionContext,
         private readonly client: AlloyLspClient,
+        private readonly output: vscode.OutputChannel,
         private readonly sessionId: string,
         title: string
     ) {
@@ -50,10 +52,12 @@ export class AlloyInstancePanel {
     static show(
         context: vscode.ExtensionContext,
         client: AlloyLspClient,
+        output: vscode.OutputChannel,
         instance: AlloyInstance,
         projectName: string
     ): AlloyInstancePanel {
-        const panel = new AlloyInstancePanel(context, client, instance.sessionId, `Alloy — ${projectName}`);
+        const panel = new AlloyInstancePanel(
+            context, client, output, instance.sessionId, `Alloy — ${projectName}`);
         panel.renderFull(instance);
         return panel;
     }
@@ -79,8 +83,35 @@ export class AlloyInstancePanel {
 
         this.panel.webview.html = renderInstance(
             instance,
-            this.panel.webview.asWebviewUri(scriptPath).toString(),
+            this.scriptUri(scriptPath),
             createNonce()
         );
+
+        const payload = toPayload(instance);
+        const issues = payload.worlds.reduce(
+            (total, world) => total + world.nodes.filter((node) => node.issues.length > 0).length, 0);
+        this.output.appendLine(
+            `Instance ${instance.instanceNumber}: ${payload.worlds.length} world(s), `
+            + `${payload.worlds.reduce((total, world) => total + world.nodes.length, 0)} endurant(s), `
+            + `${payload.worlds.reduce((total, world) => total + world.edges.length, 0)} relation(s), `
+            + `${issues} constraint issue(s)`);
+    }
+
+    /**
+     * Appends the script's modification time to its URI.
+     *
+     * Webview resources are cached by URI, and a rebuild leaves the path unchanged — so the
+     * page keeps running the script it loaded the first time, however many times the window
+     * is reloaded. That is invisible: the HTML updates and the script does not.
+     */
+    private scriptUri(scriptPath: vscode.Uri): string {
+        const uri = this.panel.webview.asWebviewUri(scriptPath).toString();
+        let version = Date.now();
+        try {
+            version = fs.statSync(scriptPath.fsPath).mtimeMs;
+        } catch {
+            // Falling back to now only costs a reload that could have been avoided.
+        }
+        return `${uri}?v=${Math.trunc(version)}`;
     }
 }

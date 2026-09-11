@@ -21,38 +21,52 @@ const RUN_PREDICATES: { label: string; description: string }[] = [
     { label: "multipleWorlds", description: "Several worlds — what varies across possibilities" },
 ];
 
-function registerGenerateInstancesCommand(context: vscode.ExtensionContext, client: AlloyLspClient) {
+function registerGenerateInstancesCommand(
+    context: vscode.ExtensionContext,
+    client: AlloyLspClient,
+    output: vscode.OutputChannel
+) {
     context.subscriptions.push(
         vscode.commands.registerCommand(CommandIds.generateInstancesFromButton, (uri?: vscode.Uri) =>
-            runFromContext(context, client, uri))
+            runFromContext(context, client, output, uri))
     );
     context.subscriptions.push(
-        vscode.commands.registerCommand(CommandIds.generateInstances, () => runFromPalette(context, client))
+        vscode.commands.registerCommand(CommandIds.generateInstances, () => runFromPalette(context, client, output))
     );
 }
 
-async function runFromContext(context: vscode.ExtensionContext, client: AlloyLspClient, uri?: vscode.Uri) {
+async function runFromContext(
+    context: vscode.ExtensionContext,
+    client: AlloyLspClient,
+    output: vscode.OutputChannel,
+    uri?: vscode.Uri
+) {
     const folderUri = await resolveCommandFolderFromContext({
         uri,
         missingContextMessage: "Failed! Could not find workspace to generate instances",
     });
 
     if (folderUri) {
-        await generateInstances(context, client, folderUri);
+        await generateInstances(context, client, output, folderUri);
     }
 }
 
-async function runFromPalette(context: vscode.ExtensionContext, client: AlloyLspClient) {
+async function runFromPalette(
+    context: vscode.ExtensionContext,
+    client: AlloyLspClient,
+    output: vscode.OutputChannel
+) {
     const folderUri = await promptForProjectFolder();
 
     if (folderUri) {
-        await generateInstances(context, client, folderUri);
+        await generateInstances(context, client, output, folderUri);
     }
 }
 
 async function generateInstances(
     context: vscode.ExtensionContext,
     client: AlloyLspClient,
+    output: vscode.OutputChannel,
     directoryUri: vscode.Uri
 ): Promise<void> {
     const predicate = await vscode.window.showQuickPick(RUN_PREDICATES, {
@@ -82,6 +96,9 @@ async function generateInstances(
                 // what each class is. The stereotypes come from this side, where the OntoUML
                 // project still exists.
                 instance.ontology = modules.ontology;
+                output.appendLine(
+                    `Ontology: ${modules.ontology?.length ?? 0} class(es) `
+                    + `(${(modules.ontology ?? []).filter((entry) => entry.stereotype === "kind").length} kind)`);
 
                 if (!instance.satisfiable) {
                     // Not an error: no instance at this scope is itself a result about the model.
@@ -92,7 +109,7 @@ async function generateInstances(
                 }
 
                 const manifest = readOrCreateDefaultTontoManifest(directoryUri.fsPath);
-                AlloyInstancePanel.show(context, client, instance, manifest.projectName);
+                AlloyInstancePanel.show(context, client, output, instance, manifest.projectName);
             } catch (error) {
                 reportFailure(error);
             }

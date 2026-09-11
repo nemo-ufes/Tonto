@@ -30,6 +30,19 @@ cytoscape.use(fcose);
 const vscode = acquireVsCodeApi();
 
 /**
+ * A webview fails silently: nothing it throws reaches the extension, and its console is
+ * behind a developer-tools window most users never open. Without this a broken render is
+ * indistinguishable from an instance that genuinely had nothing to show.
+ */
+function report(context: string, error: unknown): void {
+    const detail = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
+    vscode.postMessage({ command: "error", context, detail });
+}
+
+window.addEventListener("error", (event) => report("uncaught", event.error ?? event.message));
+window.addEventListener("unhandledrejection", (event) => report("promise", event.reason));
+
+/**
  * The live graph, kept at module scope rather than inside `render`.
  *
  * Stepping to the next instance calls `render` again; a handle scoped to that call would
@@ -287,29 +300,52 @@ function render(payload: InstancePayload): void {
 
     const show = (index: number) => {
         const world = payload.worlds[index];
-        graph?.destroy();
-        graph = cytoscape({
-            container: canvas,
-            elements: toElements(world),
-            style: buildStyles(),
-            layout: {
-                name: "fcose",
-                animate: false,
-                // Endurants in a world have no inherent order, so a force layout says more
-                // about how they relate than a grid would.
-                nodeRepulsion: 6000,
-                idealEdgeLength: 120,
-                padding: 24,
-                // Without this the layout keeps its own scale, and in a panel docked to the
-                // side that puts part of the world outside the viewport — taking the
-                // relators and their relations with it, so a populated world reads as a few
-                // loose boxes.
-                fit: true,
-            } as cytoscape.LayoutOptions,
-        });
 
-        Array.from(tabs.children).forEach((tab, position) =>
-            tab.classList.toggle("active", position === index));
+        try {
+            graph?.destroy();
+            graph = cytoscape({
+                container: canvas,
+                elements: toElements(world),
+                style: buildStyles(),
+                layout: {
+                    name: "fcose",
+                    animate: false,
+                    // Endurants in a world have no inherent order, so a force layout says
+                    // more about how they relate than a grid would.
+                    nodeRepulsion: 6000,
+                    idealEdgeLength: 120,
+                    padding: 24,
+                    // Without this the layout keeps its own scale, and in a panel docked to
+                    // the side that puts part of the world outside the viewport — taking the
+                    // relators and their relations with it, so a populated world reads as a
+                    // few loose boxes.
+                    fit: true,
+                } as cytoscape.LayoutOptions,
+            });
+
+            // fcose settles positions asynchronously, so the `fit` it does on the way can
+            // frame the graph before every node has moved — leaving whatever settled last
+            // outside the viewport. Refitting once it stops is what actually frames them all.
+            graph.one("layoutstop", () => {
+                graph?.resize();
+                graph?.fit(undefined, 24);
+            });
+
+            // What was actually drawn, so a missing relation can be told apart from an
+            // instance that never had one.
+            vscode.postMessage({
+                command: "drawn",
+                world: world.title,
+                nodes: graph.nodes().length,
+                edges: graph.edges().length,
+            });
+        } catch (error) {
+            report(`drawing ${world.title}`, error);
+        }
+
+        Array.from(tabs.children).forEach((tab, position) => {
+            tab.classList.toggle("active", position === index);
+        });
         highlightWorld(index);
 
         describeWorld(note, world);

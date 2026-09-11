@@ -13,6 +13,11 @@ import { WorldGraph } from "./instanceGraph.js";
  * the server would hold the solver state of every model a user ever looked at, until the idle
  * sweep got to it.
  */
+type WebviewMessage =
+    | { command: "next" }
+    | { command: "drawn"; world: string; nodes: number; edges: number }
+    | { command: "error"; context: string; detail: string };
+
 export class AlloyInstancePanel {
 
     private readonly panel: vscode.WebviewPanel;
@@ -44,9 +49,23 @@ export class AlloyInstancePanel {
             }
         );
 
-        this.panel.webview.onDidReceiveMessage((message: { command?: string }) => {
-            if (message?.command === "next") {
-                void this.showNext();
+        this.panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
+            switch (message?.command) {
+                case "next":
+                    void this.showNext();
+                    break;
+                case "drawn":
+                    this.output.appendLine(
+                        `  drew ${message.world}: ${message.nodes} node(s), ${message.edges} edge(s)`);
+                    break;
+                case "error":
+                    // A webview throws into the void otherwise, and a blank graph looks the
+                    // same as a world with nothing in it.
+                    this.output.appendLine(`  webview error while ${message.context}: ${message.detail}`);
+                    this.output.show(true);
+                    break;
+                default:
+                    break;
             }
         });
 

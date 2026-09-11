@@ -97,13 +97,36 @@ function buildStyles(): cytoscape.StylesheetJson {
             selector: "node[nature = 'object']",
             style: { "shape": "round-rectangle", "background-color": objectFill },
         },
+        // A diamond gets a size of its own rather than one derived from its label. Sizing a
+        // non-rectangular shape to its text collapses it — the node stays in the graph, and
+        // with it every relation it takes part in, while nothing appears on screen. Since a
+        // relator connects the endurants it mediates, losing it loses all of their edges.
+        // The label sits below, which is also how a relator is drawn in an OntoUML diagram.
         {
             selector: "node[nature = 'aspect']",
-            style: { "shape": "diamond", "background-color": aspectFill },
+            style: {
+                "shape": "diamond",
+                "background-color": aspectFill,
+                "width": 34,
+                "height": 34,
+                "padding": 0,
+                "text-valign": "bottom",
+                "text-margin-y": 4,
+                "color": foreground,
+            },
         },
         {
             selector: "node[nature = 'unknown']",
-            style: { "shape": "ellipse", "background-color": unknownFill },
+            style: {
+                "shape": "ellipse",
+                "background-color": unknownFill,
+                "width": 34,
+                "height": 34,
+                "padding": 0,
+                "text-valign": "bottom",
+                "text-margin-y": 4,
+                "color": foreground,
+            },
         },
         {
             selector: "edge",
@@ -300,6 +323,7 @@ function render(payload: InstancePayload): void {
 
     const show = (index: number) => {
         const world = payload.worlds[index];
+        let drawn: { nodes: number; edges: number } | undefined;
 
         try {
             graph?.destroy();
@@ -331,14 +355,11 @@ function render(payload: InstancePayload): void {
                 graph?.fit(undefined, 24);
             });
 
+            drawn = { nodes: graph.nodes().length, edges: graph.edges().length };
+
             // What was actually drawn, so a missing relation can be told apart from an
             // instance that never had one.
-            vscode.postMessage({
-                command: "drawn",
-                world: world.title,
-                nodes: graph.nodes().length,
-                edges: graph.edges().length,
-            });
+            vscode.postMessage({ command: "drawn", world: world.title, ...drawn });
         } catch (error) {
             report(`drawing ${world.title}`, error);
         }
@@ -348,7 +369,7 @@ function render(payload: InstancePayload): void {
         });
         highlightWorld(index);
 
-        describeWorld(note, world);
+        describeWorld(note, world, summarise(world, drawn));
     };
 
     tabs.replaceChildren(
@@ -382,7 +403,7 @@ function render(payload: InstancePayload): void {
  * A world of disconnected boxes otherwise reads as a failed render rather than as a fact
  * about the instance, and a red node says something is wrong without saying what.
  */
-function describeWorld(note: HTMLElement, world: WorldGraph): void {
+function describeWorld(note: HTMLElement, world: WorldGraph, summary: string): void {
     const issues = world.nodes.flatMap((node) =>
         node.issues.map((issue) => `${node.discriminator}: ${issue}`));
 
@@ -397,17 +418,37 @@ function describeWorld(note: HTMLElement, world: WorldGraph): void {
         });
     } else {
         note.classList.remove("has-issues");
-        if (world.edges.length === 0) {
-            note.textContent = `No relations hold in ${world.title}.`;
-        }
     }
 
-    note.style.display = note.childNodes.length > 0 || note.textContent ? "block" : "none";
+    const counts = document.createElement("div");
+    counts.className = "counts";
+    counts.textContent = summary;
+    note.appendChild(counts);
+
+    note.style.display = "block";
 }
 
 function worldTabLabel(world: WorldGraph): string {
-    const counts = `${world.nodes.length}`;
-    return `${world.title} (${counts})`;
+    return `${world.title} (${world.nodes.length})`;
+}
+
+/**
+ * States what the world holds and what was actually drawn from it.
+ *
+ * The two can disagree — a node that fails to render leaves no trace otherwise — and telling
+ * them apart from the panel itself is quicker than going through an output channel.
+ */
+function summarise(world: WorldGraph, drawn: { nodes: number; edges: number } | undefined): string {
+    const held = `${world.nodes.length} endurant${world.nodes.length === 1 ? "" : "s"}, `
+        + `${world.edges.length} relation${world.edges.length === 1 ? "" : "s"}`;
+
+    if (!drawn) {
+        return held;
+    }
+    if (drawn.nodes === world.nodes.length && drawn.edges === world.edges.length) {
+        return held;
+    }
+    return `${held} — drawn: ${drawn.nodes} node(s), ${drawn.edges} edge(s)`;
 }
 
 document.getElementById("next")?.addEventListener("click", () => {

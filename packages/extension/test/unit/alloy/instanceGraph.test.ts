@@ -280,3 +280,59 @@ describe("toWorldMap", () => {
         expect(toWorldMap([])).toEqual({ nodes: [], edges: [] });
     });
 });
+
+// Instance 30 of the University example, as the server actually returned it. Every relation
+// runs through a relator, so anything that drops aspect nodes drops all four edges with them.
+describe("a world whose relations all run through relators", () => {
+    const graphs = toWorldGraphs({
+        commandName: "singleWorld",
+        instanceNumber: 30,
+        classes: [],
+        worlds: [{
+            id: "w/CurrentWorld$0",
+            kind: "CurrentWorld",
+            next: [],
+            atoms: [
+                { id: "Object$0", classes: ["Organizacao", "Universidade"] },
+                { id: "Object$1", classes: ["Pessoa", "Estudante"] },
+                { id: "Object$2", classes: ["Pessoa", "Organizacao", "Crianca", "Adulto"] },
+                { id: "Aspect$0", classes: ["Matricula"] },
+                { id: "Aspect$1", classes: ["Matricula"] },
+            ],
+            tuples: [
+                { relation: "relation1", atoms: ["Aspect$0", "Object$2"] },
+                { relation: "relation1", atoms: ["Aspect$1", "Object$1"] },
+                { relation: "relation2", atoms: ["Aspect$0", "Object$0"] },
+                { relation: "relation2", atoms: ["Aspect$1", "Object$2"] },
+            ],
+        }],
+    }, ontology)[0];
+
+    it("keeps every endurant, relators included", () => {
+        expect(graphs.nodes).toHaveLength(5);
+        expect(graphs.nodes.filter((node) => node.nature === "aspect")).toHaveLength(2);
+    });
+
+    it("keeps all four relations", () => {
+        expect(graphs.edges).toHaveLength(4);
+    });
+
+    it("gives the two relators distinct ids despite identical labels", () => {
+        const relators = graphs.nodes.filter((node) => node.nature === "aspect");
+
+        expect(relators.map((node) => node.label)).toEqual(["Matricula", "Matricula"]);
+        expect(relators.map((node) => node.discriminator)).toEqual(["#0", "#1"]);
+    });
+
+    it("gives every edge a distinct id, including repeats of the same relation", () => {
+        const ids = graphs.edges.map((edge) => edge.id);
+
+        expect(new Set(ids).size).toBe(4);
+    });
+
+    it("flags only the endurant with two kinds", () => {
+        const flagged = graphs.nodes.filter((node) => node.issues.length > 0);
+
+        expect(flagged.map((node) => node.discriminator)).toEqual(["#2"]);
+    });
+});

@@ -146,6 +146,7 @@ export function renderInstance(
             color: var(--vscode-descriptionForeground);
         }
         #note.has-issues { color: var(--vscode-errorForeground); }
+        #note .counts { color: var(--vscode-descriptionForeground); }
         #graph { flex: 1; min-height: 0; }
         #empty {
             display: none;

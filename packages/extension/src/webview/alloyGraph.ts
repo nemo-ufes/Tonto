@@ -223,15 +223,6 @@ function renderWorldMap(
             ...map.edges.map((edge) => ({ data: edge })),
         ],
         style: buildMapStyles(),
-        layout: {
-            // Left to right, following the arrow of time the `next` relation encodes, so a
-            // counterfactual reads as a branch off the past rather than as another column.
-            name: "breadthfirst",
-            directed: true,
-            spacingFactor: 1.1,
-            padding: 10,
-            animate: false,
-        } as cytoscape.LayoutOptions,
         // The map is for orientation, not for rearranging.
         userZoomingEnabled: false,
         userPanningEnabled: false,
@@ -240,6 +231,25 @@ function renderWorldMap(
     });
 
     worldMap.on("tap", "node", (event) => onSelect(event.target.data("index") as number));
+
+    // Same reason as the graph: laid out on the next frame, once the container has a size.
+    requestAnimationFrame(() => {
+        try {
+            worldMap?.resize();
+            worldMap?.layout({
+                // Left to right, following the arrow of time the `next` relation encodes, so
+                // a counterfactual reads as a branch off the past rather than another column.
+                name: "breadthfirst",
+                directed: true,
+                spacingFactor: 1.1,
+                padding: 10,
+                animate: false,
+            } as cytoscape.LayoutOptions).run();
+            worldMap?.fit(undefined, 10);
+        } catch (error) {
+            report("laying out the world map", error);
+        }
+    });
 }
 
 function highlightWorld(index: number): void {
@@ -292,6 +302,28 @@ function nodeLabel(node: WorldGraph["nodes"][number]): string {
     return [...lines, node.discriminator].join("\n");
 }
 
+/** Places the endurants, then frames them. */
+function layOut(graph: cytoscape.Core | undefined): void {
+    if (!graph) {
+        return;
+    }
+    try {
+        graph.resize();
+        graph.layout({
+            name: "fcose",
+            animate: false,
+            // Endurants in a world have no inherent order, so a force layout says more about
+            // how they relate than a grid would.
+            nodeRepulsion: 6000,
+            idealEdgeLength: 120,
+            padding: 24,
+        } as cytoscape.LayoutOptions).run();
+        graph.fit(undefined, 24);
+    } catch (error) {
+        report("laying out", error);
+    }
+}
+
 function render(payload: InstancePayload): void {
     updateHeading(payload);
 
@@ -327,39 +359,24 @@ function render(payload: InstancePayload): void {
 
         try {
             graph?.destroy();
+
+            // The layout is run separately rather than passed to the constructor. With
+            // `animate: false` it completes synchronously inside it, so `layoutstop` fires
+            // before there is anything to listen with — and the fit that should follow it
+            // never happens, leaving most of the world outside the viewport.
             graph = cytoscape({
                 container: canvas,
                 elements: toElements(world),
                 style: buildStyles(),
-                layout: {
-                    name: "fcose",
-                    animate: false,
-                    // Endurants in a world have no inherent order, so a force layout says
-                    // more about how they relate than a grid would.
-                    nodeRepulsion: 6000,
-                    idealEdgeLength: 120,
-                    padding: 24,
-                    // Without this the layout keeps its own scale, and in a panel docked to
-                    // the side that puts part of the world outside the viewport — taking the
-                    // relators and their relations with it, so a populated world reads as a
-                    // few loose boxes.
-                    fit: true,
-                } as cytoscape.LayoutOptions,
-            });
-
-            // fcose settles positions asynchronously, so the `fit` it does on the way can
-            // frame the graph before every node has moved — leaving whatever settled last
-            // outside the viewport. Refitting once it stops is what actually frames them all.
-            graph.one("layoutstop", () => {
-                graph?.resize();
-                graph?.fit(undefined, 24);
             });
 
             drawn = { nodes: graph.nodes().length, edges: graph.edges().length };
-
-            // What was actually drawn, so a missing relation can be told apart from an
-            // instance that never had one.
             vscode.postMessage({ command: "drawn", world: world.title, ...drawn });
+
+            // Deferred a frame because the panel's flex layout has not settled when this
+            // first runs: measuring the container now gives the size it had before the page
+            // was laid out, and everything is framed against the wrong bounds.
+            requestAnimationFrame(() => layOut(graph));
         } catch (error) {
             report(`drawing ${world.title}`, error);
         }

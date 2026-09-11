@@ -113,6 +113,26 @@ export function renderInstance(
             color: var(--vscode-foreground);
             border-bottom-color: var(--vscode-focusBorder);
         }
+        #worldmap-section {
+            display: none;
+            border-bottom: 1px solid var(--vscode-panel-border);
+            padding: 0 1rem 0.5rem;
+        }
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--vscode-descriptionForeground);
+            margin: 0.2rem 0 0.3rem;
+        }
+        #worldmap { height: 130px; }
+        #note {
+            display: none;
+            margin: 0;
+            padding: 0.5rem 1rem 0;
+            font-size: 0.85rem;
+            color: var(--vscode-descriptionForeground);
+        }
         #graph { flex: 1; min-height: 0; }
         #empty {
             display: none;
@@ -144,10 +164,15 @@ export function renderInstance(
     </header>
     ${warnings}
     <div id="tabs"></div>
+    <section id="worldmap-section">
+        <p class="section-title">How these worlds connect</p>
+        <div id="worldmap"></div>
+    </section>
     <div class="legend">
         <span><span class="swatch object"></span>endurant</span>
         <span><span class="swatch aspect"></span>aspect (relator, mode)</span>
     </div>
+    <p id="note"></p>
     <div id="graph"></div>
     <p id="empty"></p>
     <script nonce="${nonce}">

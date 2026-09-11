@@ -1,6 +1,6 @@
 import cytoscape from "cytoscape";
 import fcose from "cytoscape-fcose";
-import { WorldGraph } from "../alloy/instanceGraph.js";
+import { toWorldMap, WorldGraph } from "../alloy/instanceGraph.js";
 
 /**
  * Draws one Alloy instance as a graph per possible world.
@@ -37,6 +37,9 @@ const vscode = acquireVsCodeApi();
  * nothing left to destroy it.
  */
 let graph: cytoscape.Core | undefined;
+
+/** The map of how the worlds connect, alive alongside the graph of what is inside one. */
+let worldMap: cytoscape.Core | undefined;
 
 /**
  * Cytoscape paints on a canvas, so CSS custom properties never reach it. Reading the theme's
@@ -112,6 +115,93 @@ function buildStyles(): cytoscape.StylesheetJson {
     ] as cytoscape.StylesheetJson;
 }
 
+function buildMapStyles(): cytoscape.StylesheetJson {
+    const border = themeColour("--vscode-panel-border", "#80808060");
+    const edgeColour = themeColour("--vscode-charts-lines", "#80808080");
+    const dim = themeColour("--vscode-descriptionForeground", "#999999");
+
+    return [
+        {
+            selector: "node",
+            style: {
+                "label": "data(label)",
+                "text-wrap": "wrap",
+                "text-valign": "center",
+                "text-halign": "center",
+                "shape": "round-rectangle",
+                "width": "label",
+                "height": "label",
+                "padding": "6px",
+                "font-size": "9px",
+                "font-family": themeColour("--vscode-font-family", "sans-serif"),
+                "color": dim,
+                "background-color": themeColour("--vscode-editor-background", "#1e1e1e"),
+                "border-width": 1,
+                "border-color": border,
+            },
+        },
+        // The world being shown below, so the map reads as navigation rather than decoration.
+        {
+            selector: "node.selected-world",
+            style: {
+                "color": themeColour("--vscode-button-foreground", "#ffffff"),
+                "background-color": themeColour("--vscode-button-background", "#0e639c"),
+                "border-color": themeColour("--vscode-focusBorder", "#007fd4"),
+            },
+        },
+        {
+            selector: "edge",
+            style: {
+                "width": 1.5,
+                "line-color": edgeColour,
+                "target-arrow-color": edgeColour,
+                "target-arrow-shape": "triangle",
+                "curve-style": "bezier",
+            },
+        },
+    ] as cytoscape.StylesheetJson;
+}
+
+function renderWorldMap(
+    container: HTMLElement,
+    worlds: WorldGraph[],
+    onSelect: (index: number) => void
+): void {
+    const map = toWorldMap(worlds);
+
+    worldMap?.destroy();
+    worldMap = cytoscape({
+        container,
+        elements: [
+            ...map.nodes.map((node) => ({ data: { id: node.id, label: node.label, index: node.index } })),
+            ...map.edges.map((edge) => ({ data: edge })),
+        ],
+        style: buildMapStyles(),
+        layout: {
+            // Left to right, following the arrow of time the `next` relation encodes, so a
+            // counterfactual reads as a branch off the past rather than as another column.
+            name: "breadthfirst",
+            directed: true,
+            spacingFactor: 1.1,
+            padding: 10,
+            animate: false,
+        } as cytoscape.LayoutOptions,
+        // The map is for orientation, not for rearranging.
+        userZoomingEnabled: false,
+        userPanningEnabled: false,
+        autoungrabify: true,
+        autolock: true,
+    });
+
+    worldMap.on("tap", "node", (event) => onSelect(event.target.data("index") as number));
+}
+
+function highlightWorld(index: number): void {
+    worldMap?.nodes().forEach((node) => {
+        node.toggleClass("selected-world", node.data("index") === index);
+    });
+}
+
 function toElements(world: WorldGraph): cytoscape.ElementDefinition[] {
     const nodes: cytoscape.ElementDefinition[] = world.nodes.map((node) => ({
         data: {
@@ -132,17 +222,23 @@ function render(payload: InstancePayload): void {
     const tabs = document.getElementById("tabs");
     const canvas = document.getElementById("graph");
     const empty = document.getElementById("empty");
-    if (!tabs || !canvas || !empty) {
+    const mapSection = document.getElementById("worldmap-section");
+    const mapCanvas = document.getElementById("worldmap");
+    const note = document.getElementById("note");
+    if (!tabs || !canvas || !empty || !mapSection || !mapCanvas || !note) {
         return;
     }
 
     if (!payload.satisfiable || payload.worlds.length === 0) {
         graph?.destroy();
         graph = undefined;
+        worldMap?.destroy();
+        worldMap = undefined;
         canvas.style.display = "none";
+        mapSection.style.display = "none";
+        note.style.display = "none";
         empty.style.display = "block";
-        empty.textContent = payload.message
-            ?? "This instance has no worlds to show.";
+        empty.textContent = payload.message ?? "This instance has no worlds to show.";
         return;
     }
 
@@ -169,6 +265,14 @@ function render(payload: InstancePayload): void {
 
         Array.from(tabs.children).forEach((tab, position) =>
             tab.classList.toggle("active", position === index));
+        highlightWorld(index);
+
+        // A world of disconnected boxes looks like a failed render. Saying that the world
+        // holds no relation makes it a fact about the instance instead.
+        note.textContent = world.edges.length === 0
+            ? `No relations hold in ${world.title}.`
+            : "";
+        note.style.display = world.edges.length === 0 ? "block" : "none";
     };
 
     tabs.replaceChildren(
@@ -181,6 +285,16 @@ function render(payload: InstancePayload): void {
             return tab;
         })
     );
+
+    // One world has no branching to show, so the map would be a box with nothing to say.
+    if (payload.worlds.length > 1) {
+        mapSection.style.display = "";
+        renderWorldMap(mapCanvas, payload.worlds, show);
+    } else {
+        mapSection.style.display = "none";
+        worldMap?.destroy();
+        worldMap = undefined;
+    }
 
     show(0);
 }

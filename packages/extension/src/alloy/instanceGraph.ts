@@ -38,6 +38,58 @@ export interface WorldGraph {
 
 export type AtomNature = "object" | "aspect" | "unknown";
 
+/** A world in the map of how the worlds connect, rather than of what is inside one. */
+export interface WorldMapNode {
+    id: string
+    label: string
+    kind?: string
+    /** Position of this world in the tab strip, so clicking the map can select it. */
+    index: number
+}
+
+export interface WorldMapEdge {
+    id: string
+    source: string
+    target: string
+}
+
+export interface WorldMap {
+    nodes: WorldMapNode[]
+    edges: WorldMapEdge[]
+}
+
+/**
+ * How the worlds branch off each other.
+ *
+ * <p>This is the structure the possible-worlds reading is about: the past leads to the
+ * present and on to the future, and a counterfactual branches off the past as what could
+ * have happened instead. Tabs alone put those side by side as if unrelated, which is exactly
+ * what makes a counterfactual world unreadable — it only means anything relative to the
+ * branch it is not on.
+ */
+export function toWorldMap(worlds: WorldGraph[]): WorldMap {
+    const byId = new Map(worlds.map((world, index) => [world.id, index]));
+
+    return {
+        nodes: worlds.map((world, index) => ({
+            id: world.id,
+            label: `${world.title}\n${world.nodes.length} endurant${world.nodes.length === 1 ? "" : "s"}`,
+            kind: world.kind,
+            index,
+        })),
+        edges: worlds.flatMap((world) =>
+            world.next
+                // A world can name a successor the instance does not contain. Drawing an edge
+                // to a node that was never added leaves a dangling reference.
+                .filter((successor) => byId.has(successor))
+                .map((successor) => ({
+                    id: `${world.id}->${successor}`,
+                    source: world.id,
+                    target: successor,
+                }))),
+    };
+}
+
 /**
  * Alloy names atoms after the signature they belong to, and the transformation puts every
  * endurant under `Object` or `Aspect` — the UFO natures. The class an endurant instantiates

@@ -5,6 +5,7 @@ import {
     labelOf,
     natureOf,
     toWorldGraphs,
+    toWorldMap,
 } from "../../../src/alloy/instanceGraph.js";
 
 function world(overrides: Partial<WorldDTO> = {}): WorldDTO {
@@ -171,5 +172,55 @@ describe("toWorldGraphs", () => {
             nature: "aspect",
             classes: ["Matricula"],
         });
+    });
+});
+
+describe("toWorldMap", () => {
+    const chain = toWorldGraphs(instance([
+        world({ id: "w/PastWorld$0", kind: "PastWorld", next: ["w/CurrentWorld$0", "w/CounterfactualWorld$0"] }),
+        world({ id: "w/CurrentWorld$0", kind: "CurrentWorld", next: ["w/FutureWorld$0"], atoms: [{ id: "Object$0", classes: [] }] }),
+        world({ id: "w/FutureWorld$0", kind: "FutureWorld", next: [] }),
+        world({ id: "w/CounterfactualWorld$0", kind: "CounterfactualWorld", next: [] }),
+    ]));
+
+    it("has one node per world", () => {
+        expect(toWorldMap(chain).nodes.map((node) => node.kind)).toEqual([
+            "PastWorld", "CurrentWorld", "FutureWorld", "CounterfactualWorld",
+        ]);
+    });
+
+    // The branch is the point: one past leads to the present, another to what could have
+    // happened instead. Tabs alone put them side by side as if unrelated.
+    it("draws the branch from the past to both the present and the counterfactual", () => {
+        const edges = toWorldMap(chain).edges;
+
+        expect(edges).toEqual([
+            { id: "w/PastWorld$0->w/CurrentWorld$0", source: "w/PastWorld$0", target: "w/CurrentWorld$0" },
+            { id: "w/PastWorld$0->w/CounterfactualWorld$0", source: "w/PastWorld$0", target: "w/CounterfactualWorld$0" },
+            { id: "w/CurrentWorld$0->w/FutureWorld$0", source: "w/CurrentWorld$0", target: "w/FutureWorld$0" },
+        ]);
+    });
+
+    it("carries the tab position so clicking the map can select a world", () => {
+        expect(toWorldMap(chain).nodes.map((node) => node.index)).toEqual([0, 1, 2, 3]);
+    });
+
+    it("says how many endurants each world holds", () => {
+        const labels = toWorldMap(chain).nodes.map((node) => node.label);
+
+        expect(labels[1]).toContain("1 endurant");
+        expect(labels[0]).toContain("0 endurants");
+    });
+
+    it("skips a successor the instance does not contain", () => {
+        const dangling = toWorldGraphs(instance([
+            world({ id: "w/CurrentWorld$0", next: ["w/FutureWorld$9"] }),
+        ]));
+
+        expect(toWorldMap(dangling).edges).toEqual([]);
+    });
+
+    it("has nothing to draw for no worlds", () => {
+        expect(toWorldMap([])).toEqual({ nodes: [], edges: [] });
     });
 });

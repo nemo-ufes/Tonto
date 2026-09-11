@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { escapeHtml, renderInstance } from "../../../src/alloy/alloyInstanceView.js";
-import { AlloyInstance } from "../../../src/alloy/alloyTypes.js";
+import {
+    createNonce,
+    escapeHtml,
+    renderInstance,
+    serialisePayload,
+    toPayload,
+} from "../../../src/alloy/alloyInstanceView.js";
+import { AlloyInstance, InstanceDTO } from "../../../src/alloy/alloyTypes.js";
+
+const oneWorld: InstanceDTO = {
+    commandName: "singleWorld",
+    instanceNumber: 1,
+    classes: ["Pessoa"],
+    worlds: [{
+        id: "world_structure/CurrentWorld$0",
+        kind: "CurrentWorld",
+        next: [],
+        atoms: [{ id: "Object$0", classes: ["Pessoa"] }],
+        tuples: [],
+    }],
+};
 
 function instance(overrides: Partial<AlloyInstance> = {}): AlloyInstance {
     return {
@@ -9,16 +28,18 @@ function instance(overrides: Partial<AlloyInstance> = {}): AlloyInstance {
         commandName: "singleWorld",
         instanceNumber: 1,
         instanceXml: "<alloy><instance></instance></alloy>",
+        instance: oneWorld,
         ...overrides,
     };
 }
 
+function render(value: AlloyInstance): string {
+    return renderInstance(value, "vscode-resource://pack/webview/alloyGraph.js", "test-nonce");
+}
+
 describe("escapeHtml", () => {
-    // Instances are Alloy XML, so the markup is guaranteed to contain angle brackets. Dropping
-    // it into the webview unescaped would both break the page and execute whatever it carries.
-    it("escapes markup so instance XML renders as text", () => {
-        expect(escapeHtml("<sig label=\"Person\"/>"))
-            .toBe("&lt;sig label=&quot;Person&quot;/&gt;");
+    it("escapes markup", () => {
+        expect(escapeHtml("<sig label=\"Person\"/>")).toBe("&lt;sig label=&quot;Person&quot;/&gt;");
     });
 
     it("escapes ampersands before anything else, so entities are not doubled", () => {
@@ -30,58 +51,119 @@ describe("escapeHtml", () => {
     });
 });
 
+describe("serialisePayload", () => {
+    // `</script>` inside a string literal closes the enclosing tag whatever the quoting, which
+    // would spill the rest of the payload into the document. Class names come from the
+    // modeller's ontology, so this is reachable rather than theoretical.
+    it("escapes markup that would close the script tag early", () => {
+        const payload = toPayload(instance({
+            instance: {
+                ...oneWorld,
+                worlds: [{
+                    ...oneWorld.worlds[0],
+                    atoms: [{ id: "Object$0", classes: ["</script><img src=x>"] }],
+                }],
+            },
+        }));
+
+        const serialised = serialisePayload(payload);
+
+        expect(serialised).not.toContain("</script>");
+        expect(serialised).toContain("\\u003c");
+    });
+
+    it("still parses back to the same payload", () => {
+        const payload = toPayload(instance());
+
+        expect(JSON.parse(serialisePayload(payload))).toEqual(payload);
+    });
+});
+
+describe("toPayload", () => {
+    it("carries the worlds the script needs to draw", () => {
+        const payload = toPayload(instance());
+
+        expect(payload.worlds).toHaveLength(1);
+        expect(payload.worlds[0].nodes[0].label).toBe("Pessoa");
+    });
+
+    // The payload crosses into the webview, so it should carry what is needed to draw and
+    // nothing else — the session id is the handle for stepping and closing.
+    it("does not leak the session id into the webview", () => {
+        expect(JSON.stringify(toPayload(instance()))).not.toContain("session-1");
+    });
+
+    it("explains an over-constrained model rather than showing an empty canvas", () => {
+        const payload = toPayload(instance({ satisfiable: false, instance: undefined, instanceNumber: 0 }));
+
+        expect(payload.message).toContain("no instance");
+        expect(payload.message).toContain("over-constrained");
+    });
+
+    it("distinguishes running out of instances from never having one", () => {
+        const payload = toPayload(instance({ satisfiable: false, instance: undefined, instanceNumber: 4 }));
+
+        expect(payload.message).toContain("no further instance");
+    });
+
+    it("explains a satisfiable instance that has no worlds to draw", () => {
+        const payload = toPayload(instance({ instance: { ...oneWorld, worlds: [] } }));
+
+        expect(payload.message).toContain("no possible worlds");
+    });
+
+    it("says nothing when there is a graph to show", () => {
+        expect(toPayload(instance()).message).toBeUndefined();
+    });
+});
+
 describe("renderInstance", () => {
     it("shows the instance number and the command that produced it", () => {
-        const html = renderInstance(instance({ instanceNumber: 3 }));
+        const html = render(instance({ instanceNumber: 3 }));
 
         expect(html).toContain("Instance 3");
         expect(html).toContain("singleWorld");
     });
 
-    it("renders the Alloy XML escaped", () => {
-        const html = renderInstance(instance({ instanceXml: "<alloy><sig label=\"Person\"/></alloy>" }));
-
-        expect(html).toContain("&lt;alloy&gt;");
-        expect(html).not.toContain("<alloy>");
+    it("loads the graph script from the uri it is given", () => {
+        expect(render(instance())).toContain("src=\"vscode-resource://pack/webview/alloyGraph.js\"");
     });
 
     it("offers a way to step to the next instance", () => {
-        const html = renderInstance(instance());
-
-        expect(html).toContain("id=\"next\"");
-        expect(html).toContain("postMessage({ command: \"next\" })");
-    });
-
-    // No instance is a result about the ontology — likely over-constrained — not a failure, so
-    // it gets stated rather than shown as an error.
-    it("explains an unsatisfiable result instead of showing an empty page", () => {
-        const html = renderInstance(instance({ satisfiable: false, instanceXml: undefined, instanceNumber: 0 }));
-
-        expect(html).toContain("No more instances");
-        expect(html).toContain("found no instance");
-        expect(html).toContain("singleWorld");
-    });
-
-    it("distinguishes running out of instances from never having one", () => {
-        const exhausted = renderInstance(instance({ satisfiable: false, instanceXml: undefined, instanceNumber: 4 }));
-
-        expect(exhausted).toContain("no further instance");
+        expect(render(instance())).toContain("id=\"next\"");
     });
 
     it("surfaces warnings from the transformation", () => {
-        const html = renderInstance(instance({ warnings: ["Sig Person is empty"] }));
-
-        expect(html).toContain("Sig Person is empty");
+        expect(render(instance({ warnings: ["Sig Person is empty"] }))).toContain("Sig Person is empty");
     });
 
     it("omits the warning list when there is nothing to report", () => {
-        expect(renderInstance(instance())).not.toContain("class=\"warnings\"");
+        expect(render(instance())).not.toContain("class=\"warnings\"");
     });
 
-    it("declares a content security policy that blocks remote code", () => {
-        const html = renderInstance(instance());
+    // Scripts are admitted by nonce rather than 'unsafe-inline', so an injected script tag
+    // cannot run even if it reaches the page.
+    it("admits only its own scripts, by nonce", () => {
+        const html = render(instance());
 
-        expect(html).toContain("Content-Security-Policy");
+        expect(html).toContain("script-src 'nonce-test-nonce'");
         expect(html).toContain("default-src 'none'");
+        expect(html).not.toContain("script-src 'unsafe-inline'");
+        expect(html.match(/<script/g) ?? []).toHaveLength(2);
+        expect(html.match(/nonce="test-nonce"/g) ?? []).toHaveLength(2);
+    });
+});
+
+describe("createNonce", () => {
+    it("is long enough to be unguessable", () => {
+        expect(createNonce()).toHaveLength(32);
+    });
+
+    it("differs between renders", () => {
+        expect(createNonce()).not.toBe(createNonce());
+    });
+
+    it("stays within characters that need no escaping in an attribute", () => {
+        expect(createNonce()).toMatch(/^[A-Za-z0-9]+$/);
     });
 });

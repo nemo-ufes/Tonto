@@ -1,22 +1,61 @@
 import { AlloyInstance } from "./alloyTypes.js";
+import { toWorldGraphs, WorldGraph } from "./instanceGraph.js";
 
 /**
  * Builds the webview markup for one instance.
  *
  * Free of `vscode` on purpose: this is the part with decisions worth testing — escaping,
- * what an unsatisfiable result should say — and the panel around it is only plumbing.
+ * what an unsatisfiable result should say, what the graph script receives — and the panel
+ * around it is only plumbing.
  */
-export function renderInstance(instance: AlloyInstance): string {
-    const heading = instance.satisfiable
-        ? `Instance ${instance.instanceNumber}`
-        : "No more instances";
 
-    // An unsatisfiable result is a finding about the ontology, not a failure, so it is
-    // presented as a result rather than an error.
-    const body = instance.satisfiable
-        ? `<pre id="instance">${escapeHtml(instance.instanceXml ?? "")}</pre>`
-        : `<p class="empty">Alloy found no ${instance.instanceNumber > 0 ? "further " : ""}instance
-             for <code>${escapeHtml(instance.commandName)}</code> at this scope.</p>`;
+export interface InstancePayload {
+    commandName: string
+    instanceNumber: number
+    satisfiable: boolean
+    worlds: WorldGraph[]
+    message?: string
+}
+
+/** What the webview script needs, and nothing more: no session ids, no Alloy XML. */
+export function toPayload(instance: AlloyInstance): InstancePayload {
+    const worlds = toWorldGraphs(instance.instance);
+
+    return {
+        commandName: instance.commandName,
+        instanceNumber: instance.instanceNumber,
+        satisfiable: instance.satisfiable,
+        worlds,
+        message: describeEmptyResult(instance, worlds),
+    };
+}
+
+/**
+ * Why there is nothing to draw. An unsatisfiable result is a finding about the ontology, not
+ * a failure, and the two reasons for an empty graph are worth telling apart.
+ */
+function describeEmptyResult(instance: AlloyInstance, worlds: WorldGraph[]): string | undefined {
+    if (!instance.satisfiable) {
+        return instance.instanceNumber > 0
+            ? `Alloy found no further instance for ${instance.commandName}.`
+            : `Alloy found no instance for ${instance.commandName} at this scope. `
+              + "The model may be over-constrained.";
+    }
+
+    if (worlds.length === 0) {
+        return "This instance has no possible worlds — the model may not declare a World signature.";
+    }
+
+    return undefined;
+}
+
+export function renderInstance(
+    instance: AlloyInstance,
+    scriptUri: string,
+    nonce: string
+): string {
+    const payload = toPayload(instance);
+    const heading = instance.satisfiable ? `Instance ${instance.instanceNumber}` : "No instance";
 
     const warnings = (instance.warnings ?? []).length > 0
         ? `<ul class="warnings">${(instance.warnings ?? [])
@@ -29,27 +68,25 @@ export function renderInstance(instance: AlloyInstance): string {
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+          content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'nonce-${nonce}';">
     <title>Alloy instance</title>
     <style>
+        html, body { height: 100%; margin: 0; }
         body {
             font-family: var(--vscode-font-family);
             color: var(--vscode-foreground);
-            padding: 0 1rem 1rem;
+            display: flex;
+            flex-direction: column;
         }
         header {
-            position: sticky;
-            top: 0;
-            background: var(--vscode-editor-background);
-            padding: 1rem 0 0.5rem;
             display: flex;
             align-items: baseline;
             gap: 1rem;
+            padding: 0.75rem 1rem 0.5rem;
         }
         h1 { font-size: 1.1rem; margin: 0; }
         .command { color: var(--vscode-descriptionForeground); font-size: 0.9rem; }
         button {
-            margin-left: auto;
             background: var(--vscode-button-background);
             color: var(--vscode-button-foreground);
             border: none;
@@ -57,15 +94,46 @@ export function renderInstance(instance: AlloyInstance): string {
             cursor: pointer;
         }
         button:hover { background: var(--vscode-button-hoverBackground); }
-        pre {
-            background: var(--vscode-textCodeBlock-background);
-            padding: 0.75rem;
-            overflow-x: auto;
-            font-family: var(--vscode-editor-font-family);
+        header button { margin-left: auto; }
+        #tabs {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0 1rem;
+            flex-wrap: wrap;
+        }
+        .tab {
+            background: transparent;
+            color: var(--vscode-descriptionForeground);
+            border-bottom: 2px solid transparent;
+            padding: 0.3rem 0.7rem;
             font-size: 0.85rem;
         }
-        .empty { color: var(--vscode-descriptionForeground); }
-        .warnings { color: var(--vscode-editorWarning-foreground); font-size: 0.85rem; }
+        .tab:hover { background: var(--vscode-toolbar-hoverBackground); }
+        .tab.active {
+            color: var(--vscode-foreground);
+            border-bottom-color: var(--vscode-focusBorder);
+        }
+        #graph { flex: 1; min-height: 0; }
+        #empty {
+            display: none;
+            padding: 1rem;
+            color: var(--vscode-descriptionForeground);
+        }
+        .warnings {
+            color: var(--vscode-editorWarning-foreground);
+            font-size: 0.85rem;
+            margin: 0 1rem;
+        }
+        .legend {
+            display: flex;
+            gap: 1rem;
+            padding: 0.4rem 1rem 0.7rem;
+            font-size: 0.8rem;
+            color: var(--vscode-descriptionForeground);
+        }
+        .swatch { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.3rem; }
+        .swatch.object { background: var(--vscode-charts-blue); border-radius: 2px; }
+        .swatch.aspect { background: var(--vscode-charts-green); transform: rotate(45deg); }
     </style>
 </head>
 <body>
@@ -75,15 +143,30 @@ export function renderInstance(instance: AlloyInstance): string {
         <button id="next">Next instance</button>
     </header>
     ${warnings}
-    ${body}
-    <script>
-        const vscode = acquireVsCodeApi();
-        document.getElementById("next").addEventListener("click", () => {
-            vscode.postMessage({ command: "next" });
-        });
+    <div id="tabs"></div>
+    <div class="legend">
+        <span><span class="swatch object"></span>endurant</span>
+        <span><span class="swatch aspect"></span>aspect (relator, mode)</span>
+    </div>
+    <div id="graph"></div>
+    <p id="empty"></p>
+    <script nonce="${nonce}">
+        window.alloyInstance = ${serialisePayload(payload)};
     </script>
+    <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
+}
+
+/**
+ * Embeds the payload as JSON inside a script tag.
+ *
+ * `<` is escaped because the sequence `</script>` inside a string literal ends the enclosing
+ * tag regardless of quoting, which would break the page and drop the rest of the payload into
+ * the document. Class names come from the modeller's ontology, so this is reachable.
+ */
+export function serialisePayload(payload: InstancePayload): string {
+    return JSON.stringify(payload).replace(/</g, "\\u003c");
 }
 
 export function escapeHtml(value: string): string {
@@ -93,4 +176,14 @@ export function escapeHtml(value: string): string {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+}
+
+/** A fresh value per render, so the CSP admits exactly the scripts this page ships with. */
+export function createNonce(): string {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let nonce = "";
+    for (let index = 0; index < 32; index++) {
+        nonce += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+    }
+    return nonce;
 }

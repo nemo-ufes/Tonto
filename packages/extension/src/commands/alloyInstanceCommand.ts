@@ -24,33 +24,37 @@ const RUN_PREDICATES: { label: string; description: string }[] = [
 function registerGenerateInstancesCommand(context: vscode.ExtensionContext, client: AlloyLspClient) {
     context.subscriptions.push(
         vscode.commands.registerCommand(CommandIds.generateInstancesFromButton, (uri?: vscode.Uri) =>
-            runFromContext(client, uri))
+            runFromContext(context, client, uri))
     );
     context.subscriptions.push(
-        vscode.commands.registerCommand(CommandIds.generateInstances, () => runFromPalette(client))
+        vscode.commands.registerCommand(CommandIds.generateInstances, () => runFromPalette(context, client))
     );
 }
 
-async function runFromContext(client: AlloyLspClient, uri?: vscode.Uri) {
+async function runFromContext(context: vscode.ExtensionContext, client: AlloyLspClient, uri?: vscode.Uri) {
     const folderUri = await resolveCommandFolderFromContext({
         uri,
         missingContextMessage: "Failed! Could not find workspace to generate instances",
     });
 
     if (folderUri) {
-        await generateInstances(client, folderUri);
+        await generateInstances(context, client, folderUri);
     }
 }
 
-async function runFromPalette(client: AlloyLspClient) {
+async function runFromPalette(context: vscode.ExtensionContext, client: AlloyLspClient) {
     const folderUri = await promptForProjectFolder();
 
     if (folderUri) {
-        await generateInstances(client, folderUri);
+        await generateInstances(context, client, folderUri);
     }
 }
 
-async function generateInstances(client: AlloyLspClient, directoryUri: vscode.Uri): Promise<void> {
+async function generateInstances(
+    context: vscode.ExtensionContext,
+    client: AlloyLspClient,
+    directoryUri: vscode.Uri
+): Promise<void> {
     const predicate = await vscode.window.showQuickPick(RUN_PREDICATES, {
         title: "Generate instances",
         placeHolder: "Which run predicate should Alloy explore?",
@@ -84,7 +88,7 @@ async function generateInstances(client: AlloyLspClient, directoryUri: vscode.Ur
                 }
 
                 const manifest = readOrCreateDefaultTontoManifest(directoryUri.fsPath);
-                AlloyInstancePanel.show(client, instance, manifest.projectName);
+                AlloyInstancePanel.show(context, client, instance, manifest.projectName);
             } catch (error) {
                 reportFailure(error);
             }

@@ -1,10 +1,11 @@
 import * as vscode from "vscode";
-import { renderInstance } from "./alloyInstanceView.js";
+import { createNonce, renderInstance, toPayload } from "./alloyInstanceView.js";
 import { AlloyLspClient } from "./alloyLspClient.js";
 import { AlloyInstance } from "./alloyTypes.js";
 
 /**
- * A webview showing one Alloy session, with a button to step to the next instance.
+ * A webview showing one Alloy session as a graph per possible world, with a button to step to
+ * the next instance.
  *
  * <p>The panel owns the session: closing it releases the session on the server. Without that
  * the server would hold the solver state of every model a user ever looked at, until the idle
@@ -16,6 +17,7 @@ export class AlloyInstancePanel {
     private disposed = false;
 
     private constructor(
+        private readonly context: vscode.ExtensionContext,
         private readonly client: AlloyLspClient,
         private readonly sessionId: string,
         title: string
@@ -24,7 +26,13 @@ export class AlloyInstancePanel {
             "tonto.alloyInstance",
             title,
             { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
-            { enableScripts: true, retainContextWhenHidden: true }
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true,
+                // The graph script is the only thing loaded from disk; nothing else in the
+                // extension needs to be reachable from the webview.
+                localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "pack", "webview")],
+            }
         );
 
         this.panel.webview.onDidReceiveMessage((message: { command?: string }) => {
@@ -39,25 +47,40 @@ export class AlloyInstancePanel {
         });
     }
 
-    static show(client: AlloyLspClient, instance: AlloyInstance, projectName: string): AlloyInstancePanel {
-        const panel = new AlloyInstancePanel(client, instance.sessionId, `Alloy — ${projectName}`);
-        panel.render(instance);
+    static show(
+        context: vscode.ExtensionContext,
+        client: AlloyLspClient,
+        instance: AlloyInstance,
+        projectName: string
+    ): AlloyInstancePanel {
+        const panel = new AlloyInstancePanel(context, client, instance.sessionId, `Alloy — ${projectName}`);
+        panel.renderFull(instance);
         return panel;
     }
 
     private async showNext(): Promise<void> {
         try {
             const instance = await this.client.nextInstance(this.sessionId);
-            if (!this.disposed) {
-                this.render(instance);
+            if (this.disposed) {
+                return;
             }
+            // Posting the new instance rather than rebuilding the page keeps the tab layout
+            // and the loaded script in place, so stepping does not flash the whole view.
+            void this.panel.webview.postMessage({ instance: toPayload(instance) });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Could not generate the next instance: ${message}`);
         }
     }
 
-    private render(instance: AlloyInstance): void {
-        this.panel.webview.html = renderInstance(instance);
+    private renderFull(instance: AlloyInstance): void {
+        const scriptPath = vscode.Uri.joinPath(
+            this.context.extensionUri, "pack", "webview", "alloyGraph.js");
+
+        this.panel.webview.html = renderInstance(
+            instance,
+            this.panel.webview.asWebviewUri(scriptPath).toString(),
+            createNonce()
+        );
     }
 }

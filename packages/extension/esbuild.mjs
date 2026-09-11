@@ -44,11 +44,29 @@ const nodeContext = await esbuild.context({
     plugins,
 });
 
+/**
+ * Webview scripts are built separately from the extension host: they run in a browser, not
+ * in node, and they bundle their own dependencies because a webview cannot reach into
+ * node_modules — everything it loads has to be a file the extension hands it a URI for.
+ */
+const webviewContext = await esbuild.context({
+    entryPoints: ["src/webview/alloyGraph.ts"],
+    outdir: "pack/webview",
+    bundle: true,
+    target: "es2020",
+    format: "iife",
+    platform: "browser",
+    sourcemap: !options.minify,
+    minify: options.minify,
+    plugins,
+});
+
 if (options.watch) {
-    await nodeContext.watch();
+    await Promise.all([nodeContext.watch(), webviewContext.watch()]);
 } else {
-    await nodeContext.rebuild();
+    await Promise.all([nodeContext.rebuild(), webviewContext.rebuild()]);
     nodeContext.dispose();
+    webviewContext.dispose();
 }
 
 function getTime() {

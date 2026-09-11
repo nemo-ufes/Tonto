@@ -1,6 +1,6 @@
 import cytoscape from "cytoscape";
 import fcose from "cytoscape-fcose";
-import { toWorldMap, WorldGraph } from "../alloy/instanceGraph.js";
+import { positionWorldMap, toWorldMap, WorldGraph } from "../alloy/instanceGraph.js";
 
 /**
  * Draws one Alloy instance as a graph per possible world.
@@ -214,12 +214,16 @@ function renderWorldMap(
     onSelect: (index: number) => void
 ): void {
     const map = toWorldMap(worlds);
+    const positions = positionWorldMap(map);
 
     worldMap?.destroy();
     worldMap = cytoscape({
         container,
         elements: [
-            ...map.nodes.map((node) => ({ data: { id: node.id, label: node.label, index: node.index } })),
+            ...map.nodes.map((node) => ({
+                data: { id: node.id, label: node.label, index: node.index },
+                position: positions.get(node.id) ?? { x: 0, y: 0 },
+            })),
             ...map.edges.map((edge) => ({ data: edge })),
         ],
         style: buildMapStyles(),
@@ -232,22 +236,14 @@ function renderWorldMap(
 
     worldMap.on("tap", "node", (event) => onSelect(event.target.data("index") as number));
 
-    // Same reason as the graph: laid out on the next frame, once the container has a size.
+    // Positions are given, so there is no layout to run — only the framing, which still has
+    // to wait a frame for the container to have a size.
     requestAnimationFrame(() => {
         try {
             worldMap?.resize();
-            worldMap?.layout({
-                // Left to right, following the arrow of time the `next` relation encodes, so
-                // a counterfactual reads as a branch off the past rather than another column.
-                name: "breadthfirst",
-                directed: true,
-                spacingFactor: 1.1,
-                padding: 10,
-                animate: false,
-            } as cytoscape.LayoutOptions).run();
             worldMap?.fit(undefined, 10);
         } catch (error) {
-            report("laying out the world map", error);
+            report("framing the world map", error);
         }
     });
 }

@@ -5,6 +5,7 @@ import {
     discriminatorOf,
     natureOf,
     toOntology,
+    positionWorldMap,
     toWorldGraphs,
     toWorldMap,
 } from "../../../src/alloy/instanceGraph.js";
@@ -334,5 +335,67 @@ describe("a world whose relations all run through relators", () => {
         const flagged = graphs.nodes.filter((node) => node.issues.length > 0);
 
         expect(flagged.map((node) => node.discriminator)).toEqual(["#2"]);
+    });
+});
+
+describe("positionWorldMap", () => {
+    const chain = toWorldMap(toWorldGraphs({
+        commandName: "multipleWorlds",
+        instanceNumber: 1,
+        classes: [],
+        worlds: [
+            { id: "w/CurrentWorld$0", kind: "CurrentWorld", next: ["w/FutureWorld$0"], atoms: [], tuples: [] },
+            { id: "w/PastWorld$0", kind: "PastWorld", next: ["w/CurrentWorld$0", "w/CounterfactualWorld$0"], atoms: [], tuples: [] },
+            { id: "w/FutureWorld$0", kind: "FutureWorld", next: [], atoms: [], tuples: [] },
+            { id: "w/CounterfactualWorld$0", kind: "CounterfactualWorld", next: [], atoms: [], tuples: [] },
+        ],
+    }, ontology));
+
+    // Depth from the start of time is the arrow of time, so a column is a generation. A
+    // general layout would arrange these differently on each run, which for a picture of
+    // time reads as noise.
+    it("puts each world in the generation it belongs to", () => {
+        const at = positionWorldMap(chain);
+
+        expect(at.get("w/PastWorld$0")?.x).toBe(0);
+        expect(at.get("w/CurrentWorld$0")?.x).toBe(190);
+        expect(at.get("w/CounterfactualWorld$0")?.x).toBe(190);
+        expect(at.get("w/FutureWorld$0")?.x).toBe(380);
+    });
+
+    // The present and the counterfactual are the two branches out of the same past, so they
+    // share a column and have to be told apart by row.
+    it("separates the branches that share a generation", () => {
+        const at = positionWorldMap(chain);
+
+        expect(at.get("w/CurrentWorld$0")?.y).not.toBe(at.get("w/CounterfactualWorld$0")?.y);
+    });
+
+    it("gives every world a position", () => {
+        expect(positionWorldMap(chain).size).toBe(4);
+    });
+
+    it("places a lone world at the start", () => {
+        const single = toWorldMap(toWorldGraphs({
+            commandName: "singleWorld", instanceNumber: 1, classes: [],
+            worlds: [{ id: "w/CurrentWorld$0", kind: "CurrentWorld", next: [], atoms: [], tuples: [] }],
+        }, ontology));
+
+        expect(positionWorldMap(single).get("w/CurrentWorld$0")).toEqual({ x: 0, y: 0 });
+    });
+
+    // Nothing in the generated model forbids a cycle in `next` outright, and a cycle leaves
+    // every world with a predecessor — so there is no root to start from and the loop that
+    // assigns depth would leave them unplaced.
+    it("still places worlds that form a cycle", () => {
+        const cyclic = toWorldMap(toWorldGraphs({
+            commandName: "x", instanceNumber: 1, classes: [],
+            worlds: [
+                { id: "a", kind: "A", next: ["b"], atoms: [], tuples: [] },
+                { id: "b", kind: "B", next: ["a"], atoms: [], tuples: [] },
+            ],
+        }, ontology));
+
+        expect(positionWorldMap(cyclic).size).toBe(2);
     });
 });

@@ -81,6 +81,65 @@ export interface WorldMap {
     edges: WorldMapEdge[]
 }
 
+/** Spacing of the world map, in the arbitrary units Cytoscape positions use. */
+const WORLD_MAP_COLUMN = 190;
+const WORLD_MAP_ROW = 70;
+
+/**
+ * Places each world by how far it is from the start of time.
+ *
+ * <p>A general-purpose layout is the wrong tool here: the shape is known — a chain that may
+ * fork — and a force or breadth-first pass gives a different arrangement each run, which for
+ * a picture of time reads as noise. Depth from the roots is exactly the arrow of time, so
+ * columns are generations and rows separate the branches within one.
+ */
+export function positionWorldMap(map: WorldMap): Map<string, { x: number; y: number }> {
+    const successors = new Map<string, string[]>();
+    const incoming = new Map<string, number>();
+
+    map.nodes.forEach((node) => {
+        successors.set(node.id, []);
+        incoming.set(node.id, 0);
+    });
+    map.edges.forEach((edge) => {
+        successors.get(edge.source)?.push(edge.target);
+        incoming.set(edge.target, (incoming.get(edge.target) ?? 0) + 1);
+    });
+
+    const depth = new Map<string, number>();
+    // A world with nothing leading to it starts a branch. A cycle would leave every world
+    // with a predecessor and no root, so anything left unplaced is put at the start too.
+    map.nodes.filter((node) => (incoming.get(node.id) ?? 0) === 0)
+        .forEach((node) => depth.set(node.id, 0));
+
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const edge of map.edges) {
+            const from = depth.get(edge.source);
+            if (from === undefined) {
+                continue;
+            }
+            if ((depth.get(edge.target) ?? -1) < from + 1) {
+                depth.set(edge.target, from + 1);
+                changed = true;
+            }
+        }
+    }
+    map.nodes.forEach((node) => depth.has(node.id) || depth.set(node.id, 0));
+
+    const rowsUsed = new Map<number, number>();
+    const positions = new Map<string, { x: number; y: number }>();
+    map.nodes.forEach((node) => {
+        const column = depth.get(node.id) ?? 0;
+        const row = rowsUsed.get(column) ?? 0;
+        rowsUsed.set(column, row + 1);
+        positions.set(node.id, { x: column * WORLD_MAP_COLUMN, y: row * WORLD_MAP_ROW });
+    });
+
+    return positions;
+}
+
 /**
  * How the worlds branch off each other.
  *

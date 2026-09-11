@@ -342,16 +342,16 @@ function render(payload: InstancePayload): void {
         graph = undefined;
         worldMap?.destroy();
         worldMap = undefined;
-        canvas.style.display = "none";
-        mapSection.style.display = "none";
-        note.style.display = "none";
-        empty.style.display = "block";
+        canvas.classList.add("hidden");
+        mapSection.classList.add("hidden");
+        note.classList.add("hidden");
+        empty.classList.remove("hidden");
         empty.textContent = payload.message ?? "This instance has no worlds to show.";
         return;
     }
 
-    canvas.style.display = "";
-    empty.style.display = "none";
+    canvas.classList.remove("hidden");
+    empty.classList.add("hidden");
 
     const show = (index: number) => {
         const world = payload.worlds[index];
@@ -402,10 +402,10 @@ function render(payload: InstancePayload): void {
 
     // One world has no branching to show, so the map would be a box with nothing to say.
     if (payload.worlds.length > 1) {
-        mapSection.style.display = "";
+        mapSection.classList.remove("hidden");
         renderWorldMap(mapCanvas, payload.worlds, show);
     } else {
-        mapSection.style.display = "none";
+        mapSection.classList.add("hidden");
         worldMap?.destroy();
         worldMap = undefined;
     }
@@ -442,7 +442,7 @@ function describeWorld(note: HTMLElement, world: WorldGraph, summary: string): v
     counts.textContent = summary;
     note.appendChild(counts);
 
-    note.style.display = "block";
+    note.classList.remove("hidden");
 }
 
 function worldTabLabel(world: WorldGraph): string {

@@ -149,6 +149,17 @@ describe("renderInstance", () => {
         expect(render(instance())).toContain("src=\"vscode-resource://pack/webview/alloyGraph.js\"");
     });
 
+    // Hiding is a class, not an inline style: clearing an inline display falls back to the
+    // stylesheet, so an element the stylesheet hides can never be revealed by the script.
+    it("hides what the script reveals with a class, not a stylesheet rule", () => {
+        const html = render(instance());
+
+        expect(html).toContain(".hidden { display: none !important; }");
+        expect(html).toContain("id=\"worldmap-section\" class=\"hidden\"");
+        expect(html).not.toMatch(/#worldmap-section \{[^}]*display:\s*none/);
+        expect(html).not.toMatch(/#empty \{[^}]*display:\s*none/);
+    });
+
     it("offers a way to step to the next instance", () => {
         expect(render(instance())).toContain("id=\"next\"");
     });

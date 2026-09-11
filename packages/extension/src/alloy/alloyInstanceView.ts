@@ -84,6 +84,12 @@ export function renderInstance(
     <title>Alloy instance</title>
     <style>
         html, body { height: 100%; margin: 0; }
+        /*
+         * Visibility is a class rather than an inline style. Clearing an inline display
+         * falls back to whatever the stylesheet says, so an element hidden here stays hidden
+         * when the script tries to reveal it — silently, since nothing errors.
+         */
+        .hidden { display: none !important; }
         body {
             font-family: var(--vscode-font-family);
             color: var(--vscode-foreground);
@@ -126,7 +132,6 @@ export function renderInstance(
             border-bottom-color: var(--vscode-focusBorder);
         }
         #worldmap-section {
-            display: none;
             border-bottom: 1px solid var(--vscode-panel-border);
             padding: 0 1rem 0.5rem;
         }
@@ -139,7 +144,6 @@ export function renderInstance(
         }
         #worldmap { height: 130px; }
         #note {
-            display: none;
             margin: 0;
             padding: 0.5rem 1rem 0;
             font-size: 0.85rem;
@@ -149,7 +153,6 @@ export function renderInstance(
         #note .counts { color: var(--vscode-descriptionForeground); }
         #graph { flex: 1; min-height: 0; }
         #empty {
-            display: none;
             padding: 1rem;
             color: var(--vscode-descriptionForeground);
         }
@@ -183,7 +186,7 @@ export function renderInstance(
     </header>
     ${warnings}
     <div id="tabs"></div>
-    <section id="worldmap-section">
+    <section id="worldmap-section" class="hidden">
         <p class="section-title">How these worlds connect</p>
         <div id="worldmap"></div>
     </section>
@@ -192,9 +195,9 @@ export function renderInstance(
         <span><span class="swatch aspect"></span>aspect (relator, mode)</span>
         <span><span class="swatch broken"></span>breaks a UFO constraint</span>
     </div>
-    <p id="note"></p>
+    <p id="note" class="hidden"></p>
     <div id="graph"></div>
-    <p id="empty"></p>
+    <p id="empty" class="hidden"></p>
     <script nonce="${nonce}">
         window.alloyInstance = ${serialisePayload(payload)};
     </script>

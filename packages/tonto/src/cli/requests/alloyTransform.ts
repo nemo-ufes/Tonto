@@ -22,6 +22,23 @@ export interface AlloyModelBundle {
     ontologicalPropertiesModule: string
 }
 
+/**
+ * An OntoUML class, paired with the name it goes by inside the Alloy model.
+ *
+ * The transformation derives Alloy identifiers by stripping spaces from the OntoUML name, so
+ * "Pessoa Fisica" becomes `PessoaFisica` and the two can no longer be matched by equality.
+ * Carrying both keeps a consumer able to show the modeller their own name, and to say what
+ * kind of class it is — the generated `.als` keeps no trace of the stereotype.
+ */
+export interface OntologyClass {
+    /** As it appears in the Alloy model. */
+    alloyName: string
+    /** As the modeller wrote it. */
+    name: string
+    /** `kind`, `phase`, `role`, `relator`, and so on. Absent if the class declares none. */
+    stereotype?: string
+}
+
 /** A single Alloy module ready to be written to disk. */
 export interface AlloyModule {
     /** File name stem, without the `.als` extension. */
@@ -33,6 +50,11 @@ export interface AlloyResultResponse {
     id?: string
     status?: number
     result: AlloyModelBundle
+    /**
+     * The ontology's classes, which the Alloy model alone cannot describe: it keeps the names
+     * but not what each class is. A consumer that wants to tell a kind from a phase needs this.
+     */
+    ontology?: OntologyClass[]
 }
 
 export interface AlloyErrorInfo {
@@ -213,6 +235,23 @@ export function validateProjectForAlloyTransform(project: Project): AlloyErrorIn
 }
 
 /**
+ * The classes of the project, keyed by the name the Alloy model uses.
+ *
+ * Mirrors the transformation's own naming rule rather than guessing at it: whitespace is
+ * stripped, which is what `getNameNoSpaces` does upstream when it builds signature names.
+ */
+export function describeOntology(project: Project): OntologyClass[] {
+    return project.getAllClasses()
+        .map((classifier) => ({ classifier, name: classifier.getName() }))
+        .filter((entry): entry is { classifier: Class; name: string } => Boolean(entry.name))
+        .map(({ classifier, name }) => ({
+            alloyName: name.replace(/\s/g, ""),
+            name,
+            stereotype: classifier.stereotype ?? undefined,
+        }));
+}
+
+/**
  * Narrows the untyped `run()` payload into `AlloyModelBundle`.
  *
  * If upstream renames or drops a module, this returns `undefined` and the caller reports a
@@ -284,6 +323,7 @@ export async function TransformTontoToAlloy(project: Project): Promise<AlloyResu
         return {
             id: generateUniqueId(),
             result: bundle,
+            ontology: describeOntology(project),
             status: 200,
         };
     } catch (error) {

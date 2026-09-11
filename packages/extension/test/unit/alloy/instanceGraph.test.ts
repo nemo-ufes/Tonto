@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { InstanceDTO, WorldDTO } from "../../../src/alloy/alloyTypes.js";
 import {
+    describeAtom,
     discriminatorOf,
-    labelOf,
     natureOf,
+    toOntology,
     toWorldGraphs,
     toWorldMap,
 } from "../../../src/alloy/instanceGraph.js";
+
+const ontology = toOntology([
+    { alloyName: "Pessoa", name: "Pessoa", stereotype: "kind" },
+    { alloyName: "Organizacao", name: "Organizacao", stereotype: "kind" },
+    { alloyName: "Matricula", name: "Matricula", stereotype: "relator" },
+    { alloyName: "Crianca", name: "Crianca", stereotype: "phase" },
+    { alloyName: "Estudante", name: "Estudante", stereotype: "role" },
+    { alloyName: "PessoaFisica", name: "Pessoa Fisica", stereotype: "kind" },
+]);
 
 function world(overrides: Partial<WorldDTO> = {}): WorldDTO {
     return {
@@ -51,17 +61,61 @@ describe("discriminatorOf", () => {
     });
 });
 
-describe("labelOf", () => {
-    // A Pessoa that is a Crianca and an Estudante belongs to all three. Picking one would
-    // hide the phase or the role, which is what the modeller is reading the world for.
-    it("names every class the endurant instantiates in this world", () => {
-        expect(labelOf({ id: "Object$1", classes: ["Pessoa", "Crianca", "Estudante"] }))
-            .toBe("Pessoa, Crianca, Estudante");
+describe("describeAtom", () => {
+    // A kind carries the principle of identity and holds in every world; phases and roles are
+    // contingent. Listing them flat gives equal weight to what an endurant is and how it
+    // happens to be, which is not how a modeller reads one.
+    it("leads with what the endurant is and trails how it currently is", () => {
+        const described = describeAtom(
+            { id: "Object$1", classes: ["Pessoa", "Crianca", "Estudante"] }, ontology);
+
+        expect(described.label).toBe("Pessoa");
+        expect(described.qualifiers).toEqual(["Crianca", "Estudante"]);
     });
 
-    it("labels an endurant in no class by its nature instead of leaving it blank", () => {
-        expect(labelOf({ id: "Object$9", classes: [] })).toBe("(object)");
-        expect(labelOf({ id: "Aspect$0", classes: [] })).toBe("(aspect)");
+    it("shows the modeller's own name, spaces and all", () => {
+        expect(describeAtom({ id: "Object$0", classes: ["PessoaFisica"] }, ontology).label)
+            .toBe("Pessoa Fisica");
+    });
+
+    it("counts a relator as a kind, since it provides identity too", () => {
+        const described = describeAtom({ id: "Aspect$0", classes: ["Matricula"] }, ontology);
+
+        expect(described.label).toBe("Matricula");
+        expect(described.issues).toEqual([]);
+    });
+
+    // Axiom a22 of UFO: everything necessarily instantiates at most one kind. An instance
+    // breaking it is evidence about the transformation, and is invisible in the .als itself.
+    it("flags an endurant instantiating two kinds", () => {
+        const described = describeAtom(
+            { id: "Object$0", classes: ["Pessoa", "Organizacao", "Estudante"] }, ontology);
+
+        expect(described.issues).toHaveLength(1);
+        expect(described.issues[0]).toContain("2 kinds");
+        expect(described.issues[0]).toContain("Pessoa, Organizacao");
+        expect(described.issues[0]).toContain("at most one");
+    });
+
+    it("does not flag several phases or roles, which are contingent by nature", () => {
+        expect(describeAtom({ id: "Object$1", classes: ["Crianca", "Estudante"] }, ontology).issues)
+            .toEqual([]);
+    });
+
+    // Without an ontology there is no way to tell a kind from a phase, and guessing would put
+    // a name in the position that means "this is its identity" without grounds.
+    it("treats every class as a qualifier when the ontology is unknown", () => {
+        const described = describeAtom(
+            { id: "Object$1", classes: ["Pessoa", "Crianca"] }, new Map());
+
+        expect(described.label).toBe("");
+        expect(described.qualifiers).toEqual(["Pessoa", "Crianca"]);
+        expect(described.issues).toEqual([]);
+    });
+
+    it("labels an endurant in no class at all by its nature", () => {
+        expect(describeAtom({ id: "Object$9", classes: [] }, ontology).label).toBe("(object)");
+        expect(describeAtom({ id: "Aspect$0", classes: [] }, ontology).label).toBe("(aspect)");
     });
 });
 
@@ -163,14 +217,16 @@ describe("toWorldGraphs", () => {
     it("carries each endurant's nature and classes through to the node", () => {
         const graphs = toWorldGraphs(instance([
             world({ atoms: [{ id: "Aspect$0", classes: ["Matricula"] }] }),
-        ]));
+        ]), ontology);
 
         expect(graphs[0].nodes[0]).toEqual({
             id: "Aspect$0",
             label: "Matricula",
+            qualifiers: [],
             discriminator: "#0",
             nature: "aspect",
             classes: ["Matricula"],
+            issues: [],
         });
     });
 });

@@ -1,5 +1,5 @@
 import { AlloyInstance } from "./alloyTypes.js";
-import { toWorldGraphs, WorldGraph } from "./instanceGraph.js";
+import { toOntology, toWorldGraphs, WorldGraph } from "./instanceGraph.js";
 
 /**
  * Builds the webview markup for one instance.
@@ -19,7 +19,7 @@ export interface InstancePayload {
 
 /** What the webview script needs, and nothing more: no session ids, no Alloy XML. */
 export function toPayload(instance: AlloyInstance): InstancePayload {
-    const worlds = toWorldGraphs(instance.instance);
+    const worlds = toWorldGraphs(instance.instance, toOntology(instance.ontology));
 
     return {
         commandName: instance.commandName,
@@ -133,6 +133,7 @@ export function renderInstance(
             font-size: 0.85rem;
             color: var(--vscode-descriptionForeground);
         }
+        #note.has-issues { color: var(--vscode-errorForeground); }
         #graph { flex: 1; min-height: 0; }
         #empty {
             display: none;
@@ -154,6 +155,11 @@ export function renderInstance(
         .swatch { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.3rem; }
         .swatch.object { background: var(--vscode-charts-blue); border-radius: 2px; }
         .swatch.aspect { background: var(--vscode-charts-green); transform: rotate(45deg); }
+        .swatch.broken {
+            background: var(--vscode-inputValidation-errorBackground);
+            border: 1px solid var(--vscode-errorForeground);
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body>
@@ -171,6 +177,7 @@ export function renderInstance(
     <div class="legend">
         <span><span class="swatch object"></span>endurant</span>
         <span><span class="swatch aspect"></span>aspect (relator, mode)</span>
+        <span><span class="swatch broken"></span>breaks a UFO constraint</span>
     </div>
     <p id="note"></p>
     <div id="graph"></div>

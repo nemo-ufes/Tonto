@@ -77,7 +77,11 @@ async function generateInstances(
                     return;
                 }
 
-                const instance = await client.openSession(modules, predicate.label);
+                const instance = await client.openSession(modules.result, predicate.label);
+                // The server only sees the generated Alloy, which keeps class names but not
+                // what each class is. The stereotypes come from this side, where the OntoUML
+                // project still exists.
+                instance.ontology = modules.ontology;
 
                 if (!instance.satisfiable) {
                     // Not an error: no instance at this scope is itself a result about the model.
@@ -111,7 +115,8 @@ async function transformInMemory(directoryUri: vscode.Uri) {
         return undefined;
     }
 
-    return (response as AlloyResultResponse).result;
+    const success = response as AlloyResultResponse;
+    return { result: success.result, ontology: success.ontology };
 }
 
 function reportFailure(error: unknown): void {

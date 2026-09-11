@@ -1,4 +1,4 @@
-import { AtomDTO, InstanceDTO, WorldDTO } from "./alloyTypes.js";
+import { AtomDTO, InstanceDTO, OntologyClass, WorldDTO } from "./alloyTypes.js";
 
 /**
  * The instance as a graph, one per world.
@@ -10,13 +10,36 @@ import { AtomDTO, InstanceDTO, WorldDTO } from "./alloyTypes.js";
 
 export interface GraphNode {
     id: string
-    /** What the modeller reads: the classes the endurant instantiates in this world. */
+    /** What the endurant *is*: the kinds it instantiates, by the modeller's own names. */
     label: string
+    /** How it currently *is*: phases, roles and subkinds, which come and go between worlds. */
+    qualifiers: string[]
     /** Short discriminator, so two endurants of the same classes stay distinguishable. */
     discriminator: string
     /** `object`, `aspect`, or `unknown` — drives shape and colour. */
     nature: AtomNature
     classes: string[]
+    /** Constraints of UFO this endurant breaks. Empty for a well-formed one. */
+    issues: string[]
+}
+
+/**
+ * The six stereotypes that provide a principle of identity — the kinds, in the sense of the
+ * UFO axioms. They match the set PK in Guizzardi et al., *UFO: Unified Foundational Ontology*
+ * (Applied Ontology, 2021): ObjectKind, CollectiveKind, QuantityKind, RelatorKind, ModeKind
+ * and QualityKind.
+ *
+ * `subkind` is deliberately absent: it is rigid but specialises a kind rather than being one.
+ */
+const KIND_STEREOTYPES = new Set([
+    "kind", "collective", "quantity", "relator", "mode", "quality",
+]);
+
+/** Looks a class up by the name the Alloy model uses for it. */
+export type Ontology = Map<string, OntologyClass>;
+
+export function toOntology(classes: OntologyClass[] | undefined): Ontology {
+    return new Map((classes ?? []).map((entry) => [entry.alloyName, entry]));
 }
 
 export interface GraphEdge {
@@ -114,28 +137,75 @@ export function discriminatorOf(atomId: string): string {
 }
 
 /**
- * An endurant is labelled with every class it instantiates in this world, not just one.
+ * Splits what an endurant *is* from how it currently *is*.
  *
- * A Pessoa that is currently a Crianca and an Estudante belongs to all three, and that is
- * precisely what a modeller is looking for when reading a generated world — picking one name
- * would hide the phase or the role. An endurant in no class at all still exists in the world,
- * so it is labelled by its nature rather than left blank.
+ * Listing every class flat reads as a wall of names of equal weight, but they are not equal:
+ * a kind carries the principle of identity and holds in every world, while phases and roles
+ * are contingent and come and go. Leading with the kind and trailing the rest is how a
+ * modeller reads an endurant.
+ *
+ * Without an ontology to consult — the Alloy model alone does not say what a class is — every
+ * class falls back to being shown as a qualifier, which is the honest reading of not knowing.
  */
-export function labelOf(atom: AtomDTO): string {
-    if (atom.classes.length > 0) {
-        return atom.classes.join(", ");
+export function describeAtom(atom: AtomDTO, ontology: Ontology): {
+    label: string
+    qualifiers: string[]
+    issues: string[]
+} {
+    const kinds: string[] = [];
+    const qualifiers: string[] = [];
+
+    for (const className of atom.classes) {
+        const known = ontology.get(className);
+        const display = known?.name ?? className;
+        if (known && known.stereotype && KIND_STEREOTYPES.has(known.stereotype)) {
+            kinds.push(display);
+        } else {
+            qualifiers.push(display);
+        }
+    }
+
+    return {
+        label: kinds.length > 0 ? kinds.join(" + ") : fallbackLabel(atom, qualifiers),
+        qualifiers,
+        issues: findIssues(kinds),
+    };
+}
+
+function fallbackLabel(atom: AtomDTO, qualifiers: string[]): string {
+    if (qualifiers.length > 0) {
+        return "";
     }
     return natureOf(atom.id) === "aspect" ? "(aspect)" : "(object)";
 }
 
-export function toWorldGraphs(instance: InstanceDTO | undefined): WorldGraph[] {
+/**
+ * Checks the endurant against the constraints a generated instance can break.
+ *
+ * Instantiating two kinds is impossible in UFO — axiom a22, "everything necessarily
+ * instantiates at most one kind", and its theorem t10 that kinds are necessarily disjoint.
+ * An instance that does so is evidence about the transformation that produced it, and the
+ * reason to surface it here is that it is otherwise invisible: the `.als` looks fine, and
+ * only a generated world shows the contradiction.
+ */
+function findIssues(kinds: string[]): string[] {
+    if (kinds.length > 1) {
+        return [`Instantiates ${kinds.length} kinds (${kinds.join(", ")}) — UFO allows at most one.`];
+    }
+    return [];
+}
+
+export function toWorldGraphs(
+    instance: InstanceDTO | undefined,
+    ontology: Ontology = new Map()
+): WorldGraph[] {
     if (!instance) {
         return [];
     }
-    return instance.worlds.map(toWorldGraph);
+    return instance.worlds.map((world) => toWorldGraph(world, ontology));
 }
 
-function toWorldGraph(world: WorldDTO): WorldGraph {
+function toWorldGraph(world: WorldDTO, ontology: Ontology): WorldGraph {
     const present = new Set(world.atoms.map((atom) => atom.id));
 
     return {
@@ -143,13 +213,18 @@ function toWorldGraph(world: WorldDTO): WorldGraph {
         title: world.kind ?? shortWorldName(world.id),
         kind: world.kind,
         next: world.next,
-        nodes: world.atoms.map((atom) => ({
-            id: atom.id,
-            label: labelOf(atom),
-            discriminator: discriminatorOf(atom.id),
-            nature: natureOf(atom.id),
-            classes: atom.classes,
-        })),
+        nodes: world.atoms.map((atom) => {
+            const described = describeAtom(atom, ontology);
+            return {
+                id: atom.id,
+                label: described.label,
+                qualifiers: described.qualifiers,
+                discriminator: discriminatorOf(atom.id),
+                nature: natureOf(atom.id),
+                classes: atom.classes,
+                issues: described.issues,
+            };
+        }),
         edges: world.tuples.flatMap((tuple, position) =>
             toEdges(tuple.relation, tuple.atoms, position, present)),
     };

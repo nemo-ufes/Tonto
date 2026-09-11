@@ -29,6 +29,7 @@ function instance(overrides: Partial<AlloyInstance> = {}): AlloyInstance {
         instanceNumber: 1,
         instanceXml: "<alloy><instance></instance></alloy>",
         instance: oneWorld,
+        ontology: [{ alloyName: "Pessoa", name: "Pessoa", stereotype: "kind" }],
         ...overrides,
     };
 }
@@ -85,6 +86,15 @@ describe("toPayload", () => {
 
         expect(payload.worlds).toHaveLength(1);
         expect(payload.worlds[0].nodes[0].label).toBe("Pessoa");
+    });
+
+    // The server never sees the stereotypes — it only gets the generated Alloy — so the
+    // extension has to supply them for a kind to be told from a phase.
+    it("applies the ontology the extension supplies", () => {
+        const withoutOntology = toPayload(instance({ ontology: undefined }));
+
+        expect(withoutOntology.worlds[0].nodes[0].label).toBe("");
+        expect(withoutOntology.worlds[0].nodes[0].qualifiers).toEqual(["Pessoa"]);
     });
 
     // The payload crosses into the webview, so it should carry what is needed to draw and

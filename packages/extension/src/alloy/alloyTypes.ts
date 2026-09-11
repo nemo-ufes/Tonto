@@ -21,7 +21,24 @@ export interface AlloyInstance {
     instanceXml?: string
     /** The same instance grouped by world. Absent when `satisfiable` is false. */
     instance?: InstanceDTO
+    /**
+     * The ontology behind the instance. Supplied by the extension, not the server: the server
+     * only ever sees the generated Alloy, which no longer says what each class is.
+     */
+    ontology?: OntologyClass[]
     warnings?: string[]
+}
+
+/**
+ * An OntoUML class, paired with the name it goes by inside the Alloy model.
+ *
+ * The generated `.als` keeps class names but not what each class is, so telling a kind from
+ * a phase needs this to travel alongside the instance.
+ */
+export interface OntologyClass {
+    alloyName: string
+    name: string
+    stereotype?: string
 }
 
 /** An instance arranged by possible world, as the server extracts it. */

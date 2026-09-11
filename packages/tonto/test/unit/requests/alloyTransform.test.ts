@@ -130,3 +130,47 @@ describe("getAlloyModules", () => {
     expect(modules.at(-1)?.content).toBe("main");
   });
 });
+
+describe("describeOntology", () => {
+    it("says what kind of class each one is, which the Alloy model cannot", async () => {
+        const project = new Project();
+        const model = project.createModel();
+        model.createKind("Pessoa");
+        model.createPhase("Crianca");
+        model.createRole("Estudante");
+        model.createRelator("Matricula");
+
+        const { ontology } = asResult(await TransformTontoToAlloy(project));
+
+        expect(ontology).toEqual(expect.arrayContaining([
+            { alloyName: "Pessoa", name: "Pessoa", stereotype: "kind" },
+            { alloyName: "Crianca", name: "Crianca", stereotype: "phase" },
+            { alloyName: "Estudante", name: "Estudante", stereotype: "role" },
+            { alloyName: "Matricula", name: "Matricula", stereotype: "relator" },
+        ]));
+    });
+
+    // The transformation strips whitespace to build signature names, so the two forms stop
+    // matching by equality. Carrying both is what lets a consumer show the modeller's own name.
+    it("pairs the modeller's name with the one Alloy uses", async () => {
+        const project = new Project();
+        project.createModel().createKind("Pessoa Fisica");
+
+        const { ontology } = asResult(await TransformTontoToAlloy(project));
+
+        expect(ontology).toContainEqual({
+            alloyName: "PessoaFisica",
+            name: "Pessoa Fisica",
+            stereotype: "kind",
+        });
+    });
+
+    it("reports a class that declares no stereotype without inventing one", async () => {
+        const project = new Project();
+        project.createModel().createClass("Coisa");
+
+        const { ontology } = asResult(await TransformTontoToAlloy(project));
+
+        expect(ontology).toContainEqual({ alloyName: "Coisa", name: "Coisa", stereotype: undefined });
+    });
+});

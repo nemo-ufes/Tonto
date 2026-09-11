@@ -108,6 +108,16 @@ function buildStyles(): cytoscape.StylesheetJson {
                 "curve-style": "bezier",
             },
         },
+        // An endurant breaking a UFO constraint is the most important thing on the screen:
+        // it is evidence about the transformation, and nothing else in the picture says so.
+        {
+            selector: "node.broken",
+            style: {
+                "background-color": themeColour("--vscode-inputValidation-errorBackground", "#5a1d1d"),
+                "border-color": themeColour("--vscode-errorForeground", "#f48771"),
+                "border-width": 2,
+            },
+        },
         {
             selector: "node:selected",
             style: { "border-width": 3, "border-color": themeColour("--vscode-focusBorder", "#007fd4") },
@@ -206,9 +216,11 @@ function toElements(world: WorldGraph): cytoscape.ElementDefinition[] {
     const nodes: cytoscape.ElementDefinition[] = world.nodes.map((node) => ({
         data: {
             id: node.id,
-            label: `${node.label}\n${node.discriminator}`,
+            label: nodeLabel(node),
             nature: node.nature,
+            broken: node.issues.length > 0 ? "yes" : "no",
         },
+        classes: node.issues.length > 0 ? "broken" : undefined,
     }));
 
     const edges: cytoscape.ElementDefinition[] = world.edges.map((edge) => ({
@@ -216,6 +228,16 @@ function toElements(world: WorldGraph): cytoscape.ElementDefinition[] {
     }));
 
     return [...nodes, ...edges];
+}
+
+/**
+ * Reads top to bottom as the endurant does: what it is, what it currently is, and which one
+ * it is. The qualifiers are indented so the kind stays the line the eye lands on.
+ */
+function nodeLabel(node: WorldGraph["nodes"][number]): string {
+    const lines = [node.label, ...(node.qualifiers.length > 0 ? [node.qualifiers.join(", ")] : [])]
+        .filter((line) => line.length > 0);
+    return [...lines, node.discriminator].join("\n");
 }
 
 function render(payload: InstancePayload): void {
@@ -267,12 +289,7 @@ function render(payload: InstancePayload): void {
             tab.classList.toggle("active", position === index));
         highlightWorld(index);
 
-        // A world of disconnected boxes looks like a failed render. Saying that the world
-        // holds no relation makes it a fact about the instance instead.
-        note.textContent = world.edges.length === 0
-            ? `No relations hold in ${world.title}.`
-            : "";
-        note.style.display = world.edges.length === 0 ? "block" : "none";
+        describeWorld(note, world);
     };
 
     tabs.replaceChildren(
@@ -297,6 +314,36 @@ function render(payload: InstancePayload): void {
     }
 
     show(0);
+}
+
+/**
+ * States what is worth knowing about the world below, in order of importance: any UFO
+ * constraint it breaks first, then whether it holds relations at all.
+ *
+ * A world of disconnected boxes otherwise reads as a failed render rather than as a fact
+ * about the instance, and a red node says something is wrong without saying what.
+ */
+function describeWorld(note: HTMLElement, world: WorldGraph): void {
+    const issues = world.nodes.flatMap((node) =>
+        node.issues.map((issue) => `${node.discriminator}: ${issue}`));
+
+    note.replaceChildren();
+
+    if (issues.length > 0) {
+        note.classList.add("has-issues");
+        issues.forEach((issue) => {
+            const line = document.createElement("div");
+            line.textContent = `⚠ ${issue}`;
+            note.appendChild(line);
+        });
+    } else {
+        note.classList.remove("has-issues");
+        if (world.edges.length === 0) {
+            note.textContent = `No relations hold in ${world.title}.`;
+        }
+    }
+
+    note.style.display = note.childNodes.length > 0 || note.textContent ? "block" : "none";
 }
 
 function worldTabLabel(world: WorldGraph): string {

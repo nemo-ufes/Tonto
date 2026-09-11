@@ -29,13 +29,14 @@ function instance(overrides: Partial<AlloyInstance> = {}): AlloyInstance {
         instanceNumber: 1,
         instanceXml: "<alloy><instance></instance></alloy>",
         instance: oneWorld,
-        ontology: [{ alloyName: "Pessoa", name: "Pessoa", stereotype: "kind" }],
         ...overrides,
     };
 }
 
+const ontology = [{ alloyName: "Pessoa", name: "Pessoa", stereotype: "kind" }];
+
 function render(value: AlloyInstance): string {
-    return renderInstance(value, "vscode-resource://pack/webview/alloyGraph.js", "test-nonce");
+    return renderInstance(value, ontology, "vscode-resource://pack/webview/alloyGraph.js", "test-nonce");
 }
 
 describe("escapeHtml", () => {
@@ -65,7 +66,7 @@ describe("serialisePayload", () => {
                     atoms: [{ id: "Object$0", classes: ["</script><img src=x>"] }],
                 }],
             },
-        }));
+        }), ontology);
 
         const serialised = serialisePayload(payload);
 
@@ -74,7 +75,7 @@ describe("serialisePayload", () => {
     });
 
     it("still parses back to the same payload", () => {
-        const payload = toPayload(instance());
+        const payload = toPayload(instance(), ontology);
 
         expect(JSON.parse(serialisePayload(payload))).toEqual(payload);
     });
@@ -82,7 +83,7 @@ describe("serialisePayload", () => {
 
 describe("toPayload", () => {
     it("carries the worlds the script needs to draw", () => {
-        const payload = toPayload(instance());
+        const payload = toPayload(instance(), ontology);
 
         expect(payload.worlds).toHaveLength(1);
         expect(payload.worlds[0].nodes[0].label).toBe("Pessoa");
@@ -90,8 +91,11 @@ describe("toPayload", () => {
 
     // The server never sees the stereotypes — it only gets the generated Alloy — so the
     // extension has to supply them for a kind to be told from a phase.
-    it("applies the ontology the extension supplies", () => {
-        const withoutOntology = toPayload(instance({ ontology: undefined }));
+    // Only the first instance of a session carries an ontology; the rest come straight from
+    // the server, which has never seen a stereotype. Passing it separately is what keeps a
+    // session from quietly losing the ability to tell a kind from a phase halfway through.
+    it("needs the ontology passed in, not read off the instance", () => {
+        const withoutOntology = toPayload(instance(), undefined);
 
         expect(withoutOntology.worlds[0].nodes[0].label).toBe("");
         expect(withoutOntology.worlds[0].nodes[0].qualifiers).toEqual(["Pessoa"]);
@@ -100,30 +104,30 @@ describe("toPayload", () => {
     // The payload crosses into the webview, so it should carry what is needed to draw and
     // nothing else — the session id is the handle for stepping and closing.
     it("does not leak the session id into the webview", () => {
-        expect(JSON.stringify(toPayload(instance()))).not.toContain("session-1");
+        expect(JSON.stringify(toPayload(instance(), ontology))).not.toContain("session-1");
     });
 
     it("explains an over-constrained model rather than showing an empty canvas", () => {
-        const payload = toPayload(instance({ satisfiable: false, instance: undefined, instanceNumber: 0 }));
+        const payload = toPayload(instance({ satisfiable: false, instance: undefined, instanceNumber: 0 }), ontology);
 
         expect(payload.message).toContain("no instance");
         expect(payload.message).toContain("over-constrained");
     });
 
     it("distinguishes running out of instances from never having one", () => {
-        const payload = toPayload(instance({ satisfiable: false, instance: undefined, instanceNumber: 4 }));
+        const payload = toPayload(instance({ satisfiable: false, instance: undefined, instanceNumber: 4 }), ontology);
 
         expect(payload.message).toContain("no further instance");
     });
 
     it("explains a satisfiable instance that has no worlds to draw", () => {
-        const payload = toPayload(instance({ instance: { ...oneWorld, worlds: [] } }));
+        const payload = toPayload(instance({ instance: { ...oneWorld, worlds: [] } }), ontology);
 
         expect(payload.message).toContain("no possible worlds");
     });
 
     it("says nothing when there is a graph to show", () => {
-        expect(toPayload(instance()).message).toBeUndefined();
+        expect(toPayload(instance(), ontology).message).toBeUndefined();
     });
 });
 
@@ -133,6 +137,12 @@ describe("renderInstance", () => {
 
         expect(html).toContain("Instance 3");
         expect(html).toContain("singleWorld");
+    });
+
+    // Stepping only posts a payload, so the heading has to be addressable for the script to
+    // keep it in step — otherwise it reports the opening instance forever.
+    it("gives the heading an id the script can update", () => {
+        expect(render(instance())).toContain("<h1 id=\"heading\">");
     });
 
     it("loads the graph script from the uri it is given", () => {

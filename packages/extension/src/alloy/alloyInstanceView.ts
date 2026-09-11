@@ -1,4 +1,4 @@
-import { AlloyInstance } from "./alloyTypes.js";
+import { AlloyInstance, OntologyClass } from "./alloyTypes.js";
 import { toOntology, toWorldGraphs, WorldGraph } from "./instanceGraph.js";
 
 /**
@@ -17,9 +17,20 @@ export interface InstancePayload {
     message?: string
 }
 
-/** What the webview script needs, and nothing more: no session ids, no Alloy XML. */
-export function toPayload(instance: AlloyInstance): InstancePayload {
-    const worlds = toWorldGraphs(instance.instance, toOntology(instance.ontology));
+/**
+ * What the webview script needs, and nothing more: no session ids, no Alloy XML.
+ *
+ * The ontology is a parameter rather than a field read off the instance, because only the
+ * first instance of a session ever carries one — every later one comes straight from the
+ * server, which answers from the generated Alloy and has never seen a stereotype. Passing it
+ * explicitly makes forgetting it a compile error instead of a view that quietly stops
+ * telling kinds from phases halfway through a session.
+ */
+export function toPayload(
+    instance: AlloyInstance,
+    ontology: OntologyClass[] | undefined
+): InstancePayload {
+    const worlds = toWorldGraphs(instance.instance, toOntology(ontology));
 
     return {
         commandName: instance.commandName,
@@ -51,10 +62,11 @@ function describeEmptyResult(instance: AlloyInstance, worlds: WorldGraph[]): str
 
 export function renderInstance(
     instance: AlloyInstance,
+    ontology: OntologyClass[] | undefined,
     scriptUri: string,
     nonce: string
 ): string {
-    const payload = toPayload(instance);
+    const payload = toPayload(instance, ontology);
     const heading = instance.satisfiable ? `Instance ${instance.instanceNumber}` : "No instance";
 
     const warnings = (instance.warnings ?? []).length > 0
@@ -164,7 +176,7 @@ export function renderInstance(
 </head>
 <body>
     <header>
-        <h1>${escapeHtml(heading)}</h1>
+        <h1 id="heading">${escapeHtml(heading)}</h1>
         <span class="command">${escapeHtml(instance.commandName)}</span>
         <button id="next">Next instance</button>
     </header>

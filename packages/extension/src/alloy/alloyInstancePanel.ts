@@ -1,8 +1,9 @@
 import * as fs from "node:fs";
 import * as vscode from "vscode";
-import { createNonce, renderInstance, toPayload } from "./alloyInstanceView.js";
+import { createNonce, InstancePayload, renderInstance, toPayload } from "./alloyInstanceView.js";
 import { AlloyLspClient } from "./alloyLspClient.js";
-import { AlloyInstance } from "./alloyTypes.js";
+import { AlloyInstance, OntologyClass } from "./alloyTypes.js";
+import { WorldGraph } from "./instanceGraph.js";
 
 /**
  * A webview showing one Alloy session as a graph per possible world, with a button to step to
@@ -22,6 +23,12 @@ export class AlloyInstancePanel {
         private readonly client: AlloyLspClient,
         private readonly output: vscode.OutputChannel,
         private readonly sessionId: string,
+        /**
+         * Held for the life of the session, because every instance after the first needs it
+         * and none of them carry it: the server answers from the generated Alloy alone, which
+         * keeps class names but nothing that says a class is a kind.
+         */
+        private readonly ontology: OntologyClass[] | undefined,
         title: string
     ) {
         this.panel = vscode.window.createWebviewPanel(
@@ -54,10 +61,11 @@ export class AlloyInstancePanel {
         client: AlloyLspClient,
         output: vscode.OutputChannel,
         instance: AlloyInstance,
+        ontology: OntologyClass[] | undefined,
         projectName: string
     ): AlloyInstancePanel {
         const panel = new AlloyInstancePanel(
-            context, client, output, instance.sessionId, `Alloy — ${projectName}`);
+            context, client, output, instance.sessionId, ontology, `Alloy — ${projectName}`);
         panel.renderFull(instance);
         return panel;
     }
@@ -68,9 +76,10 @@ export class AlloyInstancePanel {
             if (this.disposed) {
                 return;
             }
+
             // Posting the new instance rather than rebuilding the page keeps the tab layout
             // and the loaded script in place, so stepping does not flash the whole view.
-            void this.panel.webview.postMessage({ instance: toPayload(instance) });
+            void this.panel.webview.postMessage({ instance: this.describe(instance) });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Could not generate the next instance: ${message}`);
@@ -83,18 +92,28 @@ export class AlloyInstancePanel {
 
         this.panel.webview.html = renderInstance(
             instance,
+            this.ontology,
             this.scriptUri(scriptPath),
             createNonce()
         );
 
-        const payload = toPayload(instance);
-        const issues = payload.worlds.reduce(
-            (total, world) => total + world.nodes.filter((node) => node.issues.length > 0).length, 0);
+        this.describe(instance);
+    }
+
+    /** Builds the payload for the webview, and records what it contained. */
+    private describe(instance: AlloyInstance): InstancePayload {
+        const payload = toPayload(instance, this.ontology);
+        const count = (pick: (world: WorldGraph) => number) =>
+            payload.worlds.reduce((total, world) => total + pick(world), 0);
+
         this.output.appendLine(
             `Instance ${instance.instanceNumber}: ${payload.worlds.length} world(s), `
-            + `${payload.worlds.reduce((total, world) => total + world.nodes.length, 0)} endurant(s), `
-            + `${payload.worlds.reduce((total, world) => total + world.edges.length, 0)} relation(s), `
-            + `${issues} constraint issue(s)`);
+            + `${count((world) => world.nodes.length)} endurant(s), `
+            + `${count((world) => world.edges.length)} relation(s), `
+            + `${count((world) => world.nodes.filter((node) => node.issues.length > 0).length)} `
+            + "constraint issue(s)");
+
+        return payload;
     }
 
     /**

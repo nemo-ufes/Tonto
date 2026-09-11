@@ -231,6 +231,22 @@ function toElements(world: WorldGraph): cytoscape.ElementDefinition[] {
 }
 
 /**
+ * Keeps the heading in step with what is on screen.
+ *
+ * The heading is written once into the page, while stepping only posts a new payload — so
+ * without this it goes on reporting the instance the panel opened with, however many times
+ * the modeller steps.
+ */
+function updateHeading(payload: InstancePayload): void {
+    const heading = document.getElementById("heading");
+    if (heading) {
+        heading.textContent = payload.satisfiable
+            ? `Instance ${payload.instanceNumber}`
+            : "No instance";
+    }
+}
+
+/**
  * Reads top to bottom as the endurant does: what it is, what it currently is, and which one
  * it is. The qualifiers are indented so the kind stays the line the eye lands on.
  */
@@ -241,6 +257,8 @@ function nodeLabel(node: WorldGraph["nodes"][number]): string {
 }
 
 function render(payload: InstancePayload): void {
+    updateHeading(payload);
+
     const tabs = document.getElementById("tabs");
     const canvas = document.getElementById("graph");
     const empty = document.getElementById("empty");
@@ -282,6 +300,11 @@ function render(payload: InstancePayload): void {
                 nodeRepulsion: 6000,
                 idealEdgeLength: 120,
                 padding: 24,
+                // Without this the layout keeps its own scale, and in a panel docked to the
+                // side that puts part of the world outside the viewport — taking the
+                // relators and their relations with it, so a populated world reads as a few
+                // loose boxes.
+                fit: true,
             } as cytoscape.LayoutOptions,
         });
 
@@ -353,6 +376,15 @@ function worldTabLabel(world: WorldGraph): string {
 
 document.getElementById("next")?.addEventListener("click", () => {
     vscode.postMessage({ command: "next" });
+});
+
+// Docking the panel or dragging its edge changes the viewport without redrawing, which would
+// otherwise leave the graph framed for a width it no longer has.
+window.addEventListener("resize", () => {
+    graph?.resize();
+    graph?.fit(undefined, 24);
+    worldMap?.resize();
+    worldMap?.fit(undefined, 10);
 });
 
 window.addEventListener("message", (event: MessageEvent<{ instance?: InstancePayload }>) => {

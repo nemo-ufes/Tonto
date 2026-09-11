@@ -92,10 +92,6 @@ async function generateInstances(
                 }
 
                 const instance = await client.openSession(modules.result, predicate.label);
-                // The server only sees the generated Alloy, which keeps class names but not
-                // what each class is. The stereotypes come from this side, where the OntoUML
-                // project still exists.
-                instance.ontology = modules.ontology;
                 output.appendLine(
                     `Ontology: ${modules.ontology?.length ?? 0} class(es) `
                     + `(${(modules.ontology ?? []).filter((entry) => entry.stereotype === "kind").length} kind)`);
@@ -109,7 +105,10 @@ async function generateInstances(
                 }
 
                 const manifest = readOrCreateDefaultTontoManifest(directoryUri.fsPath);
-                AlloyInstancePanel.show(context, client, output, instance, manifest.projectName);
+                // The stereotypes come from this side, where the OntoUML project still exists: the
+                // server only ever sees the generated Alloy, which no longer says what a class is.
+                AlloyInstancePanel.show(
+                    context, client, output, instance, modules.ontology, manifest.projectName);
             } catch (error) {
                 reportFailure(error);
             }

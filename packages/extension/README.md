@@ -116,3 +116,23 @@ npm run publish --workspace=tonto
 ## License
 
 Distributed under the MIT License. See the repository root [LICENSE](../../LICENSE) file for more information.
+
+## SVG saved views (preview)
+
+Enable `tonto.features.tontodiagram.enabled`, open a saved `.tonto` model and run
+**Create Tonto Diagram**. New views live under `views/*.tontoview` as version-1 JSON,
+with their source relative to the view file. The SVG editor supports arrangement,
+routing, typography, package grouping and SVG/PNG export. Model parsing stays in
+Tonto's existing language services; the webview receives serializable graphs only.
+
+Existing `.tontodiagram` files remain editable. **Convert to Tonto View** creates a
+new file and leaves the old document intact. Conversion reports unresolved settings;
+new named views use **Open Named Tonto View** and **Save as Named Tonto View**.
+Dragging changes the document without forcing a save; VS Code owns Save and Undo.
+
+Open model buffers update the drawing after 300 ms. Incomplete source keeps the
+last valid drawing with its diagnostic reason. Double-click a node, or select it
+and press Enter, to reveal its source. Routes, resizing and constraints require
+`.tontoview`; legacy views offer conversion for these controls.
+
+![SVG editor verification fixture](data/images/svg-view.png)

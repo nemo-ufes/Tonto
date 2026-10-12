@@ -1,13 +1,13 @@
 import path from "node:path";
+import { emptyViewFile } from "tonto-cli/lib/view/model/viewfile.js";
+import { namedViewPath } from "./view-paths.js";
 import * as vscode from "vscode";
 import {
-    createEntireOntologyDiagramTemplate,
     getTontoDiagramProjectName,
 } from "./tontodiagram-template.js";
 
 const COMMAND_ID = "tonto.diagram.createFile";
 const MANIFEST_FILE_NAME = "tonto.json";
-const DIAGRAM_FILE_NAME = "ontology.tontodiagram";
 
 export function registerCreateTontoDiagramCommand(): vscode.Disposable {
     return vscode.commands.registerCommand(COMMAND_ID, async (resource?: vscode.Uri) => {
@@ -21,9 +21,13 @@ export function registerCreateTontoDiagramCommand(): vscode.Disposable {
             return;
         }
 
-        const project = await resolveTontoProject(sourceDocument.uri);
-        const targetUri = vscode.Uri.file(path.join(project.rootPath, DIAGRAM_FILE_NAME));
-        const diagramContents = createEntireOntologyDiagramTemplate(project.name);
+        await resolveTontoProject(sourceDocument.uri);
+        const targetUri = vscode.Uri.file(namedViewPath(sourceDocument.uri.fsPath));
+        const view = emptyViewFile();
+        view.source = path.relative(path.dirname(targetUri.fsPath), sourceDocument.uri.fsPath).split(path.sep).join("/");
+        view.content.scope = "workspace";
+        const diagramContents = JSON.stringify(view, null, 2) + "\n";
+        await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(targetUri.fsPath)));
 
         try {
             await vscode.workspace.fs.stat(targetUri);
@@ -31,7 +35,7 @@ export function registerCreateTontoDiagramCommand(): vscode.Disposable {
             await vscode.workspace.fs.writeFile(targetUri, Buffer.from(diagramContents, "utf8"));
         }
 
-        await vscode.commands.executeCommand("vscode.openWith", targetUri, "tonto.diagram.editor");
+        await vscode.commands.executeCommand("vscode.openWith", targetUri, "tonto.view.editor");
     });
 }
 

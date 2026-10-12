@@ -1,3 +1,4 @@
+import type { ViewFile, ViewModel } from "tonto-cli/lib/view/model/index.js";
 import type { TontoDiagramDirection, TontoDiagramGraph, TontoDiagramIssue } from "tonto-cli";
 
 export type DiagramDocumentStateStatus = "loading" | "ready" | "error";
@@ -8,11 +9,19 @@ export type DiagramDocumentStateMessage = {
     documentText: string;
     graph?: TontoDiagramGraph;
     issues: TontoDiagramIssue[];
+    viewModel?: ViewModel;
+    arrangement?: ViewFile;
+    isLegacy?: boolean;
 };
 
 export type DiagramExportFormat = "png" | "svg" | "plantuml";
 
 export type DiagramOutgoingMessage =
+    | { type: "updateArrangement"; arrangement: ViewFile }
+    | { type: "revealSource"; id: string }
+    | { type: "selection"; ids: string[] }
+    | { type: "rasterized"; id: string | number; dataUrl?: string; error?: string }
+    | { type: "convertView" }
     | {
         type: "ready";
     }
@@ -27,6 +36,7 @@ export type DiagramOutgoingMessage =
     | {
         type: "requestExport";
         format: DiagramExportFormat;
+        svg?: string;
     }
     | {
         type: "updateLayout";

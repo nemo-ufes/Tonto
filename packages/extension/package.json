@@ -47,6 +47,12 @@
                     ".tontodiagram"
                 ],
                 "configuration": "./data/tontodiagram-language-configuration.json"
+            },
+            {
+                "id": "json",
+                "extensions": [
+                    ".tontoview"
+                ]
             }
         ],
         "grammars": [
@@ -227,8 +233,8 @@
         },
         "jsonValidation": [
             {
-                "fileMatch": "tonto.json",
-                "url": "./data/tonto-manifest-schema.json"
+                "fileMatch": "*.tontoview",
+                "url": "./data/tontoview.schema.json"
             }
         ],
         "configuration": {
@@ -270,6 +276,16 @@
                 "selector": [
                     {
                         "filenamePattern": "*.tontodiagram"
+                    }
+                ],
+                "priority": "default"
+            },
+            {
+                "viewType": "tonto.view.editor",
+                "displayName": "Tonto SVG View",
+                "selector": [
+                    {
+                        "filenamePattern": "*.tontoview"
                     }
                 ],
                 "priority": "default"
@@ -371,6 +387,21 @@
             {
                 "command": "tonto.diagram.plantuml.export",
                 "title": "Export PlantUML",
+                "category": "Tonto"
+            },
+            {
+                "command": "tonto.view.open",
+                "title": "Open Named Tonto View",
+                "category": "Tonto"
+            },
+            {
+                "command": "tonto.view.saveAs",
+                "title": "Save as Named Tonto View",
+                "category": "Tonto"
+            },
+            {
+                "command": "tonto.view.convert",
+                "title": "Convert to Tonto View",
                 "category": "Tonto"
             },
             {
@@ -609,10 +640,16 @@
         "onCommand:tonto.addSemanticTokenColors",
         "onCommand:tonto.diagram.createFile",
         "onCustomEditor:tonto.diagram.editor",
+        "onLanguage:tontoview",
+        "onCustomEditor:tonto.view.editor",
         "onCommand:tonto.setupAgents"
     ],
     "files": [
-        "pack",
+        "pack/**/*.cjs",
+        "pack/**/*.mjs",
+        "pack/webview/**/*.js",
+        "pack/webview/**/*.css",
+        "pack/licenses/**",
         "src/themes",
         "data",
         "LICENSE.md",

@@ -28,6 +28,10 @@ const plugins = [
 await mkdir("syntaxes", { recursive: true });
 await copyFile("../tonto/syntaxes/tonto.tmLanguage.json", "syntaxes/tonto.tmLanguage.json");
 await copyFile("data/tontodiagram.tmLanguage.json", "syntaxes/tontodiagram.tmLanguage.json");
+await mkdir("pack/licenses", { recursive: true });
+await copyFile("../tonto/src/view/THIRD-PARTY-NOTICES.md", "pack/licenses/Tonto-Visualizer-MIT.md");
+await copyFile("../../node_modules/elkjs/LICENSE.md", "pack/licenses/ELK.md");
+
 const nodeContext = await esbuild.context({
     entryPoints: [
         "src/extension/main.ts",

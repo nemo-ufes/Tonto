@@ -39,7 +39,7 @@
         "@types/jest": "^29.2.3",
         "@types/node": "^18.19.33",
         "@types/node-fetch": "^2.6.1",
-        "@types/vscode": "^1.63.0",
+        "@types/vscode": "1.95.0",
         "esbuild": "^0.16.9",
         "eslint": "^9.32.0",
         "globals": "^16.3.0",

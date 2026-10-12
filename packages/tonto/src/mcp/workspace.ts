@@ -9,6 +9,7 @@ import { builtInLibs } from "../language/workspace/builtins/index.js";
 import { createTontoServices } from "../language/tonto-module.js";
 
 export type ModelInput = { source?: string; path?: string };
+export type ValidationResult = { uri: string; valid: boolean; diagnostics: LocatedDiagnostic[]; targetDiagnostics: Diagnostic[]; repairs: { diagnosticIndex: number; title: string; edits: TextEdit[] }[] };
 type LocatedDiagnostic = Diagnostic & { uri: string };
 
 /** Each request uses a fresh Langium workspace so changed files never leave a stale index. */
@@ -95,15 +96,15 @@ export class TontoMcpWorkspace {
         if (edits?.length) repairs.push({ diagnosticIndex, title: action.title, edits });
       }
     }
-    return { services, document, uri, diagnostics, repairs };
+    return { services, document, documents, uri, diagnostics, repairs };
   }
 
-  async validate(input: ModelInput) {
+  async validate(input: ModelInput): Promise<ValidationResult> {
     const result = await this.build(input);
     return this.validationResult(result);
   }
 
-  private validationResult(result: Awaited<ReturnType<TontoMcpWorkspace["build"]>>) {
+  private validationResult(result: Awaited<ReturnType<TontoMcpWorkspace["build"]>>): ValidationResult {
     return {
       uri: result.uri,
       valid: !result.diagnostics.some((diagnostic) => diagnostic.severity === 1),
@@ -113,7 +114,7 @@ export class TontoMcpWorkspace {
     };
   }
 
-  async ast(input: ModelInput) {
+  async ast(input: ModelInput): Promise<ValidationResult & { ast: unknown }> {
     const result = await this.build(input);
     const ast: unknown = JSON.parse(result.services.Tonto.serializer.JsonSerializer.serialize(
       result.document.parseResult.value, { refText: true, textRegions: true }
@@ -121,7 +122,7 @@ export class TontoMcpWorkspace {
     return { ...this.validationResult(result), ast };
   }
 
-  async apply(input: ModelInput & { edits?: TextEdit[]; diagnosticIndex?: number; repairTitle?: string }) {
+  async apply(input: ModelInput & { edits?: TextEdit[]; diagnosticIndex?: number; repairTitle?: string }): Promise<ValidationResult & { source: string; saved: boolean }> {
     if ((input.edits !== undefined) === (input.diagnosticIndex !== undefined)) {
       throw new Error("Provide either edits or diagnosticIndex, exclusively.");
     }

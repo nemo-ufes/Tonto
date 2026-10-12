@@ -1,3 +1,5 @@
+import { registerTontoAgentTools } from "../ai/tools.js";
+import { registerTontoAgentSetup } from "../ai/setup.js";
 import * as path from "path";
 import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from "vscode-languageclient/node.js";
@@ -162,6 +164,8 @@ export function activate(context: vscode.ExtensionContext): void {
     createValidationSatusBarItem(context, validateStatusBarItem, outputChannel);
     createTransformToGufoSatusBarItem(context, transformToGufoStatusBarItem);
     createTpmInstallCommands(context, tpmInstallStatusBarItem);
+    registerTontoAgentTools(context);
+    registerTontoAgentSetup(context);
     registerTontoMetadataFolding(context);
     activateDiagram(context, languageClient);
     registerPlantUMLCommands(context);

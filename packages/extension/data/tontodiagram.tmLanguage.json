@@ -1,0 +1,45 @@
+{
+  "name": "tdiagram",
+  "scopeName": "source.tdiagram",
+  "fileTypes": [
+    ".tdiagram"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "name": "keyword.control.tdiagram",
+      "match": "\\b(binaryRelationView|classView|diagram|diamond|generalizationSetView|generalizationView|isViewOf|members|naryRelationView|orthogonalArrows|owner|path|paths|points|rectangle|sourceView|targetView|text|textView|topLeft|views)\\b"
+    },
+    {
+      "name": "constant.language.boolean.tdiagram",
+      "match": "\\b(true|false)\\b"
+    },
+    {
+      "name": "string.quoted.double.tdiagram",
+      "begin": "\"",
+      "end": "\""
+    },
+    {
+      "name": "constant.numeric.tdiagram",
+      "match": "\\b\\d+\\b"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.tdiagram",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment.line.tdiagram",
+          "begin": "//",
+          "end": "(?=$)"
+        }
+      ]
+    }
+  }
+}

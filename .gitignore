@@ -33,3 +33,7 @@ syntaxes/
 pack
 
 dist-release
+
+# Browser source helpers are authored source, not build output.
+!packages/webview/src/diagram-editor/lib/
+!packages/webview/src/diagram-editor/lib/**

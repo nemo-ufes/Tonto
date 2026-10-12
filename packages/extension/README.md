@@ -136,3 +136,19 @@ and press Enter, to reveal its source. Routes, resizing and constraints require
 `.tontoview`; legacy views offer conversion for these controls.
 
 ![SVG editor verification fixture](data/images/svg-view.png)
+
+## Agent tools
+
+This version requires VS Code 1.95 or newer and contributes 14 chat tools. External
+MCP clients receive 15 tools, including session-local `tonto_hold`, four knowledge
+resources and draft/review prompts. All use the current Tonto parser and validators.
+
+Run **Tonto: Set Up Agents** in a local workspace to stage the bundled server and
+merge Codex/Claude project configuration. The Node launcher is configured through
+`tonto.agents.nodePath` and must support Node 20.18 or newer. Existing conflicting
+Tonto entries are reported before changes; unrelated settings and instructions are
+preserved. Restart external clients after setup. No configuration is installed on
+activation, and remote agent setup is not supported in this release.
+
+Validation, completion, AST, format, repair and gUFO tools return previews and do not
+save model files. Diagnostic/edit positions remain zero-based UTF-16.

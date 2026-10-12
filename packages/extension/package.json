@@ -629,6 +629,169 @@
                     "additionalProperties": false,
                     "$schema": "http://json-schema.org/draft-07/schema#"
                 }
+            },
+            {
+                "name": "tonto_guide",
+                "displayName": "Tonto guide",
+                "modelDescription": "Read the current repository grammar guide.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-guide",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_rules",
+                "displayName": "Tonto rules",
+                "modelDescription": "Read current validator rule messages.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-rules",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_tables",
+                "displayName": "Tonto tables",
+                "modelDescription": "Read supported categories, relations and validator nature tables.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-tables",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_patterns",
+                "displayName": "Tonto patterns",
+                "modelDescription": "Read patterns checked against current language services.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-patterns",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_explain",
+                "displayName": "Tonto explain",
+                "modelDescription": "Explain a validator diagnostic or language term using current knowledge.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-explain",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "term": {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    },
+                    "required": [
+                        "term"
+                    ],
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_format",
+                "displayName": "Tonto format",
+                "modelDescription": "Preview the current language formatter output without saving.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-format",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "description": "Unsaved text overrides path."
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_digest",
+                "displayName": "Tonto digest",
+                "modelDescription": "Summarize declarations in the linked model and its diagnostics.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-digest",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "description": "Unsaved text overrides path."
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_repair",
+                "displayName": "Tonto repair",
+                "modelDescription": "Preview unambiguous editor repairs, revalidate and return unsaved source.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-repair",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "description": "Unsaved text overrides path."
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_gufo",
+                "displayName": "Tonto gufo",
+                "modelDescription": "Preview the existing OntoUML gUFO transformation without writing files.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-gufo",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "description": "Unsaved text overrides path."
+                        },
+                        "path": {
+                            "type": "string"
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
             }
         ]
     },

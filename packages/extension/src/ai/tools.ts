@@ -18,7 +18,7 @@ async function resolveFolder(input: Record<string, unknown>): Promise<vscode.Wor
 
 export function registerTontoAgentTools(context: vscode.ExtensionContext): void {
   if (!vscode.lm?.registerTool) return;
-  for (const name of vscodeToolNames.filter(name => ["tonto_validate", "tonto_ast", "tonto_apply", "tonto_diff", "tonto_complete"].includes(name))) {
+  for (const name of vscodeToolNames) {
     context.subscriptions.push(vscode.lm.registerTool(name, {
       async invoke(options: vscode.LanguageModelToolInvocationOptions<Record<string, unknown>>, token: vscode.CancellationToken) {
         const input = { ...options.input };

@@ -73,7 +73,7 @@ export const SvgCanvas = React.forwardRef<SvgCanvasHandle, Props>(function SvgCa
       y: (box.height - bounds.height * zoom) / 2 - bounds.y * zoom, zoom };
     setCamera(next); return next;
   }
-  
+
   React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       const message = event.data;

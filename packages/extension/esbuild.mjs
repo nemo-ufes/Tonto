@@ -48,7 +48,10 @@ const nodeContext = await esbuild.context({
     external: ["vscode"],
     platform: "node",
     sourcemap: !options.minify,
-    minify: options.minify,
+    minify: false,
+    minifySyntax: options.minify,
+    minifyWhitespace: options.minify,
+    minifyIdentifiers: false,
     plugins,
 });
 
@@ -56,7 +59,7 @@ const mcpContext = await esbuild.context({
     entryPoints: ["../tonto/src/mcp/main.ts"],
     outfile: "pack/mcp.mjs",
     bundle: true, platform: "node", format: "esm", target: "node20",
-    sourcemap: !options.minify, minify: options.minify,
+    sourcemap: !options.minify, minifySyntax: options.minify, minifyWhitespace: options.minify, minifyIdentifiers: false,
     banner: { js: 'import { createRequire as createTontoRequire } from "node:module"; const require = createTontoRequire(import.meta.url);' },
 });
 

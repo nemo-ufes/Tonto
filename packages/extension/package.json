@@ -102,23 +102,7 @@
                 },
                 {
                     "command": "tonto.diagram.createFile",
-                    "when": "editorLangId == 'tonto' && config.tonto.features.tontodiagram.enabled"
-                },
-                {
-                    "command": "tonto.diagram.fit",
-                    "when": "tonto-diagram-focused"
-                },
-                {
-                    "command": "tonto.diagram.center",
-                    "when": "tonto-diagram-focused"
-                },
-                {
-                    "command": "tonto.diagram.delete",
-                    "when": "tonto-diagram-focused"
-                },
-                {
-                    "command": "tonto.diagram.export",
-                    "when": "tonto-diagram-focused"
+                    "when": "editorLangId == 'tonto'"
                 }
             ],
             "editor/context": [
@@ -129,7 +113,7 @@
                 },
                 {
                     "command": "tonto.diagram.createFile",
-                    "when": "editorLangId == 'tonto' && config.tonto.features.tontodiagram.enabled",
+                    "when": "editorLangId == 'tonto'",
                     "group": "navigation"
                 }
             ],
@@ -140,13 +124,8 @@
                     "group": "navigation"
                 },
                 {
-                    "command": "tonto.diagram.plantuml.open",
-                    "when": "editorLangId == 'tonto'",
-                    "group": "navigation"
-                },
-                {
                     "command": "tonto.diagram.createFile",
-                    "when": "editorLangId == 'tonto' && config.tonto.features.tontodiagram.enabled",
+                    "when": "editorLangId == 'tonto'",
                     "group": "navigation"
                 }
             ],
@@ -157,13 +136,8 @@
                     "group": "navigation"
                 },
                 {
-                    "command": "tonto.diagram.plantuml.open",
-                    "when": "resourceExtname == '.tonto'",
-                    "group": "navigation"
-                },
-                {
                     "command": "tonto.diagram.createFile",
-                    "when": "resourceExtname == '.tonto' && config.tonto.features.tontodiagram.enabled",
+                    "when": "resourceExtname == '.tonto'",
                     "group": "navigation"
                 }
             ],
@@ -218,16 +192,6 @@
                     "command": "tonto.editor.toggleLabelAndDescriptionFolding",
                     "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
                     "group": "navigation"
-                },
-                {
-                    "command": "tonto.diagram.plantuml.open",
-                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
-                    "group": "navigation"
-                },
-                {
-                    "command": "tonto.diagram.plantuml.export",
-                    "when": "(view == 'tontoCommandsExplorer' || view == 'tontoCommands') && viewItem == 'tontoCommand'",
-                    "group": "navigation"
                 }
             ]
         },
@@ -240,12 +204,6 @@
         "configuration": {
             "title": "Tonto",
             "properties": {
-                "tonto.features.tontodiagram.enabled": {
-                    "type": "boolean",
-                    "default": false,
-                    "scope": "window",
-                    "markdownDescription": "Enable Tonto new diagram visualization with `.tontodiagram` (Alpha feature)."
-                },
                 "tonto.editor.autoFoldLabelsAndDescriptions": {
                     "type": "boolean",
                     "default": false,
@@ -261,26 +219,6 @@
         },
         "customEditors": [
             {
-                "viewType": "tonto",
-                "displayName": "Tonto Diagram",
-                "selector": [
-                    {
-                        "filenamePattern": "*.tonto"
-                    }
-                ],
-                "priority": "option"
-            },
-            {
-                "viewType": "tonto.diagram.editor",
-                "displayName": "Tonto Diagram Editor",
-                "selector": [
-                    {
-                        "filenamePattern": "*.tontodiagram"
-                    }
-                ],
-                "priority": "default"
-            },
-            {
                 "viewType": "tonto.view.editor",
                 "displayName": "Tonto SVG View",
                 "selector": [
@@ -295,34 +233,13 @@
             {
                 "command": "tonto.diagram.open",
                 "icon": "$(symbol-structure)",
-                "title": "Open Tonto Diagram",
-                "category": "Tonto"
-            },
-            {
-                "command": "tonto.diagram.fit",
-                "title": "Fit to Screen",
-                "category": "Tonto"
-            },
-            {
-                "command": "tonto.diagram.center",
-                "title": "Center selection",
-                "category": "Tonto"
-            },
-            {
-                "command": "tonto.diagram.delete",
-                "title": "Delete selected element",
-                "category": "Tonto"
-            },
-            {
-                "command": "tonto.diagram.export",
-                "title": "Export diagram to SVG",
+                "title": "Open SVG Diagram",
                 "category": "Tonto"
             },
             {
                 "command": "tonto.diagram.createFile",
-                "title": "Create Entire Ontology Diagram",
-                "category": "Tonto",
-                "enablement": "config.tonto.features.tontodiagram.enabled"
+                "title": "Create JSON Diagram View",
+                "category": "Tonto"
             },
             {
                 "command": "tonto.generateJSON",
@@ -372,21 +289,6 @@
             {
                 "command": "tonto.editor.toggleLabelAndDescriptionFolding",
                 "title": "Toggle Label and Description Folding",
-                "category": "Tonto"
-            },
-            {
-                "command": "tonto.diagram.plantuml.open",
-                "title": "Open PlantUML Diagram",
-                "category": "Tonto"
-            },
-            {
-                "command": "tonto.diagram.plantuml.openProject",
-                "title": "Open Ontology PlantUML Diagram",
-                "category": "Tonto"
-            },
-            {
-                "command": "tonto.diagram.plantuml.export",
-                "title": "Export PlantUML",
                 "category": "Tonto"
             },
             {
@@ -802,7 +704,6 @@
         "onLanguage:tontodiagram",
         "onCommand:tonto.addSemanticTokenColors",
         "onCommand:tonto.diagram.createFile",
-        "onCustomEditor:tonto.diagram.editor",
         "onLanguage:tontoview",
         "onCustomEditor:tonto.view.editor",
         "onCommand:tonto.setupAgents"

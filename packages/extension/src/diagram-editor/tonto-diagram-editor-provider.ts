@@ -78,7 +78,6 @@ export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvid
     const provider = new TontoDiagramEditorProvider(context);
     const options = { webviewOptions: { retainContextWhenHidden: true }, supportsMultipleEditorsPerDocument: true };
     return vscode.Disposable.from(provider,
-      vscode.window.registerCustomEditorProvider(this.viewType, provider, options),
       vscode.window.registerCustomEditorProvider(this.viewFileType, provider, options));
   }
 

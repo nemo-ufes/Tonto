@@ -58,8 +58,7 @@ Playwright module, and `TONTO_TEST_ARTIFACTS` selects the screenshot directory.
 
 ## Preview use
 
-Enable `tonto.features.tontodiagram.enabled`, then create/open a Tonto diagram.
-New views use `.tontoview`; existing `.tontodiagram` files remain editable and offer
-conversion. Run **Tonto: Set Up Agents** explicitly for local Codex/Claude project
-configuration. Remote setup reports that it is unsupported. The diagram feature
-continues to default to disabled while the stack is reviewed.
+Run **Open SVG Diagram** from a `.tonto` model. New views use `.tontoview`
+JSON. Previous Sprotty and PlantUML previews are disabled; `.tontodiagram` files
+open as text and retain **Convert to Tonto View**. Run **Tonto: Set Up Agents** explicitly for local Codex/Claude project
+configuration. Remote setup reports that it is unsupported. The SVG JSON editor is enabled directly, regardless of the obsolete diagram toggle.

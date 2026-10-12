@@ -17,7 +17,6 @@ export default defineConfig({
         },
         rollupOptions: {
             input: {
-                sprotty: resolve(__dirname, "src/main.ts"),
                 "diagram-editor": resolve(__dirname, "src/diagram-editor/main.tsx"),
             },
             output: {

@@ -30,8 +30,10 @@ exports.run = async function () {
     const formatted = await invoke("tonto_format", { path: modelPath });
     assert.equal(formatted.saved, false);
     findings.push("chat validation, unsaved AST and format previews");
-    await vscode.workspace.getConfiguration("tonto").update("features.tontodiagram.enabled", true, vscode.ConfigurationTarget.Workspace);
-    await vscode.commands.executeCommand("tonto.diagram.createFile", document.uri);
+    const registered = await vscode.commands.getCommands(true);
+    assert.ok(!registered.some(command => command.startsWith("tonto.diagram.plantuml.")));
+    assert.deepEqual(extension.packageJSON.contributes.customEditors.map(editor => editor.viewType), ["tonto.view.editor"]);
+    await vscode.commands.executeCommand("tonto.diagram.open", document.uri);
     const viewPath = path.join(root, "views", "model.tontoview");
     const view = await vscode.workspace.openTextDocument(viewPath);
     const json = JSON.parse(view.getText());

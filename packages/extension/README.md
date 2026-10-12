@@ -114,7 +114,8 @@ Distributed under the MIT License. See the repository root [LICENSE](../../LICEN
 
 Open a saved `.tonto` model and run **Open SVG Diagram** or
 **Create JSON Diagram View**. New views live under `views/*.tontoview` as version-1 JSON,
-with their source relative to the view file. The SVG editor supports arrangement,
+with their source relative to the view file. The complete panel, toolbar, options and stylesheet recovered from Tonto Visualizer
+0.1.53 replace the former React shell. The SVG editor supports arrangement,
 routing, typography, package grouping and SVG/PNG export. Model parsing stays in
 Tonto's existing language services; the webview receives serializable graphs only.
 

@@ -1,12 +1,16 @@
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import {
-  buildTontoDiagramGraph, loadTontoDiagramWorkspace, parseTontoDiagramSpec, serializeTontoDiagramSpec,
-  updateTontoDiagramLayout, type TontoDiagramGraph, type TontoDiagramSpec, type TontoDiagramIssue,
+  buildTontoDiagramGraph, loadTontoDiagramWorkspace, parseTontoDiagramSpec,
+  type TontoDiagramGraph, type TontoDiagramSpec, type TontoDiagramIssue,
 } from "tonto-cli";
 import { projectSvgView } from "tonto-cli/lib/view/projection.js";
 import { legacyGraphToSvgView, legacySpecToViewFile, canonicalizeLegacyViewFile } from "tonto-cli/lib/view/model/legacy.js";
 import { readViewFile, emptyViewFile, reconcile, type ViewFile } from "tonto-cli/lib/view/model/viewfile.js";
+import { placeNewNodes, sizeOf, autoLayout, applyLayoutConstraints, render, darkTheme, lightTheme } from "tonto-cli/lib/view/canvas/index.js";
+import { invalidateMovedRoutes } from "tonto-cli/lib/view/model/routes.js";
+import { contentAfter, expandInverseIds } from "tonto-cli/lib/view/model/index.js";
+import { filterItemsOf, filterView } from "./recovered-filters.js";
 import type { ViewModel } from "tonto-cli/lib/view/model/model.js";
 import * as vscode from "vscode";
 import { isTontoSourceInDiagramScope } from "./tontodiagram-source-scope.js";
@@ -57,7 +61,7 @@ export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvid
             return location?.uri === event.textEditor.document.uri.toString() && position.line >= location.line &&
               position.line <= location.endLine;
           }).map(node => node.id) ?? [];
-          void panel.panel.webview.postMessage({ type: "selectElements", ids });
+          void panel.panel.webview.postMessage({ type: "select", ids });
         }
       }),
       vscode.window.onDidChangeActiveColorTheme(() => {
@@ -131,21 +135,128 @@ export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvid
       if (state.disposed || version !== state.requestVersion) return;
       const text = state.document.getText();
       const base: DocumentState = { ...state.last, type: "documentState", status: "loading", documentText: text, isLegacy: this.isLegacy(state.document), issues: [] };
-      await state.panel.webview.postMessage(base);
+      await this.sendNative(state, base);
       try {
         const resolved = await this.resolveState(state.document, text);
         if (state.disposed || version !== state.requestVersion) return;
         state.sourcePath = resolved.graph?.projectRoot;
         if (resolved.issues.some(issue => issue.severity === "error") && state.last?.viewModel) {
-          await state.panel.webview.postMessage({ ...state.last, documentText: text, status: "error", issues: resolved.issues });
+          await this.sendNative(state, { ...state.last, documentText: text, status: "error", issues: resolved.issues });
           return;
         }
         state.last = resolved;
-        await state.panel.webview.postMessage(resolved);
+        await this.sendNative(state, resolved);
       } catch (error) {
-        if (!state.disposed && version === state.requestVersion) await state.panel.webview.postMessage({ ...base, status: "error", issues: [{ severity: "error", message: error instanceof Error ? error.message : String(error) }] });
+        if (!state.disposed && version === state.requestVersion) await this.sendNative(state, { ...base, status: "error", issues: [{ severity: "error", message: error instanceof Error ? error.message : String(error) }] });
       }
     });
+  }
+
+  /** Send the recovered panel's native protocol, without the previous editor shell. */
+  private async sendNative(state: PanelState, snapshot: DocumentState): Promise<void> {
+    const catalog = snapshot.viewModel ?? { nodes: [], edges: [], groups: [], gensets: [] };
+    const file = snapshot.arrangement ?? emptyViewFile();
+    const view = filterView(catalog, file.content.hidden ?? []);
+    const positions = placeNewNodes(view, Object.fromEntries(view.nodes.map(node => [node.id, sizeOf(node, file.display)])), file.nodes);
+    await state.panel.webview.postMessage({ type: "model", view, positions,
+      routes: file.edges, display: file.display, content: file.content, layout: file.layout,
+      constraints: file.constraints, packages: snapshot.graph?.workspace.packages.map(pkg => pkg.name) ?? [],
+      filters: filterItemsOf(catalog), viewport: file.viewport, fit: !file.viewport,
+      ...(snapshot.status === "error" ? { stale: snapshot.issues.map(issue => issue.message).join("\n") } : {}) });
+  }
+
+  private async receiveNative(state: PanelState, message: Message): Promise<boolean> {
+    const type = message.type;
+    const accepted = ["moved", "rerouted", "viewport", "display", "content", "layout", "hide", "show", "pin", "constraint", "autoLayout", "undo", "redo", "export", "moveToNewWindow"];
+    if (!accepted.includes(type)) return false;
+    if (type === "undo" || type === "redo" || type === "moveToNewWindow") {
+      state.panel.reveal(state.panel.viewColumn, false);
+      await vscode.commands.executeCommand(type === "moveToNewWindow" ? "workbench.action.moveEditorToNewWindow" : type);
+      return true;
+    }
+    if (this.isLegacy(state.document)) return true;
+    const file = this.parseView(state.document.getText());
+    const catalog = state.last?.viewModel ?? { nodes: [], edges: [], groups: [], gensets: [] };
+    const view = filterView(catalog, file.content.hidden ?? []);
+    const sizes = Object.fromEntries(view.nodes.map(node => [node.id, sizeOf(node, file.display)]));
+    const positions = placeNewNodes(view, sizes, file.nodes);
+    const knownNodes = new Set(catalog.nodes.map(node => node.id));
+    const knownEdges = new Set(catalog.edges.map(edge => edge.id));
+    const ids = stringList(message.ids) ? [...new Set(message.ids)] : [];
+    const selectedNodes = ids.filter(id => knownNodes.has(id));
+    if (type === "export") {
+      const target = await vscode.window.showSaveDialog({ defaultUri: state.document.uri.with({ path: state.document.uri.path.replace(/\.tontoview$/, ".svg") }), filters: { SVG: ["svg"], PNG: ["png"] } });
+      if (target) {
+        const dark = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark || vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
+        const { svg } = render({ view, positions, routes: file.edges, display: file.display, direction: file.layout.direction, theme: dark ? darkTheme : lightTheme });
+        await vscode.workspace.fs.writeFile(target, target.path.toLowerCase().endsWith(".png") ? await this.rasterize(state, svg) : Buffer.from(svg));
+      }
+      return true;
+    }
+    if (type === "moved" && isRecord(message.positions)) {
+      for (const [id, value] of Object.entries(message.positions)) {
+        if (!knownNodes.has(id) || !isRecord(value) || ![value.x, value.y].every(n => typeof n === "number" && Number.isFinite(n))) continue;
+        const old = file.nodes[id] ?? positions[id];
+        file.nodes[id] = { ...old, x: Number(value.x), y: Number(value.y) };
+        for (const dimension of ["width", "height"] as const) {
+          if (typeof value[dimension] === "number" && Number.isFinite(value[dimension]) && Number(value[dimension]) > 0) file.nodes[id][dimension] = Number(value[dimension]);
+          else if (message.resized === true) delete file.nodes[id][dimension];
+        }
+      }
+      file.edges = invalidateMovedRoutes(file, catalog, Object.keys(message.positions));
+      if (stringList(message.rerouted)) for (const id of message.rerouted) if (knownEdges.has(id)) delete file.edges[id];
+    } else if (type === "rerouted" && typeof message.edge === "string" && knownEdges.has(message.edge)) {
+      if (isRecord(message.route)) {
+        const next = readViewFile({ ...file, edges: { [message.edge]: message.route } });
+        file.edges[message.edge] = next.edges[message.edge];
+      } else delete file.edges[message.edge];
+    } else if (type === "viewport" && isRecord(message.viewport)) {
+      file.viewport = readViewFile({ ...file, viewport: message.viewport }).viewport;
+    } else if (type === "display" && isRecord(message.display)) {
+      const previous = file.display;
+      file.display = readViewFile({ ...file, display: { ...file.display, ...message.display } }).display;
+      if (previous.routing !== file.display.routing) {
+        for (const edge of catalog.edges) delete file.edges[edge.id];
+      } else {
+        const after = placeNewNodes(view, Object.fromEntries(view.nodes.map(node => [node.id, sizeOf(node, file.display)])), file.nodes);
+        file.edges = invalidateMovedRoutes(file, catalog, view.nodes.filter(node => positions[node.id]?.width !== after[node.id]?.width || positions[node.id]?.height !== after[node.id]?.height).map(node => node.id), after);
+      }
+    } else if (type === "content" && isRecord(message.content)) {
+      file.content = contentAfter(file.content, readViewFile({ ...file, content: { ...file.content, ...message.content } }).content);
+    } else if (type === "hide" || type === "show") {
+      const hidden = new Set(file.content.hidden ?? []);
+      const expanded = expandInverseIds(catalog.edges, ids.filter(id => knownNodes.has(id) || knownEdges.has(id)));
+      for (const id of expanded) { if (type === "hide") hidden.add(id); else hidden.delete(id); }
+      file.content.hidden = [...hidden];
+    } else if (type === "pin" && typeof message.pinned === "boolean") {
+      const pinned = new Set(file.constraints.pinned);
+      for (const id of selectedNodes) { if (message.pinned) pinned.add(id); else pinned.delete(id); }
+      file.constraints.pinned = [...pinned].sort();
+    } else if (type === "constraint" && typeof message.action === "string" && ["align-x", "align-y", "distribute-x", "distribute-y", "clear"].includes(message.action)) {
+      const selected = new Set(selectedNodes);
+      const axis = message.action.endsWith("-x") ? "x" : "y";
+      const trim = (groups: typeof file.constraints.alignments, minimum: number) => groups.map(group => message.action === "clear" || group.axis === axis ? { ...group, nodes: group.nodes.filter(id => !selected.has(id)) } : group).filter(group => group.nodes.length >= minimum);
+      file.constraints.alignments = trim(file.constraints.alignments, 2);
+      file.constraints.distributions = trim(file.constraints.distributions, 3);
+      if (message.action === "clear") file.constraints.pinned = file.constraints.pinned.filter(id => !selected.has(id));
+      else if (message.action.startsWith("align") && selectedNodes.length >= 2) file.constraints.alignments.push({ axis, nodes: selectedNodes });
+      else if (selectedNodes.length >= 3) file.constraints.distributions.push({ axis, nodes: selectedNodes });
+      applyLayoutConstraints(positions, file.constraints, { direction: file.layout.direction });
+      for (const [id, position] of Object.entries(positions)) file.nodes[id] = { ...file.nodes[id], x: position.x, y: position.y };
+      file.edges = invalidateMovedRoutes(file, catalog, selectedNodes);
+    } else if (type === "layout" || type === "autoLayout") {
+      if (type === "layout" && isRecord(message.layout)) file.layout = readViewFile({ ...file, layout: { ...file.layout, ...message.layout } }).layout;
+      const documentVersion = state.document.version;
+      const generation = state.requestVersion;
+      const only = stringList(message.only) ? message.only.filter(id => knownNodes.has(id)) : undefined;
+      const result = await autoLayout(view, sizes, positions, { ...file.layout, only, constraints: file.constraints, routing: file.display.routing, taxonomyOnly: file.display.taxonomyOnly, packageContainers: file.display.showPackageGroups });
+      if (state.disposed || state.document.version !== documentVersion || state.requestVersion !== generation) return true;
+      for (const [id, position] of Object.entries(result.positions)) file.nodes[id] = { ...file.nodes[id], x: position.x, y: position.y };
+      file.edges = invalidateMovedRoutes(file, catalog, only ?? view.nodes.map(node => node.id));
+      for (const [id, points] of Object.entries(result.routes)) file.edges[id] = { ...file.edges[id], points };
+    } else return true;
+    await this.writeView(state.document, readViewFile(file));
+    return true;
   }
 
   private overlays(): Map<string, string> {
@@ -227,18 +338,17 @@ export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvid
 
   private async receive(state: PanelState, value: unknown): Promise<void> {
     if (!isRecord(value) || typeof value.type !== "string" || state.disposed) return;
-    const document = state.document;
     if (value.type === "ready") { this.sendTheme(state); this.enqueue(state); return; }
-    if (value.type === "rasterized") {
+    if (value.type === "raster") {
       if (typeof value.id !== "number") return;
       const pending = this.rasters.get(value.id);
       if (!pending || pending.panel !== state) return;
       clearTimeout(pending.timer); this.rasters.delete(value.id);
-      if (typeof value.dataUrl === "string" && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value.dataUrl) && value.dataUrl.length < 64 * 1024 * 1024) pending.resolve(Buffer.from(value.dataUrl.split(",")[1], "base64"));
+      if (typeof value.data === "string" && /^[A-Za-z0-9+/=]+$/.test(value.data) && value.data.length < 64 * 1024 * 1024) pending.resolve(Buffer.from(String(value.data), "base64"));
       else pending.reject(new Error(typeof value.error === "string" ? value.error : "Invalid PNG response."));
       return;
     }
-    if (value.type === "revealSource" && typeof value.id === "string") {
+    if (value.type === "reveal" && typeof value.id === "string") {
       const model = state.last?.viewModel;
       const location = model?.nodes.find(node => node.id === value.id)?.source ?? model?.edges.find(edge => edge.id === value.id)?.source_;
       if (location) {
@@ -247,63 +357,8 @@ export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvid
       }
       return;
     }
-    if (value.type === "selection") return;
-    if (value.type === "convertView") { await this.convert(document); return; }
-    if (value.type === "requestExport" && (value.format === "svg" || value.format === "png" || value.format === "plantuml")) {
-      if (value.format === "plantuml") { await vscode.commands.executeCommand("tonto.diagram.plantuml.openProject", vscode.Uri.file(state.last?.graph?.source ?? document.uri.fsPath)); return; }
-      if (typeof value.svg !== "string" || value.svg.length > 16 * 1024 * 1024 || !value.svg.startsWith("<svg")) throw new Error("Export requires the current rendered SVG.");
-      const target = await vscode.window.showSaveDialog({ defaultUri: document.uri.with({ path: document.uri.path.replace(/\.tonto(diagram|view)$/, `.${value.format}`) }), filters: { [value.format.toUpperCase()]: [value.format] } });
-      if (!target) return;
-      const bytes = value.format === "svg" ? Buffer.from(value.svg, "utf8") : await this.rasterize(state, value.svg);
-      await vscode.workspace.fs.writeFile(target, bytes); return;
-    }
-    if (value.type === "updateSource" && typeof value.text === "string" && value.text.length < 8 * 1024 * 1024) {
-      await this.replace(document, value.text); return;
-    }
-    if (value.type === "updateArrangement" && isRecord(value.arrangement)) {
-      if (this.isLegacy(document)) { await this.convert(document); return; }
-      const next = readViewFile(value.arrangement);
-      // The canvas cannot change which filesystem source this editor is bound to.
-      next.source = this.parseView(document.getText()).source;
-      await this.writeView(document, next); return;
-    }
-    if (!this.isLegacy(document)) {
-      const file = this.parseView(document.getText());
-      if (value.type === "updateImports" && stringList(value.imports)) file.content.includedPackages = dedupeSorted(value.imports);
-      else if (value.type === "updateInclude" && stringList(value.include)) {
-        const ids = new Set(value.include);
-        file.content.hidden = value.include.length ? (state.last?.viewModel?.nodes ?? []).filter(node => !ids.has(node.id) && !ids.has(`${node.package}.${node.name}`) && !ids.has(node.name)).map(node => node.id) : [];
-      } else if (value.type === "updatePresentation") {
-        if (typeof value.attributes === "boolean") file.display.showAttributes = value.attributes;
-        if (typeof value.stereotypes === "boolean") file.display.showRelationStereotypes = value.stereotypes;
-        if (value.direction === "TB" || value.direction === "LR") file.layout.direction = value.direction === "LR" ? "RIGHT" : "DOWN";
-      } else if (value.type === "updateFilterFlags") {
-        if (typeof value.external === "boolean") file.content.showExternalReferences = value.external;
-        if (typeof value.datatypes === "boolean") file.content.showDatatypes = value.datatypes;
-      } else if (value.type === "updateTitle" && typeof value.title === "string" && value.title.trim()) {
-        const raw: unknown = JSON.parse(document.getText());
-        await this.replace(document, JSON.stringify({ ...(isRecord(raw) ? raw : {}), title: value.title.trim() }, null, 2) + "\n"); return;
-      } else return;
-      await this.writeView(document, file); return;
-    }
-    const parsed = parseTontoDiagramSpec(document.getText());
-    if (!parsed.spec) return;
-    let spec = parsed.spec;
-    if (value.type === "updateLayout" && Array.isArray(value.nodes)) {
-      const nodes = value.nodes.filter(isRecord).filter(node => typeof node.specifier === "string" && typeof node.x === "number" && Number.isFinite(node.x) && typeof node.y === "number" && Number.isFinite(node.y));
-      spec = updateTontoDiagramLayout(spec, nodes.map(node => ({ target: String(node.specifier), x: Number(node.x), y: Number(node.y) })));
-    } else if (value.type === "updateImports" && stringList(value.imports)) spec.imports = dedupeSorted(value.imports);
-    else if (value.type === "updateInclude" && stringList(value.include)) spec.filter.include = dedupeSorted(value.include);
-    else if (value.type === "updateTitle" && typeof value.title === "string" && value.title.trim()) spec.title = value.title.trim();
-    else if (value.type === "updatePresentation") {
-      if (typeof value.attributes === "boolean") spec.presentation.attributes = value.attributes;
-      if (typeof value.stereotypes === "boolean") spec.presentation.stereotypes = value.stereotypes;
-      if (["TB", "BT", "LR", "RL"].includes(String(value.direction))) spec.presentation.direction = value.direction as TontoDiagramSpec["presentation"]["direction"];
-    } else if (value.type === "updateFilterFlags") {
-      if (typeof value.external === "boolean") spec.filter.external = value.external;
-      if (typeof value.datatypes === "boolean") spec.filter.datatypes = value.datatypes;
-    } else return;
-    await this.replace(document, serializeTontoDiagramSpec(spec));
+    if (value.type === "selected") return;
+    if (await this.receiveNative(state, value)) return;
   }
 
   private rasterize(state: PanelState, svg: string): Promise<Uint8Array> {
@@ -311,7 +366,7 @@ export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvid
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.rasters.delete(id); reject(new Error("PNG export timed out.")); }, 15000);
       this.rasters.set(id, { panel: state, resolve, reject, timer });
-      void state.panel.webview.postMessage({ type: "rasterize", id, svg, scale: 2 });
+      void state.panel.webview.postMessage({ type: "rasterise", id, svg, scale: 2 });
     });
   }
   private async convert(document: vscode.TextDocument): Promise<void> {
@@ -361,36 +416,47 @@ export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvid
 function createDiagramEditorHtml(extensionUri: vscode.Uri, webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "pack", "webview", "diagram-editor.js"));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "pack", "webview", "style.css"));
-
     const nonce = randomBytes(18).toString("base64");
     return `<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; script-src 'nonce-${nonce}'; style-src 'unsafe-inline' ${webview.cspSource} https://fonts.googleapis.com; font-src ${webview.cspSource} https://fonts.gstatic.com;">
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
-        <link rel="stylesheet" href="${styleUri}">
-        <title>Tonto Diagram Editor</title>
-    </head>
-    <body>
-        <div id="root" data-diagram-name="${escapeHtml(path.basename(extensionUri.fsPath))}"></div>
-        <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
-    </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+<link href="${styleUri}" rel="stylesheet">
+<title>Tonto diagram</title>
+</head>
+<body>
+<div id="shell">
+    <div id="toolbar">
+        <button id="fit" title="Fit to view" aria-pressed="false">Fit</button>
+        <button id="arrange" title="Arrange the whole diagram automatically">Arrange</button>
+        <button id="newWindow" class="icon-button" title="Move into a New Window" aria-label="Move into a New Window">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M 9.5 2.5 H 13.5 V 6.5 M 13.5 2.5 L 7 9 M 11.5 8.5 V 13.5 H 2.5 V 4.5 H 7.5"></path>
+            </svg>
+        </button>
+        <span class="distance-control" role="group" aria-label="Association distance">
+            <button id="distanceDown" title="Reduce association distance">−</button>
+            <span id="distance" class="distance" title="Association distance used by Arrange">Distance 100%</span>
+            <button id="distanceUp" title="Increase association distance">+</button>
+        </span>
+        <button id="zoomOut" title="Zoom out">−</button>
+        <span id="scale" class="scale">100%</span>
+        <button id="zoomIn" title="Zoom in">+</button>
+        <button id="hide" title="Hide the selected classes or associations" disabled>Hide</button>
+        <button id="optionsButton" title="What is drawn">⚙</button>
+        <button id="exportButton" title="Export as SVG or PNG">Export</button>
+        <span class="spacer"></span>
+        <span id="stale" class="stale" hidden></span>
+    </div>
+    <div id="options" class="panel" hidden></div>
+    <div id="viewport">
+        <div id="canvas"></div>
+    </div>
+    <div id="legend" class="legend" hidden></div>
+</div>
+<script type="module" nonce="${nonce}" src="${scriptUri}"></script>
+</body>
 </html>`;
-}
-
-function dedupeSorted(values: string[]): string[] {
-    return [...new Set(values)].sort((left, right) => left.localeCompare(right));
-}
-
-function escapeHtml(value: string): string {
-    return value
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
 }

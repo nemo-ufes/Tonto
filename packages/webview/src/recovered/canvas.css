@@ -1,0 +1,349 @@
+/* The panel's own chrome. The diagram brings its own colours.
+ *
+ * Every `--vscode-*` here carries a fallback. The variables exist inside a
+ * VS Code webview and nowhere else, and a `var()` with nothing behind it falls
+ * back to the property's initial value -- which for `font-family` is a serif,
+ * so the toolbar and the legend came out in Times wherever this page was
+ * opened outside the editor: the harness that drives the panel in a browser,
+ * a screenshot taken from it, any preview.
+ *
+ * The fallback font is the diagram's own stack (see FONT.family in
+ * packages/canvas/src/measure.ts), so chrome and drawing agree when neither is
+ * being told what to use. */
+
+:root {
+    color-scheme: light dark;
+    --chrome-font: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif;
+    --chrome-muted: color-mix(in srgb, currentColor 62%, transparent);
+}
+
+body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    font-family: var(--vscode-font-family, var(--chrome-font));
+    font-size: 12px;
+    color: var(--vscode-foreground, #1f1c17);
+    background: var(--vscode-editor-background, #f7f6f2);
+}
+
+#shell {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100%;
+    position: relative;
+}
+
+#toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+    background: var(--vscode-editorWidget-background, transparent);
+}
+
+.stale {
+    color: var(--vscode-editorWarning-foreground, #cca700);
+    white-space: nowrap;
+}
+
+.spacer {
+    flex: 1;
+}
+
+.scale {
+    font-variant-numeric: tabular-nums;
+    min-width: 44px;
+    text-align: center;
+    color: var(--vscode-descriptionForeground, var(--chrome-muted));
+}
+
+.distance-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 2px;
+}
+
+.distance {
+    min-width: 82px;
+    text-align: center;
+    color: var(--vscode-descriptionForeground, var(--chrome-muted));
+    font-variant-numeric: tabular-nums;
+}
+
+button {
+    min-height: 20px;
+    padding: 0 6px;
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 4px;
+    background: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, 0.18));
+    color: var(--vscode-button-secondaryForeground, inherit);
+    font: inherit;
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--vscode-button-secondaryHoverBackground, rgba(128, 128, 128, 0.3));
+}
+
+button[aria-pressed="true"] {
+    background: var(--vscode-button-background, #0e639c);
+    color: var(--vscode-button-foreground, #fff);
+}
+
+button[aria-pressed="true"]:hover {
+    background: var(--vscode-button-hoverBackground, #1177bb);
+}
+
+button:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    padding: 0;
+}
+
+.icon-button svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#viewport {
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    touch-action: none;
+}
+
+#canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+}
+
+#canvas svg {
+    display: block;
+}
+
+/* The whole card is the handle; the text inside it must not start a selection. */
+#canvas [data-node] {
+    cursor: grab;
+}
+
+#canvas text {
+    user-select: none;
+}
+
+/*
+ * A label is a target for the line it belongs to.
+ *
+ * SVG hit-tests text against the glyphs it painted, so a pointer landing
+ * between two letters -- or in the counter of an `o` -- falls through to
+ * whatever is behind. Double-clicking «componenthood» to open the relation it
+ * names worked or did not depending on which letter it was aimed at.
+ */
+#canvas .tv-labels text {
+    pointer-events: all;
+}
+
+/*
+ * The handles on the selected line. Drawn over the diagram by the panel and
+ * never by `render`, which also draws the export.
+ *
+ * Filled with the background rather than left hollow: a handle sits on its own
+ * line, and an outline with the line running through it reads as a bead on a
+ * string rather than as something to take hold of. The one offering a bend that
+ * does not exist yet is hollow, because it is an offer.
+ */
+#canvas .tv-handle {
+    fill: var(--vscode-editor-background, #f7f6f2);
+    stroke: var(--vscode-focusBorder, #1f5c5c);
+    cursor: grab;
+    /*
+     * Hit-tested on the whole disc whatever it is painted with. SVG tests a
+     * shape against its fill, and the handle offering a bend is `fill: none` --
+     * which left a 1.4px dashed outline as the only thing the pointer could
+     * find, and the line underneath took every click aimed at it.
+     */
+    pointer-events: all;
+}
+
+/*
+ * The offer of a bend that does not exist yet, so quieter than a bend that
+ * does -- but not a dashed outline, which at this size is mush rather than a
+ * hint, and left the only affordance on the line invisible.
+ */
+#canvas .tv-handle-new {
+    opacity: 0.7;
+}
+
+#canvas .tv-handle-selected {
+    fill: var(--vscode-focusBorder, #1f5c5c);
+    opacity: 1;
+}
+
+/*
+ * The corner grips of the selected card. Square rather than round, because a
+ * corner is what they pull and a circle on a corner reads as a bend in a line
+ * -- which is what the round ones are.
+ */
+#canvas .tv-grip {
+    fill: var(--vscode-editor-background, #f7f6f2);
+    stroke: var(--vscode-focusBorder, #1f5c5c);
+    pointer-events: all;
+    cursor: nwse-resize;
+}
+
+#canvas .tv-grip[data-grip="top-right"],
+#canvas .tv-grip[data-grip="bottom-left"] {
+    cursor: nesw-resize;
+}
+
+#canvas .tv-grip:hover {
+    fill: var(--vscode-focusBorder, #1f5c5c);
+}
+
+/* The rubber band. Dashed, so it is plainly a gesture and not a package box. */
+#canvas .tv-marquee {
+    fill: var(--vscode-focusBorder, #1f5c5c);
+    fill-opacity: 0.08;
+    stroke: var(--vscode-focusBorder, #1f5c5c);
+    pointer-events: none;
+}
+
+#canvas .tv-handle:hover {
+    fill: var(--vscode-focusBorder, #1f5c5c);
+    opacity: 1;
+}
+
+.panel {
+    position: absolute;
+    top: 29px;
+    right: 10px;
+    z-index: 5;
+    width: 260px;
+    max-height: calc(100% - 49px);
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+    border-radius: 6px;
+    background: var(--vscode-editorWidget-background, var(--vscode-editor-background, #ffffff));
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    scrollbar-width: thin;
+    scrollbar-color: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.4)) transparent;
+}
+
+/*
+ * macOS hides an `overflow: auto` scrollbar until the panel is actively
+ * scrolled, which on a filter list a modeller has not yet touched reads as no
+ * scrollbar at all -- nothing on screen says there is more below the fold.
+ * `-webkit-scrollbar` styling, which a Chromium webview honours everywhere
+ * Electron runs, swaps the OS overlay for a track that is always there.
+ */
+.panel::-webkit-scrollbar {
+    width: 10px;
+}
+
+.panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.panel::-webkit-scrollbar-thumb {
+    background: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.4));
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.panel::-webkit-scrollbar-thumb:hover {
+    background: var(--vscode-scrollbarSlider-hoverBackground, rgba(128, 128, 128, 0.6));
+    background-clip: padding-box;
+}
+
+.section + .section {
+    margin-top: 12px;
+}
+
+.section-title {
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--vscode-descriptionForeground, var(--chrome-muted));
+}
+
+summary.section-title {
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-section .row span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    cursor: pointer;
+}
+
+.legend {
+    position: absolute;
+    left: 10px;
+    bottom: 32px;
+    z-index: 4;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+    border-radius: 6px;
+    background: var(--vscode-editorWidget-background, var(--vscode-editor-background, #ffffff));
+    opacity: 0.92;
+}
+
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 1px 0;
+}
+
+.swatch {
+    width: 12px;
+    height: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    border-radius: 2px;
+}
+
+.row.choice {
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.row.choice select {
+    flex: 1;
+    min-width: 0;
+    max-width: 60%;
+    padding: 2px 4px;
+    border: 1px solid var(--vscode-dropdown-border, rgba(128, 128, 128, 0.4));
+    border-radius: 4px;
+    background: var(--vscode-dropdown-background, transparent);
+    color: var(--vscode-dropdown-foreground, inherit);
+    font: inherit;
+}

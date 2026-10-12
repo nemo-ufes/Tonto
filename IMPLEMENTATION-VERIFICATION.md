@@ -62,3 +62,25 @@ Run **Open SVG Diagram** from a `.tonto` model. New views use `.tontoview`
 JSON. Previous Sprotty and PlantUML previews are disabled; `.tontodiagram` files
 open as text and retain **Convert to Tonto View**. Run **Tonto: Set Up Agents** explicitly for local Codex/Claude project
 configuration. Remote setup reports that it is unsupported. The SVG JSON editor is enabled directly, regardless of the obsolete diagram toggle.
+
+
+## Recovered interface replacement
+
+The follow-up replaces the retained React editor shell entirely with the recovered
+`src/webview/main.ts` and `diagram-panel.ts` HTML from Tonto Visualizer 0.1.53.
+The stylesheet matches the shipped `media/canvas.css` byte for byte. The old React
+sidebar, settings panels, canvas shell and stylesheet are deleted. The compiled
+webview uses the recovered native message protocol and no longer imports React.
+Host adapters persist native option, drag, route, hide/show, pin, constraint and
+layout actions to `.tontoview` through WorkspaceEdit. Parsing and linking remain
+in the current repository's services.
+
+The replacement passed extension/webview type checks and build, 12 focused filter
+and arrangement tests, browser checks of the actual recovered toolbar/options,
+escaped labels, dragging, selection, fit/viewport persistence and PNG rendering,
+and packaged extension-host checks on VS Code 1.141.0 and 1.95.3.
+
+Run the new fixture with `PLAYWRIGHT_MODULE` selecting a Playwright installation:
+`node packages/webview/test/recovered-browser.cjs`. The old extension browser
+fixture delegates to this replacement. The installed extension requires a window
+reload after force-installing the new VSIX.

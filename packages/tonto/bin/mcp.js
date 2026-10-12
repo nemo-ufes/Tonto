@@ -2,6 +2,10 @@
 
 import { startTontoMcpServer } from "../lib/mcp/server.js";
 
+// Stdout is exclusively the MCP transport. Language-service logging belongs on stderr.
+console.log = (...args) => console.error(...args);
+console.info = (...args) => console.error(...args);
+
 try {
   await startTontoMcpServer(process.argv[2]);
 } catch (error) {

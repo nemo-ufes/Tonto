@@ -1665,8 +1665,10 @@
   resolved "https://registry.npmjs.org/@types/uuid/-/uuid-9.0.8.tgz"
   integrity sha512-jg+97EGIcY9AGHJJRaaPVgetKDsrTgbRjQ5Msgjh/DQKEFl0DtyRr/VCOyD1T2R1MNeWPK/u7JoGhlDZnKBAfA==
 
-"@types/vscode@^1.63.0":
-  version "1.94.0"
+"@types/vscode@^1.63.0", "@types/vscode@1.95.0":
+  version "1.95.0"
+  resolved "https://registry.npmjs.org/@types/vscode/-/vscode-1.95.0.tgz"
+  integrity sha512-0LBD8TEiNbet3NvWsmn59zLzOFu/txSlGxnv5yAFHCrhG9WvAnR3IvfHzMOs2aeWqgvNjq9pO99IUw8d3n+unw==
 
 "@types/vscode@1.50.0":
   version "1.50.0"
@@ -7678,7 +7680,7 @@ sprotty-vscode-protocol@^1.0.0:
     vscode-languageserver-protocol "^3.17.5"
     vscode-messenger-common "^0.4.5"
 
-sprotty-vscode-webview@^1.0.0, "sprotty-vscode-webview@file:../sprotty-vscode-webview", "sprotty-vscode-webview@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/sprotty-vscode-webview":
+sprotty-vscode-webview@^1.0.0, "sprotty-vscode-webview@file:../sprotty-vscode-webview", "sprotty-vscode-webview@file:/private/tmp/tonto-svg-mcp/packages/sprotty-vscode-webview":
   version "1.0.0"
   resolved "file:packages/sprotty-vscode-webview"
   dependencies:
@@ -7687,7 +7689,7 @@ sprotty-vscode-webview@^1.0.0, "sprotty-vscode-webview@file:../sprotty-vscode-we
     vscode-messenger-webview "^0.4.5"
     vscode-uri "^3.0.8"
 
-"sprotty-vscode@file:../sprotty-vscode", "sprotty-vscode@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/sprotty-vscode":
+"sprotty-vscode@file:../sprotty-vscode", "sprotty-vscode@file:/private/tmp/tonto-svg-mcp/packages/sprotty-vscode":
   version "1.0.0"
   resolved "file:packages/sprotty-vscode"
   dependencies:
@@ -8137,7 +8139,7 @@ toidentifier@~1.0.1:
   resolved "https://registry.npmjs.org/toidentifier/-/toidentifier-1.0.1.tgz"
   integrity sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==
 
-tonto-cli@^0.4.13, tonto-cli@^0.4.14, "tonto-cli@file:../tonto", "tonto-cli@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/tonto":
+tonto-cli@^0.4.13, tonto-cli@^0.4.14, "tonto-cli@file:../tonto", "tonto-cli@file:/private/tmp/tonto-svg-mcp/packages/tonto":
   version "0.4.14"
   resolved "file:packages/tonto"
   dependencies:
@@ -8166,7 +8168,7 @@ tonto-cli@^0.4.13, tonto-cli@^0.4.14, "tonto-cli@file:../tonto", "tonto-cli@file
     vscode-uri "^3.0.7"
     zod "^3.25.76"
 
-"tonto-documentation@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/tonto-documentation":
+"tonto-documentation@file:/private/tmp/tonto-svg-mcp/packages/tonto-documentation":
   resolved "file:packages/tonto-documentation"
   dependencies:
     "@radix-ui/react-dialog" "^1.1.15"
@@ -8184,7 +8186,7 @@ tonto-cli@^0.4.13, tonto-cli@^0.4.14, "tonto-cli@file:../tonto", "tonto-cli@file
     remark-gfm "^4.0.1"
     tailwind-merge "^2.6.0"
 
-tonto-package-manager@~0.3.3, "tonto-package-manager@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/tpm":
+tonto-package-manager@~0.3.3, "tonto-package-manager@file:/private/tmp/tonto-svg-mcp/packages/tpm":
   version "0.3.4"
   resolved "file:packages/tpm"
   dependencies:
@@ -8197,7 +8199,7 @@ tonto-package-manager@~0.3.3, "tonto-package-manager@file:/Users/matheuslenke/de
     ora "^5.4.1"
     tonto-cli "^0.4.13"
 
-"tonto-sprotty-webview@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/webview":
+"tonto-sprotty-webview@file:/private/tmp/tonto-svg-mcp/packages/webview":
   version "0.1.0"
   resolved "file:packages/webview"
   dependencies:
@@ -8213,7 +8215,7 @@ tonto-package-manager@~0.3.3, "tonto-package-manager@file:/Users/matheuslenke/de
     tailwind-merge "^2.5.2"
     tonto-cli "file:../tonto"
 
-"tonto@file:/Users/matheuslenke/dev/masters/tonto-repos/tonto/packages/extension":
+"tonto@file:/private/tmp/tonto-svg-mcp/packages/extension":
   version "0.4.13"
   resolved "file:packages/extension"
   dependencies:

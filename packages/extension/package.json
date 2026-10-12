@@ -13,7 +13,7 @@
     },
     "icon": "data/images/TontoIcon.png",
     "engines": {
-        "vscode": "^1.92.0",
+        "vscode": "^1.95.0",
         "node": ">=20.10.0"
     },
     "categories": [
@@ -245,6 +245,11 @@
                     "default": false,
                     "scope": "window",
                     "markdownDescription": "Automatically fold multiline `label` and `description` blocks when a Tonto editor becomes active."
+                },
+                "tonto.agents.nodePath": {
+                    "type": "string",
+                    "default": "node",
+                    "description": "Node executable used to launch the bundled Tonto MCP server. Requires Node 20.18 or newer."
                 }
             }
         },
@@ -367,6 +372,11 @@
                 "command": "tonto.diagram.plantuml.export",
                 "title": "Export PlantUML",
                 "category": "Tonto"
+            },
+            {
+                "command": "tonto.setupAgents",
+                "title": "Set Up Agents",
+                "category": "Tonto"
             }
         ],
         "keybindings": [
@@ -394,6 +404,201 @@
                 "command": "tonto.diagram.delete",
                 "when": "tonto-diagram-focused"
             }
+        ],
+        "languageModelTools": [
+            {
+                "name": "tonto_validate",
+                "displayName": "Tonto validate",
+                "modelDescription": "Parse, link and validate the project. Positions are zero-based UTF-16.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-validate",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "description": "Unsaved text overrides path."
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_ast",
+                "displayName": "Tonto ast",
+                "modelDescription": "Return linked AST, references, ranges and diagnostics, including partial AST for invalid source.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-ast",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "description": "Unsaved text overrides path."
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_apply",
+                "displayName": "Tonto apply",
+                "modelDescription": "Preview explicit edits or exactly one editor repair; never saves or holds source.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-apply",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "description": "Unsaved text overrides path."
+                        },
+                        "path": {
+                            "type": "string"
+                        },
+                        "edits": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "range": {
+                                        "type": "object",
+                                        "properties": {
+                                            "start": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "line": {
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                    },
+                                                    "character": {
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                    }
+                                                },
+                                                "required": [
+                                                    "line",
+                                                    "character"
+                                                ],
+                                                "additionalProperties": false
+                                            },
+                                            "end": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "line": {
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                    },
+                                                    "character": {
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                    }
+                                                },
+                                                "required": [
+                                                    "line",
+                                                    "character"
+                                                ],
+                                                "additionalProperties": false
+                                            }
+                                        },
+                                        "required": [
+                                            "start",
+                                            "end"
+                                        ],
+                                        "additionalProperties": false
+                                    },
+                                    "newText": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "range",
+                                    "newText"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "minItems": 1
+                        },
+                        "diagnosticIndex": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "repairTitle": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_diff",
+                "displayName": "Tonto diff",
+                "modelDescription": "Compare project diagnostics by URI, code, severity and message, preserving duplicate counts.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-diff",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "before": {
+                            "type": "string"
+                        },
+                        "after": {
+                            "type": "string"
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "before",
+                        "after"
+                    ],
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            },
+            {
+                "name": "tonto_complete",
+                "displayName": "Tonto complete",
+                "modelDescription": "Editor completion at a zero-based UTF-16 position.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "tonto-complete",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "description": "Unsaved text overrides path."
+                        },
+                        "path": {
+                            "type": "string"
+                        },
+                        "line": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "character": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    "required": [
+                        "line",
+                        "character"
+                    ],
+                    "additionalProperties": false,
+                    "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+            }
         ]
     },
     "activationEvents": [
@@ -403,7 +608,8 @@
         "onLanguage:tontodiagram",
         "onCommand:tonto.addSemanticTokenColors",
         "onCommand:tonto.diagram.createFile",
-        "onCustomEditor:tonto.diagram.editor"
+        "onCustomEditor:tonto.diagram.editor",
+        "onCommand:tonto.setupAgents"
     ],
     "files": [
         "pack",
@@ -414,7 +620,7 @@
     ],
     "vsce": {
         "dependencies": true,
-        "yarn": true
+        "yarn": false
     },
     "scripts": {
         "copy:schema": "shx cp ../tonto/tonto-manifest-schema.json ./data",
@@ -424,7 +630,7 @@
         "clean": "rimraf out pack node_modules",
         "lint": "eslint src --ext ts",
         "lint:fix": "eslint src --ext ts --fix",
-        "build": "npm --prefix ../webview run build && node ./esbuild.mjs",
+        "build": "npm --prefix ../tonto run langium:generate && npm --prefix ../webview run build && node ./esbuild.mjs",
         "watch": "concurrently \"npm --prefix ../webview run watch\" \"node ./esbuild.mjs --watch\"",
         "coverage": "vitest run --coverage",
         "langium:generate": "langium generate",
@@ -458,7 +664,7 @@
         "@types/jest": "^29.2.3",
         "@types/node": "^18.11.17",
         "@types/node-fetch": "^2.6.1",
-        "@types/vscode": "^1.63.0",
+        "@types/vscode": "1.95.0",
         "@vitest/coverage-c8": "^0.33.0",
         "@vscode/vsce": "^3.6.0",
         "concurrently": "^8.2.2",

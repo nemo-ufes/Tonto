@@ -1,3 +1,4 @@
+import { copyFile, mkdir } from "node:fs/promises";
 //@ts-check
 import * as esbuild from "esbuild";
 
@@ -24,6 +25,9 @@ const plugins = [
     },
 ];
 
+await mkdir("syntaxes", { recursive: true });
+await copyFile("../tonto/syntaxes/tonto.tmLanguage.json", "syntaxes/tonto.tmLanguage.json");
+await copyFile("data/tontodiagram.tmLanguage.json", "syntaxes/tontodiagram.tmLanguage.json");
 const nodeContext = await esbuild.context({
     entryPoints: [
         "src/extension/main.ts",
@@ -44,11 +48,22 @@ const nodeContext = await esbuild.context({
     plugins,
 });
 
+const mcpContext = await esbuild.context({
+    entryPoints: ["../tonto/src/mcp/main.ts"],
+    outfile: "pack/mcp.mjs",
+    bundle: true, platform: "node", format: "esm", target: "node20",
+    sourcemap: !options.minify, minify: options.minify,
+    banner: { js: 'import { createRequire as createTontoRequire } from "node:module"; const require = createTontoRequire(import.meta.url);' },
+});
+
 if (options.watch) {
     await nodeContext.watch();
+    await mcpContext.watch();
 } else {
     await nodeContext.rebuild();
-    nodeContext.dispose();
+    await mcpContext.rebuild();
+    await nodeContext.dispose();
+    await mcpContext.dispose();
 }
 
 function getTime() {

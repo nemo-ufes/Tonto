@@ -40,7 +40,7 @@ export async function buildTontoDiagramGraph(
 ): Promise<TontoDiagramGraph> {
     const workspace = await loadTontoDiagramWorkspace(spec.source, diagramPath);
     const workspaceContext = buildTontoDiagramWorkspaceContext(
-        workspace.models,
+        workspace.ontologyModels,
         workspace.sourcePath ?? workspace.projectRoot,
     );
     const graphIssues: TontoDiagramIssue[] = [];
@@ -89,7 +89,7 @@ export async function buildTontoDiagramGraph(
 
     return {
         title: spec.title,
-        source: workspace.sourcePath,
+        source: workspace.sourcePath ?? workspace.projectRoot,
         projectRoot: workspace.projectRoot,
         packages: [...visiblePackageNames].sort((left, right) => left.localeCompare(right)),
         imports: [...requestedPackages].sort((left, right) => left.localeCompare(right)),

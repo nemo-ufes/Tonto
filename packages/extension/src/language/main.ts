@@ -3,7 +3,7 @@ import { addDiagramHandler } from "langium-sprotty";
 import { PartialLangiumSharedServices, startLanguageServer } from "langium/lsp";
 import { NodeFileSystem } from "langium/node";
 import { TontoLanguageServer, TontoSharedServices, createTontoServices } from "tonto-cli";
-import { ProposedFeatures, createConnection } from "vscode-languageserver/node.js";
+import { ProposedFeatures, createConnection } from "vscode-languageserver/node";
 
 import { TontoGrammarWorkspaceManager } from "./tonto-workspace-manager.js";
 

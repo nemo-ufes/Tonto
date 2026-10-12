@@ -37,6 +37,7 @@ export function isReservedKeyword(keyword: string): boolean {
         "constitution",
 
         // Class Stereotypes
+        "individual",
         "class",
         "event", "situation", "process",
         "category", "mixin", "phaseMixin", "roleMixin", "historicalRoleMixin",

@@ -1,0 +1,116 @@
+---
+title: "Individuals"
+description: "Declare instances of Tonto classes and validate their attribute values."
+icon: "user"
+---
+
+An individual is a named instance of a declared class. Write `individual`, its name, a colon, and the class it instantiates:
+
+```tonto
+package people
+
+kind Man {
+  name: string
+}
+
+individual john: Man {
+  name = "John Doe"
+}
+```
+
+The classifier is required and must resolve to a class declaration. Any class stereotype is allowed, including `type`, `kind`, `subkind`, `phase`, `role`, `relator`, and `event`. Datatypes, enums, and other individuals cannot be used as classifiers. Imported and qualified class names work as they do in specialization declarations.
+
+Individual names must be unique within their package. Class, attribute, and enum-member references are case-insensitive, matching the rest of Tonto.
+
+## Mandatory attributes and inheritance
+
+An individual must supply every non-derived attribute whose cardinality has a positive lower bound. No cardinality means exactly one value (`[1]`). Attributes inherited through `specializes` or generalization sets are also checked, including indirect and multiple inheritance.
+
+```tonto
+kind Person {
+  name: string
+  nickname: string [0..1]
+  age: number { derived }
+}
+
+phase Adult specializes Person {
+  registration: string { const }
+}
+
+individual john: Adult {
+  name = "John Doe"
+  registration = "A-001"
+}
+```
+
+Omitting `name` or `registration` produces a validation error. Optional attributes and derived attributes may be omitted. Supplied derived values are still validated; Tonto does not compute them. `const` does not make an attribute optional.
+
+## Values and cardinalities
+
+Use `=` for assignments and square brackets for multiple values:
+
+```tonto
+kind Person {
+  name: string
+  active: boolean
+  scores: number [2..5]
+  aliases: string [*]
+}
+
+individual john: Person {
+  name = "John Doe"
+  active = true
+  scores = [9, 8.5, -1]
+  aliases = ["Johnny", "JD"]
+}
+```
+
+Tonto validates both the number of values and each value's datatype. An empty list counts as zero values, so it cannot satisfy a mandatory attribute. A scalar counts as one value. Unknown attributes and duplicate assignments are errors.
+
+| Datatype | Value syntax |
+| --- | --- |
+| `string` | Single- or double-quoted text; escaped quotes and backslashes are supported. |
+| `number` | Integers or decimals, optionally signed. |
+| `boolean` | `true` or `false`. |
+| `date`, `time`, `datetime` | Quoted text; calendar and time formats are not validated. |
+| Enum | An unquoted member name, optionally qualified by the enum or package. |
+| Structured datatype | An object containing attribute assignments. |
+
+Custom datatypes specializing built-in datatypes inherit their literal type checks. An opaque datatype without attributes or a built-in ancestor accepts string, number, or boolean literals without additional representation constraints.
+
+## Enums and structured values
+
+```tonto
+enum EyeColor { Blue, Brown }
+
+datatype Address {
+  street: string
+  city: string
+  postalCode: string [0..1]
+}
+
+kind Person {
+  name: string
+  eyes: EyeColor
+  address: Address
+}
+
+individual john: Person {
+  name = "John Doe"
+  eyes = EyeColor.Brown
+  address = {
+    street = "Main Street"
+    city = "Vitoria"
+  }
+}
+```
+
+Enum members must belong to the attribute's enum. Nested objects have the same mandatory-attribute, inheritance, cardinality, and datatype checks as individual bodies. Structured values can also appear inside lists.
+
+## Tool support and limits
+
+The language server provides diagnostics, classifier and attribute completion, enum-member completion, and navigation to referenced declarations. `tonto-cli validate` applies the same checks and returns a failure exit status for invalid individuals.
+
+This feature covers syntax and local validation. Individual relationships, instance diagrams, and individual export to OntoUML JSON or OWL are not implemented. Existing diagrams and exporters continue to describe the schema; individual declarations are not preserved by a JSON export/import round trip.
+
+`individual`, `true`, and `false` are reserved language keywords and cannot be used as declaration or attribute names.

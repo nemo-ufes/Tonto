@@ -19,6 +19,7 @@ export class TontoValidationRegistry extends ValidationRegistry {
                 validator.ClassDeclarationValidator.checkGeneralizationSortality,
             ],
             ContextModule: [
+                validator.IndividualValidator.checkDuplicatedIndividualNames,
                 validator.ContextModuleValidator.checkDuplicatedClassName,
                 validator.ContextModuleValidator.checkCircularSpecialization,
                 validator.ContextModuleValidator.checkClassDeclarationShouldSpecializeUltimateSortal,
@@ -40,6 +41,9 @@ export class TontoValidationRegistry extends ValidationRegistry {
             RelationMetaAttribute: [
                 validator.RelationMetaAttributeValidator.checkRelationEndOverrideUsesNamedEnd,
                 validator.RelationMetaAttributeValidator.checkRelationEndDoesNotRedefineItself,
+            ],
+            Individual: [
+                (individual, accept) => validator.IndividualValidator.checkIndividual(individual, accept),
             ],
         };
         this.register(checks, validator);

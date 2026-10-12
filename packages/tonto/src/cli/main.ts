@@ -79,6 +79,15 @@ export function createCli(actions = new TontoActions()): Command {
     program.addCommand(initCommand());
     program.addCommand(addSkillCommand());
 
+    program
+        .command("mcp")
+        .argument("[dir]", "Project root exposed to the MCP server", process.cwd())
+        .description("Start the Tonto MCP server over stdio")
+        .action(async (dir: string) => {
+            const { startTontoMcpServer } = await import("../mcp/server.js");
+            await startTontoMcpServer(dir);
+        });
+
     return program;
 }
 

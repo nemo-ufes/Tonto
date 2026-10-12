@@ -102,6 +102,23 @@ export class TontoSemanticTokenProvider extends AbstractSemanticTokenProvider {
         }
     }
     protected highlightElement(node: AstNode, acceptor: SemanticTokenAcceptor): void {
+        if (ast.isIndividual(node)) {
+            acceptor({ node, keyword: "individual", type: SemanticTokenTypes.keyword });
+            acceptor({ node, property: "name", type: SemanticTokenTypes.variable, modifier: SemanticTokenModifiers.declaration });
+            acceptor({ node, property: "type", type: SemanticTokenTypes.class });
+        }
+        if (ast.isAttributeAssignment(node)) {
+            acceptor({ node, property: "attribute", type: SemanticTokenTypes.property });
+        }
+        if (ast.isEnumLiteral(node)) {
+            acceptor({ node, property: "member", type: SemanticTokenTypes.enumMember });
+        }
+        if (ast.isBooleanLiteral(node)) {
+            acceptor({ node, property: "value", type: SemanticTokenTypes.keyword });
+        }
+        if (ast.isNumberLiteral(node)) {
+            acceptor({ node, property: "value", type: SemanticTokenTypes.number });
+        }
         if (ast.isContextModule(node)) {
             this.contextModuleTokens(node, acceptor);
         }

@@ -31,6 +31,7 @@ describe("CLI integration", () => {
             "plantuml",
             "init",
             "add-skill",
+            "mcp",
         ]);
 
         const packageJson = JSON.parse(
@@ -93,6 +94,26 @@ describe("CLI integration", () => {
         const output = log.mock.calls.flat().join("\n");
         expect(output).toContain("No local errors found.");
         expect(output).toContain("Total of local warnings: 1");
+    });
+
+    it.each([true, false])("validates mandatory individual attributes through the CLI (complete: %s)", async (complete) => {
+        const projectDirectory = createTemporaryDirectory("tonto-cli-individuals-");
+        fs.writeFileSync(path.join(projectDirectory, "main.tonto"), `
+            package People
+            kind Man { name: string }
+            individual john: Man { ${complete ? 'name = "John Doe"' : ""} }
+        `);
+        const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+        await runCli("validate", projectDirectory);
+
+        const output = log.mock.calls.flat().join("\n");
+        expect(output).toContain(complete ? "No local errors found." : "Total of local errors: 1");
+        if (!complete) {
+            expect(errorLog.mock.calls.flat().join("\n")).toContain('Missing mandatory attribute "name"');
+        }
+        expect(process.exitCode ?? 0).toBe(complete ? 0 : 1);
     });
 
     it("generates PlantUML with CLI layout and destination options", async () => {

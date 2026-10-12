@@ -1,6 +1,13 @@
+import path from "node:path";
 import * as vscode from "vscode";
+import {
+    createEntireOntologyDiagramTemplate,
+    getTontoDiagramProjectName,
+} from "./tontodiagram-template.js";
 
 const COMMAND_ID = "tonto.diagram.createFile";
+const MANIFEST_FILE_NAME = "tonto.json";
+const DIAGRAM_FILE_NAME = "ontology.tontodiagram";
 
 export function registerCreateTontoDiagramCommand(): vscode.Disposable {
     return vscode.commands.registerCommand(COMMAND_ID, async (resource?: vscode.Uri) => {
@@ -14,11 +21,9 @@ export function registerCreateTontoDiagramCommand(): vscode.Disposable {
             return;
         }
 
-        const targetUri = sourceDocument.uri.with({
-            path: sourceDocument.uri.path.replace(/\.tonto$/i, ".tontodiagram"),
-        });
-
-        const diagramContents = createDiagramTemplate(sourceDocument);
+        const project = await resolveTontoProject(sourceDocument.uri);
+        const targetUri = vscode.Uri.file(path.join(project.rootPath, DIAGRAM_FILE_NAME));
+        const diagramContents = createEntireOntologyDiagramTemplate(project.name);
 
         try {
             await vscode.workspace.fs.stat(targetUri);
@@ -43,28 +48,37 @@ async function resolveSourceDocument(resource?: vscode.Uri): Promise<vscode.Text
         return activeDocument;
     }
 
-    vscode.window.showErrorMessage("Open a `.tonto` file to scaffold a diagram.");
+    vscode.window.showErrorMessage("Open a `.tonto` file to create the ontology diagram.");
     return undefined;
 }
 
-function createDiagramTemplate(document: vscode.TextDocument): string {
-    const fileName = document.uri.path.split("/").pop()?.replace(/\.tonto$/i, "") ?? "diagram";
-    const title = toTitleCase(fileName);
+async function resolveTontoProject(sourceUri: vscode.Uri): Promise<{ rootPath: string; name: string }> {
+    const sourceDirectory = path.dirname(sourceUri.fsPath);
+    let currentDirectory = sourceDirectory;
 
-    return `diagram "${title} Diagram" {
-  direction TB
-  stereotypes true
-  attributes true
-  external false
-  datatypes true
-}
-`;
-}
+    while (true) {
+        const manifestUri = vscode.Uri.file(path.join(currentDirectory, MANIFEST_FILE_NAME));
 
-function toTitleCase(value: string): string {
-    return value
-        .split(/[-_.]/)
-        .filter(Boolean)
-        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-        .join(" ");
+        try {
+            const manifestContents = await vscode.workspace.fs.readFile(manifestUri);
+            return {
+                rootPath: currentDirectory,
+                name: getTontoDiagramProjectName(
+                    Buffer.from(manifestContents).toString("utf8"),
+                    path.basename(currentDirectory),
+                ),
+            };
+        } catch {
+            const parentDirectory = path.dirname(currentDirectory);
+            if (parentDirectory === currentDirectory) {
+                break;
+            }
+            currentDirectory = parentDirectory;
+        }
+    }
+
+    return {
+        rootPath: sourceDirectory,
+        name: path.basename(sourceDirectory) || "Tonto",
+    };
 }

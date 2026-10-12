@@ -168,7 +168,7 @@ export class RelationMetaAttributeValidator {
         const document = AstUtils.getDocument(node);
         const primaryContextModule = getPrimaryContextModule(document.parseResult.value as Model);
         const localDescriptions = primaryContextModule
-            ? (document.precomputedScopes?.get(primaryContextModule) ?? [])
+            ? (document.localSymbols?.getStream(primaryContextModule).toArray() ?? [])
             : [];
         const globalDescriptions = Array.from(this.indexManager.allElements("ElementRelation"));
         const relationDescriptions = [...localDescriptions, ...globalDescriptions]

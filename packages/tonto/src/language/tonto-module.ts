@@ -1,4 +1,5 @@
 import ElkConstructor from "elkjs";
+import { TontoLookaheadStrategy } from "./tonto-lookahead.js";
 import { Module, inject } from "langium";
 import { LangiumSprottyServices, LangiumSprottySharedServices, SprottyDiagramServices, SprottySharedModule } from "langium-sprotty";
 import { DefaultSharedModuleContext, LangiumServices, LangiumSharedServices, PartialLangiumServices, PartialLangiumSharedServices, createDefaultModule, createDefaultSharedModule } from "langium/lsp";
@@ -78,6 +79,7 @@ export const TontoModule: Module<TontoServices, PartialLangiumServices & TontoAd
         HoverProvider: (services) => new TontoHoverProvider(services),
     },
     parser: {
+        ParserConfig: () => ({ lookaheadStrategy: new TontoLookaheadStrategy() }),
         ParserErrorMessageProvider: () => new TontoParserErrorMessageProvider(),
     }
 };

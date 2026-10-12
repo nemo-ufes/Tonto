@@ -1,6 +1,6 @@
 hidden terminal WS: /\s+/;
 terminal INT returns number: /[0-9]+/;
-terminal STRING: /"[^"]*"|'[^']*'/;
+terminal STRING: /"(\\.|[^"\\])*"|'(\\.|[^'\\])*'/;
 
 // IDs
 terminal ID: /[_a-zA-Z][\w_\-~$#@/\d]*/;

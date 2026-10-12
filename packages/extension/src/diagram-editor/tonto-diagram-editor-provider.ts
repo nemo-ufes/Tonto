@@ -10,6 +10,7 @@ import {
     updateTontoDiagramLayout
 } from "tonto-cli";
 import * as vscode from "vscode";
+import { isTontoSourceInDiagramScope } from "./tontodiagram-source-scope.js";
 
 type DiagramDocumentStateMessage = {
     type: "documentState";
@@ -309,9 +310,16 @@ export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvid
     }
 
     private async refreshEditorsForSourcePath(sourcePath: string): Promise<void> {
-        const affectedDocuments = this.documentsBySourcePath.get(sourcePath);
-        if (!affectedDocuments) {
-            return;
+        const affectedDocuments = new Set<string>();
+
+        for (const [sourceScope, documentKeys] of this.documentsBySourcePath) {
+            if (!isTontoSourceInDiagramScope(sourcePath, sourceScope)) {
+                continue;
+            }
+
+            for (const documentKey of documentKeys) {
+                affectedDocuments.add(documentKey);
+            }
         }
 
         await Promise.all(

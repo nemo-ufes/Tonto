@@ -11,8 +11,8 @@
     },
     "icon": "packages/extension/data/images/TontoIcon.png",
     "engines": {
-        "npm": ">= 7.7.0",
-        "node": ">=16"
+        "npm": ">=10.2.3",
+        "node": ">=24"
     },
     "type": "module",
     "scripts": {
@@ -27,8 +27,8 @@
         "coverage": "vitest run --coverage",
         "docs:dev": "npm run dev --workspace=tonto-documentation",
         "docs:check": "npm run check --workspace=tonto-documentation",
-        "langium:generate": "langium generate --workspace=tonto-cli",
-        "langium:watch": "langium generate --watch --workspace=tonto-cli",
+        "langium:generate": "npm run langium:generate --workspace=tonto-cli",
+        "langium:watch": "npm run langium:watch --workspace=tonto-cli",
         "release:publish": "bash scripts/publish-release.sh"
     },
     "devDependencies": {
@@ -45,7 +45,7 @@
         "globals": "^16.3.0",
         "prettier": "3.6.2",
         "shx": "^0.3.4",
-        "typescript": "^5.6.2",
+        "typescript": "^5.8.3",
         "typescript-eslint": "^8.38.0",
         "vitest": "^1.4.0"
     },
@@ -62,6 +62,6 @@
         "ajv": "^8.12.0",
         "commander": "^11.0.0",
         "jiti": "^2.5.1",
-        "langium": "3.2.0"
+        "langium": "4.4.0"
     }
 }

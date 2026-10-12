@@ -16,7 +16,7 @@
         "directory": "packages/tonto"
     },
     "engines": {
-        "node": ">= 20"
+        "node": ">=20.10.0"
     },
     "categories": [
         "Programming Languages"
@@ -25,10 +25,13 @@
         "lib",
         "lib/cli",
         "src",
+        "MCP.md",
+        "scripts/watch-grammar.mjs",
         "tonto-manifest-schema.json"
     ],
     "bin": {
-        "tonto-cli": "bin/cli.js"
+        "tonto-cli": "bin/cli.js",
+        "tonto-mcp": "bin/mcp.js"
     },
     "exports": {
         ".": "./lib/index.js",
@@ -46,20 +49,22 @@
         "lint": "eslint src test --ext .ts",
         "lint:fix": "eslint src --fix --ext ts",
         "langium:generate": "langium generate",
-        "langium:watch": "langium generate --watch",
+        "langium:watch": "node scripts/watch-grammar.mjs",
         "publish": "npm publish",
         "publish:latest": "npm publish --tag latest"
     },
     "dependencies": {
         "@inquirer/prompts": "^7.8.6",
+        "@modelcontextprotocol/sdk": "^1.32.1",
         "@vscode/vsce": "3.3.2",
         "chalk": "^5.6.2",
-        "chevrotain": "11.0.3",
+        "chevrotain": "13.2.0",
+        "chevrotain-allstar": "0.5.0",
         "concurrently": "3.5.1",
         "elkjs": "^0.10.0",
         "glob": "^10.2.2",
-        "langium": "3.2.0",
-        "langium-sprotty": "3.2.0",
+        "langium": "4.4.0",
+        "langium-sprotty": "4.4.0",
         "node-fetch-native": "^1.0.1",
         "ontouml-js": "github:matheuslenke/ontouml-js#feature/include-types-in-build",
         "reflect-metadata": "^0.2.2",
@@ -68,9 +73,11 @@
         "sprotty-elk": "^1.2.0",
         "uuid": "^9.0.1",
         "vscode-languageclient": "~9.0.1",
-        "vscode-languageserver": "~9.0.1",
-        "vscode-languageserver-types": "^3.17.3",
-        "vscode-uri": "^3.0.7"
+        "vscode-languageserver": "~10.1.0",
+        "vscode-languageserver-types": "~3.18.0",
+        "vscode-uri": "^3.0.7",
+        "zod": "^3.25.76",
+        "vscode-languageserver-protocol": "~3.18.2"
     },
     "devDependencies": {
         "@types/jest": "^29.2.3",
@@ -78,6 +85,7 @@
         "@types/node-fetch": "^2.6.1",
         "@types/uuid": "^9.0.8",
         "@types/vscode": "^1.63.0",
-        "@vitest/coverage-c8": "^0.33.0"
+        "@vitest/coverage-c8": "^0.33.0",
+        "langium-cli": "4.4.0"
     }
 }

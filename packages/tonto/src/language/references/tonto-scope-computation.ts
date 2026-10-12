@@ -7,7 +7,7 @@ import {
     interruptAndCheck,
     LangiumDocument,
     MultiMap,
-    PrecomputedScopes,
+    LocalSymbols,
 } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
 import {
@@ -21,6 +21,8 @@ import {
     isDataType,
     isElementRelation,
     isGeneralizationSet,
+    Individual,
+    isIndividual,
     Model,
     RelationMetaAttributes,
 } from "../generated/ast.js";
@@ -43,14 +45,14 @@ export class TontoScopeComputation extends DefaultScopeComputation {
      * Declarations inside global context modules are exported by both simple and
      * qualified names so they remain accessible without imports.
      */
-    override async computeExports(
+    override async collectExportedSymbols(
         document: LangiumDocument,
         cancelToken = CancellationToken.None
     ): Promise<AstNodeDescription[]> {
         const descriptions: AstNodeDescription[] = [];
         for (const childNode of AstUtils.streamAllContents(document.parseResult.value)) {
             await interruptAndCheck(cancelToken);
-            this.exportNode(childNode, descriptions, document);
+            this.addExportedSymbol(childNode, descriptions, document);
         }
         return descriptions;
     }
@@ -61,10 +63,10 @@ export class TontoScopeComputation extends DefaultScopeComputation {
      * Imported context modules are processed first so their declarations become
      * visible at the primary context module level alongside local declarations.
      */
-    override async computeLocalScopes(
+    override async collectLocalSymbols(
         document: LangiumDocument<AstNode>,
         cancelToken = CancellationToken.None
-    ): Promise<PrecomputedScopes> {
+    ): Promise<LocalSymbols> {
         const model = document.parseResult.value as Model;
         const scopes = new MultiMap<AstNode, AstNodeDescription>();
         const primaryContextModule = getPrimaryContextModule(model);
@@ -97,7 +99,7 @@ export class TontoScopeComputation extends DefaultScopeComputation {
         return scopes;
     }
 
-    protected override exportNode(node: AstNode, exports: AstNodeDescription[], document: LangiumDocument): void {
+    protected override addExportedSymbol(node: AstNode, exports: AstNodeDescription[], document: LangiumDocument): void {
         if (isElementRelation(node)) {
             const contextModule = this.findOwningContextModule(node);
             if (contextModule?.isGlobal) {
@@ -118,7 +120,7 @@ export class TontoScopeComputation extends DefaultScopeComputation {
 
     private async processContainer(
         container: ContextModule,
-        scopes: PrecomputedScopes,
+        scopes: MultiMap<AstNode, AstNodeDescription>,
         cancelToken: CancellationToken
     ): Promise<void> {
         const localDescriptions: AstNodeDescription[] = [];
@@ -255,9 +257,9 @@ export class TontoScopeComputation extends DefaultScopeComputation {
 
     private isGlobalContextModuleDeclaration(
         node: AstNode
-    ): node is ClassDeclaration | DataType | GeneralizationSet {
+    ): node is ClassDeclaration | DataType | GeneralizationSet | Individual {
         return (
-            (isClassDeclaration(node) || isDataType(node) || isGeneralizationSet(node)) &&
+            (isClassDeclaration(node) || isDataType(node) || isGeneralizationSet(node) || isIndividual(node)) &&
             isContextModule(node.$container) &&
             node.$container.isGlobal
         );
@@ -265,7 +267,7 @@ export class TontoScopeComputation extends DefaultScopeComputation {
 
     private isLocalScopeDeclaration(
         node: ContextModule["declarations"][number]
-    ): node is ClassDeclaration | DataType | GeneralizationSet {
-        return isClassDeclaration(node) || isDataType(node) || isGeneralizationSet(node);
+    ): node is ClassDeclaration | DataType | GeneralizationSet | Individual {
+        return isClassDeclaration(node) || isDataType(node) || isGeneralizationSet(node) || isIndividual(node);
     }
 }

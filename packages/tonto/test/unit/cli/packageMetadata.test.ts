@@ -90,9 +90,10 @@ describe("tonto-cli package metadata", () => {
         const lockedPackage = packageLockJson.packages?.["packages/tonto"];
 
         expect(packageJson.dependencies).toMatchObject({
-            chevrotain: "11.0.3",
-            langium: "3.2.0",
-            "langium-sprotty": "3.2.0",
+            chevrotain: "13.2.0",
+            "chevrotain-allstar": "0.5.0",
+            langium: "4.4.0",
+            "langium-sprotty": "4.4.0",
         });
         expect(lockedPackage?.dependencies).toMatchObject(packageJson.dependencies ?? {});
     });

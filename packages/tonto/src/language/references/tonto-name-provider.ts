@@ -10,6 +10,7 @@ import {
     isElementRelation,
     isEnumElement,
     isGeneralizationSet,
+    isIndividual,
 } from "../generated/ast.js";
 
 export function toQualifiedName(pack: ContextModule | ClassDeclaration, childName: string): string {
@@ -49,6 +50,7 @@ export class TontoQualifiedNameProvider extends DefaultNameProvider {
         }
         if (
             isClassDeclaration(node) ||
+            isIndividual(node) ||
             isAttribute(node) ||
             isGeneralizationSet(node) ||
             isDataType(node) ||
@@ -62,7 +64,7 @@ export class TontoQualifiedNameProvider extends DefaultNameProvider {
 
 
     override getName(node: AstNode): string | undefined {
-        if (isElementRelation(node) || isContextModule(node) || isClassDeclaration(node) || isAttribute(node) ||
+        if (isElementRelation(node) || isContextModule(node) || isClassDeclaration(node) || isIndividual(node) || isAttribute(node) ||
             isGeneralizationSet(node) ||
             isDataType(node) ||
             isEnumElement(node)) {

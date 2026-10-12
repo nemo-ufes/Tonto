@@ -15,6 +15,43 @@ afterEach(async () => {
 });
 
 describe("tontodiagram projection", () => {
+    test("projects every package when the diagram has no source or package filters", async () => {
+        const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "tonto-diagram-"));
+        temporaryDirectories.push(temporaryDirectory);
+
+        await writeFile(
+            path.join(temporaryDirectory, "tonto.json"),
+            JSON.stringify({ projectName: "whole-project" }),
+            "utf8",
+        );
+        await writeFile(path.join(temporaryDirectory, "people.tonto"), `package people
+
+kind Person
+`, "utf8");
+        await writeFile(path.join(temporaryDirectory, "organizations.tonto"), `package organizations
+
+kind Organization
+`, "utf8");
+
+        const diagramPath = path.join(temporaryDirectory, "ontology.tontodiagram");
+        const parsed = parseTontoDiagramSpec(`diagram "Whole ontology" {
+  direction TB
+  stereotypes true
+  attributes true
+  external false
+  datatypes true
+}`);
+
+        const graph = await buildTontoDiagramGraph(parsed.spec!, diagramPath);
+
+        expect(graph.packages).toEqual(["organizations", "people"]);
+        expect(graph.nodes.map((node) => node.id)).toEqual([
+            "organizations.Organization",
+            "people.Person",
+        ]);
+        expect(graph.source).toBe(temporaryDirectory);
+    });
+
     test("projects tonto models into graph nodes and edges", async () => {
         const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "tonto-diagram-"));
         temporaryDirectories.push(temporaryDirectory);

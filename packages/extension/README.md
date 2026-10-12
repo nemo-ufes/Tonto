@@ -35,7 +35,7 @@ The extension contributes these command IDs:
 | Command | Title |
 |---|---|
 | `tonto.diagram.open` | Open Tonto Diagram |
-| `tonto.diagram.createFile` | New Diagram From Current Model |
+| `tonto.diagram.createFile` | Create Entire Ontology Diagram |
 | `tonto.diagram.fit` | Fit to Screen |
 | `tonto.diagram.center` | Center selection |
 | `tonto.diagram.delete` | Delete selected element |

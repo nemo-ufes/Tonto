@@ -112,6 +112,7 @@
           "language/packages-and-imports",
           "language/classes-and-natures",
           "language/datatypes-attributes-labels",
+          "language/individuals",
           "language/relations",
           "language/generalization-sets",
           "language/reserved-keywords",

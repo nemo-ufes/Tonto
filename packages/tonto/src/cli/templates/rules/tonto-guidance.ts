@@ -16,7 +16,7 @@ Tonto is a textual modeling language for creating well-founded ontologies. It en
 
 **Goal:** Facilitate high-quality, precise conceptual models by leveraging UFO's clear semantics in a user-friendly textual format.
 
-**Observation**: Tonto is only responsible for creating the *schema* of the ontology, not being able to declare individuals (instances of those types)
+**Individuals**: Tonto supports schema declarations and named individuals with validated attribute values. Individuals are not included in schema diagrams or OntoUML JSON/OWL exports.
 
 ## 1. Quick Syntax Reference
 
@@ -50,6 +50,17 @@ import <PackageName> as <Alias>
   (<InternalRelation>)*
 }
 \`\`\`
+
+### Individuals
+
+\`\`\`tonto
+kind Man { name: string }
+individual john: Man {
+  name = "John Doe"
+}
+\`\`\`
+
+The classifier after \`:\` must reference a class declaration of any stereotype. Supply every mandatory, non-derived attribute, including attributes inherited through specialization or generalization sets. No cardinality means \`[1]\`; optional and derived attributes may be omitted. Use lists for multiple values, unquoted enum members for enums, and nested assignment objects for structured datatypes. Unknown attributes, duplicate assignments, incorrect value types, and cardinality violations are errors. \`tonto-cli validate\` checks individuals; schema exports do not preserve them.
 
 ### Attribute Pattern
 \`\`\`

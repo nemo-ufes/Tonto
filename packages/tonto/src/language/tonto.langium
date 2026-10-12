@@ -8,6 +8,7 @@ import "./grammar/relations"
 import "./grammar/attributes"
 import "./grammar/datatypes"
 import "./grammar/gensets"
+import "./grammar/individuals"
 
 entry Model:
 	statements+=Statement*
@@ -39,7 +40,7 @@ Import:
 // <--- Declarations --->
 
 Declaration:
-	ClassDeclaration | AuxiliaryDeclaration
+	ClassDeclaration | Individual | AuxiliaryDeclaration
 ;
 
 AuxiliaryDeclaration:

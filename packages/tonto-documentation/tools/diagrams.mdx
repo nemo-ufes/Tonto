@@ -32,10 +32,14 @@ Enable the feature:
 Then run:
 
 ```text
-Tonto: New Diagram From Current Model
+Tonto: Create Entire Ontology Diagram
 ```
 
-The extension creates a `.tontodiagram` file and opens it with the custom editor.
+The extension creates `ontology.tontodiagram` beside the project's `tonto.json` and opens it with the custom editor.
+Running the command again opens the same file instead of creating one diagram per source file. With no package or element
+filters, this diagram projects every package, element, datatype, specialization, and relation in the project. It stays
+synchronized with the `.tonto` sources; the diagram file stores presentation and layout choices rather than duplicating
+the ontology declarations.
 
 ## `.tontodiagram` syntax
 

@@ -1,7 +1,7 @@
 import { addDiagramHandler } from "langium-sprotty";
 import { startLanguageServer } from "langium/lsp";
 import { NodeFileSystem } from "langium/node";
-import { createConnection, ProposedFeatures } from "vscode-languageserver/node.js";
+import { createConnection, ProposedFeatures } from "vscode-languageserver/node";
 import { createTontoServices } from "./language/tonto-module.js";
 
 // Create a connection to the client

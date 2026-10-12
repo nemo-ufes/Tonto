@@ -136,7 +136,7 @@ kind Person {
 | `[1..*]` | One or more. |
 | `[2..5]` | Bounded range. |
 
-When no cardinality is written, treat the attribute as conceptually singular and prefer adding `[1]` for clarity.
+When no cardinality is written, the attribute has cardinality `[1]`. [Individuals](/language/individuals) must supply a value for every mandatory, non-derived attribute, including inherited attributes.
 
 ## Attribute meta-properties
 

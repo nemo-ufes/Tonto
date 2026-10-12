@@ -29,6 +29,85 @@ function createTestEnvironment() {
 }
 
 describe("TontoScopeComputation", () => {
+  it("links an individual's imported classifier, inherited attributes, and enum values", async () => {
+    const { createDocument, documentBuilder } = createTestEnvironment();
+    const people = createDocument(`
+      package People
+      datatype Text
+      enum EyeColor { Blue, Brown }
+      kind Person { name: Text eyes: EyeColor }
+      subkind Man specializes Person
+    `, "individual-people");
+    const instances = createDocument(`
+      import People
+      package Instances
+      individual john: people.man { NAME = "John Doe" eyes = People.EyeColor.Blue }
+    `, "individual-instances");
+
+    // Consumers may appear before their dependencies in a build batch.
+    await documentBuilder.build([instances, people], { validation: true });
+
+    expect(instances.diagnostics).toEqual([]);
+    for (const reference of instances.references) {
+      expect(reference.ref).toBeDefined();
+      expect(reference.$nodeDescription?.documentUri.toString()).toBe(people.uri.toString());
+    }
+  });
+
+  it("validates inherited individual attributes from an imported generalization set", async () => {
+    const { createDocument, documentBuilder } = createTestEnvironment();
+    const people = createDocument(`
+      package People
+      datatype Text
+      kind Person { name: Text }
+      phase Adult
+      phase Child
+      genset Stages where Adult, Child specializes Person
+    `, "individual-gensets");
+    const instances = createDocument(`
+      import People
+      package Instances
+      individual john: Adult {}
+    `, "individual-genset-instances");
+
+    await documentBuilder.build([instances, people], { validation: true });
+
+    expect(instances.diagnostics?.map((diagnostic) => diagnostic.message)).toEqual([
+      'Missing mandatory attribute "name" for "Adult".',
+    ]);
+  });
+
+  it.each([
+    ['individual john: <|>', ["Person", "Man"], ["Text", "john"]],
+    ['individual john: Man { <|> }', ["name", "age"], ["unrelated"]],
+    ['individual john: Man { eyes = <|> }', ["Blue", "EyeColor.Blue"], ["Green", "Other.Green"]],
+  ])("completes individual classifiers, attributes, and enum values: %s", async (declaration, included, excluded) => {
+    const { completionProvider, createDocument, documentBuilder } = createTestEnvironment();
+    const { output, indices } = replaceIndices({ text: `
+      package People
+      datatype Text
+      enum EyeColor { Blue, Brown }
+      enum Other { Green }
+      kind Person { name: Text }
+      subkind Man specializes Person { age: Text eyes: EyeColor }
+      kind Unrelated { unrelated: Text }
+      ${declaration}
+    ` });
+    const document = createDocument(output, "individual-completion");
+    await documentBuilder.build([document]);
+    const completion = await completionProvider?.getCompletion(document, {
+      textDocument: { uri: document.textDocument.uri },
+      position: document.textDocument.positionAt(indices[0]),
+    });
+    const labels = completion?.items.map((item) => item.label) ?? [];
+    for (const label of included) {
+      expect(labels).toContain(label);
+    }
+    for (const label of excluded) {
+      expect(labels).not.toContain(label);
+    }
+  });
+
   it("exports qualified names for declarations in global packages", async () => {
     const { createDocument, documentBuilder } = createTestEnvironment();
     const primitivesDocument = createDocument(`
@@ -123,7 +202,7 @@ describe("TontoScopeComputation", () => {
     expect(document.parseResult.parserErrors).toHaveLength(0);
 
     const contextModule = getPrimaryContextModuleOrThrow(document.parseResult.value);
-    const scopeNames = document.precomputedScopes?.get(contextModule).map((description) => description.name) ?? [];
+    const scopeNames = document.localSymbols?.getStream(contextModule).map((description) => description.name).toArray() ?? [];
 
     expect(scopeNames).toContain("PersonGenset");
     expect(scopeNames).toContain("ScopePackage.PersonGenset");

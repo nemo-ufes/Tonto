@@ -25,6 +25,7 @@ type DiagramWorkspace = {
     sourcePath?: string;
     projectRoot: string;
     models: Model[];
+    ontologyModels: Model[];
 };
 
 export async function loadTontoDiagramProjectWorkspace(diagramPath: string): Promise<DiagramWorkspace> {
@@ -35,6 +36,7 @@ export async function loadTontoDiagramProjectWorkspace(diagramPath: string): Pro
     return {
         projectRoot,
         models: builtDocuments.models,
+        ontologyModels: excludeBuiltInModels(builtDocuments.models),
     };
 }
 
@@ -53,6 +55,7 @@ export async function loadTontoDiagramWorkspace(source: string | undefined, diag
         return {
             projectRoot,
             models: builtDocuments.models,
+            ontologyModels: excludeBuiltInModels(builtDocuments.models),
         };
     }
 
@@ -61,6 +64,7 @@ export async function loadTontoDiagramWorkspace(source: string | undefined, diag
         sourcePath,
         projectRoot,
         models: builtDocuments.models,
+        ontologyModels: excludeBuiltInModels(builtDocuments.models),
     };
 }
 
@@ -69,9 +73,9 @@ export async function collectTontoDiagramWorkspaceContext(
     diagramPath: string
 ): Promise<TontoDiagramWorkspaceContext> {
     const workspace = await loadTontoDiagramWorkspace(source, diagramPath);
-    const packages = collectPackages(workspace.models);
-    const elements = collectElements(workspace.models);
-    const relations = collectRelations(workspace.models);
+    const packages = collectPackages(workspace.ontologyModels);
+    const elements = collectElements(workspace.ontologyModels);
+    const relations = collectRelations(workspace.ontologyModels);
 
     return {
         sourcePath: workspace.sourcePath ?? workspace.projectRoot,
@@ -79,6 +83,10 @@ export async function collectTontoDiagramWorkspaceContext(
         elements,
         relations,
     };
+}
+
+function excludeBuiltInModels(models: Model[]): Model[] {
+    return models.filter((model) => model.$document?.uri.scheme !== "builtin");
 }
 
 export function buildTontoDiagramWorkspaceContext(models: Model[], sourcePath: string): TontoDiagramWorkspaceContext {

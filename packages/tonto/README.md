@@ -14,6 +14,7 @@ This is the core package used by the VS Code extension, the webview, TPM, tests,
 - Transform models to gUFO/Turtle through the OntoUML toolchain.
 - Generate PlantUML diagram source from a Tonto project.
 - Initialize new Tonto projects and optional guidance files for agentic IDE workflows.
+- Expose AST inspection, validation, completion, and source edits to agents through [MCP](./MCP.md).
 
 ## Command Flow
 

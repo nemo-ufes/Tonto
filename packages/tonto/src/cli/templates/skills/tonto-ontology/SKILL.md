@@ -55,6 +55,17 @@ A package is defined by its file, not its directory. The folder structure is org
 }
 ```
 
+### Individuals
+
+```tonto
+kind Man { name: string }
+individual john: Man {
+  name = "John Doe"
+}
+```
+
+The classifier after `:` must reference a class declaration of any stereotype. Supply every mandatory, non-derived attribute, including attributes inherited through specialization or generalization sets. No cardinality means `[1]`; optional and derived attributes may be omitted. Use lists for multiple values, unquoted enum members for enums, and nested assignment objects for structured datatypes. Unknown attributes, duplicate assignments, incorrect value types, and cardinality violations are errors. `tonto-cli validate` checks individuals; schema exports do not preserve them.
+
 ### Stereotypes
 
 Choosing the correct stereotype is the most important modeling decision. It reflects the ontological nature of the concept according to UFO.

@@ -1,5 +1,4 @@
 import { Module } from "langium";
-import { addDiagramHandler } from "langium-sprotty";
 import { PartialLangiumSharedServices, startLanguageServer } from "langium/lsp";
 import { NodeFileSystem } from "langium/node";
 import { TontoLanguageServer, TontoSharedServices, createTontoServices } from "tonto-cli";
@@ -12,7 +11,6 @@ const connection = createConnection(ProposedFeatures.all);
 
 type ExtensionSharedModule = Module<TontoSharedServices, PartialLangiumSharedServices>;
 type StartLanguageServerServices = Parameters<typeof startLanguageServer>[0];
-type DiagramHandlerServices = Parameters<typeof addDiagramHandler>[1];
 
 export const TontoSharedModule: ExtensionSharedModule = {
     workspace: {
@@ -31,4 +29,3 @@ const { shared } = createTontoServices({
 
 // Start the language server with the shared services
 startLanguageServer(shared as unknown as StartLanguageServerServices);
-addDiagramHandler(connection, shared as unknown as DiagramHandlerServices);

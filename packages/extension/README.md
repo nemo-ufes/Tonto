@@ -25,7 +25,7 @@ flowchart LR
     Extension --> Commands["Tonto commands<br/>views + palette"]
     Commands --> CLI["Generation, import,<br/>validation, transform"]
     Extension --> Webview["Diagram webview<br/>pack/webview"]
-    Webview --> Model["Sprotty / React diagram UI"]
+    Webview --> Model["SVG diagram UI"]
 ```
 
 ## Commands
@@ -34,15 +34,8 @@ The extension contributes these command IDs:
 
 | Command | Title |
 |---|---|
-| `tonto.diagram.open` | Open Tonto Diagram |
-| `tonto.diagram.createFile` | Create Entire Ontology Diagram |
-| `tonto.diagram.fit` | Fit to Screen |
-| `tonto.diagram.center` | Center selection |
-| `tonto.diagram.delete` | Delete selected element |
-| `tonto.diagram.export` | Export diagram to SVG |
-| `tonto.diagram.plantuml.open` | Open PlantUML Diagram |
-| `tonto.diagram.plantuml.openProject` | Open Ontology PlantUML Diagram |
-| `tonto.diagram.plantuml.export` | Export PlantUML |
+| `tonto.diagram.open` | Open SVG Diagram |
+| `tonto.diagram.createFile` | Create JSON Diagram View |
 | `tonto.generateJSON` | Transform Tonto -> JSON |
 | `tonto.generateTonto` | Transform JSON -> Tonto |
 | `tonto.validateModel` | Validate Model |
@@ -119,13 +112,15 @@ Distributed under the MIT License. See the repository root [LICENSE](../../LICEN
 
 ## SVG saved views (preview)
 
-Enable `tonto.features.tontodiagram.enabled`, open a saved `.tonto` model and run
-**Create Tonto Diagram**. New views live under `views/*.tontoview` as version-1 JSON,
-with their source relative to the view file. The SVG editor supports arrangement,
+Open a saved `.tonto` model and run **Open SVG Diagram** or
+**Create JSON Diagram View**. New views live under `views/*.tontoview` as version-1 JSON,
+with their source relative to the view file. The complete panel, toolbar, options and stylesheet recovered from Tonto Visualizer
+0.1.53 replace the former React shell. The SVG editor supports arrangement,
 routing, typography, package grouping and SVG/PNG export. Model parsing stays in
 Tonto's existing language services; the webview receives serializable graphs only.
 
-Existing `.tontodiagram` files remain editable. **Convert to Tonto View** creates a
+Previous Sprotty and PlantUML preview interfaces are disabled. The SVG JSON editor
+is the only visualizer. Existing `.tontodiagram` files open as text. **Convert to Tonto View** creates a
 new file and leaves the old document intact. Conversion reports unresolved settings;
 new named views use **Open Named Tonto View** and **Save as Named Tonto View**.
 Dragging changes the document without forcing a save; VS Code owns Save and Undo.
@@ -133,6 +128,22 @@ Dragging changes the document without forcing a save; VS Code owns Save and Undo
 Open model buffers update the drawing after 300 ms. Incomplete source keeps the
 last valid drawing with its diagnostic reason. Double-click a node, or select it
 and press Enter, to reveal its source. Routes, resizing and constraints require
-`.tontoview`; legacy views offer conversion for these controls.
+`.tontoview`. Convert legacy files before editing their visual arrangement.
 
 ![SVG editor verification fixture](data/images/svg-view.png)
+
+## Agent tools
+
+This version requires VS Code 1.95 or newer and contributes 14 chat tools. External
+MCP clients receive 15 tools, including session-local `tonto_hold`, four knowledge
+resources and draft/review prompts. All use the current Tonto parser and validators.
+
+Run **Tonto: Set Up Agents** in a local workspace to stage the bundled server and
+merge Codex/Claude project configuration. The Node launcher is configured through
+`tonto.agents.nodePath` and must support Node 20.18 or newer. Existing conflicting
+Tonto entries are reported before changes; unrelated settings and instructions are
+preserved. Restart external clients after setup. No configuration is installed on
+activation, and remote agent setup is not supported in this release.
+
+Validation, completion, AST, format, repair and gUFO tools return previews and do not
+save model files. Diagnostic/edit positions remain zero-based UTF-16.

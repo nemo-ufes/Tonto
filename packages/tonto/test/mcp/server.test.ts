@@ -103,7 +103,7 @@ describe("Tonto MCP", () => {
     try {
       const list = await client.listTools();
       expect(list.tools.map((tool) => tool.name).sort()).toEqual([
-        "tonto_apply", "tonto_ast", "tonto_complete", "tonto_diff", "tonto_hold", "tonto_validate",
+        "tonto_apply", "tonto_ast", "tonto_complete", "tonto_diff", "tonto_digest", "tonto_explain", "tonto_format", "tonto_gufo", "tonto_guide", "tonto_hold", "tonto_patterns", "tonto_repair", "tonto_rules", "tonto_tables", "tonto_validate",
       ]);
       const result = await client.callTool({ name: "tonto_validate", arguments: { source: "package Test\nkind Person" } });
       expect(result.isError).not.toBe(true);

@@ -15,3 +15,13 @@ describe("agent configuration merge", () => {
     expect(() => mergeClaudeConfig('{"mcpServers":[]}', "node", "bundle", "root")).toThrow("object");
   });
 });
+
+it("refuses alternate TOML Tonto entries instead of appending duplicate tables", () => {
+  for (const existing of [
+    '[ mcp_servers.tonto ]\ncommand = "custom"',
+    '[mcp_servers."tonto"]\ncommand = "custom"',
+    '[mcp_servers.tonto.env]\nTOKEN = "example"',
+    '[mcp_servers]\n"tonto" = { command = "custom" }',
+    'mcp_servers = { tonto = { command = "custom" } }',
+  ]) expect(() => mergeCodexConfig(existing, "node", "/runtime/mcp.mjs", "/root")).toThrow("conflict");
+});

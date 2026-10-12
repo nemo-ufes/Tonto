@@ -118,3 +118,28 @@ npx vitest run packages/tonto/test/mcp/server.test.ts
 ```
 
 The transport and tool registration use the [official MCP TypeScript SDK](https://ts.sdk.modelcontextprotocol.io/server).
+
+## Shared tools and VS Code
+
+The stdio server and VS Code chat invoke the same schema-validated `TontoAgentHandlers`.
+All original six tools retain their contracts. Nine additions provide `tonto_guide`,
+`tonto_rules`, `tonto_tables`, `tonto_patterns`, `tonto_explain`, `tonto_format`,
+`tonto_digest`, `tonto_repair`, and `tonto_gufo`. Knowledge comes from this repository,
+not a different parser. Resources live at `tonto://{guide,rules,tables,patterns}`;
+prompts are `draft` and `review`.
+
+Fourteen VS Code tools exclude session-local `tonto_hold`. Each invocation overlays
+open model buffers on a fresh, isolated language-service workspace. Cancellation
+rejects results before publication. Formatting and repair return previews; repair
+refuses overlapping edits. gUFO uses the current modular OntoUML transformation and
+returns generated Turtle or a reason it is unavailable, without writing output.
+
+Run **Tonto: Set Up Agents** explicitly in a local desktop workspace. It checks the
+configured `tonto.agents.nodePath` launcher, stages the ESM server in stable extension
+storage, and merges `.codex/config.toml`, `.mcp.json`, `AGENTS.md`, and `CLAUDE.md`.
+Existing differing Tonto configurations abort setup. Unrelated settings and
+instructions survive. Updated files receive backups, and a failed write rolls back
+completed writes when they have not changed concurrently. Remote setup is unsupported.
+Restart external clients after setup. The bundle remains available after extension
+upgrades at a stable runtime path; setup checks its recorded digest, preserves modified
+runtimes, stages upgrades atomically and retains a backup of replaced bundles.

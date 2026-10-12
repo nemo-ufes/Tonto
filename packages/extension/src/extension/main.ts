@@ -9,15 +9,10 @@ import { createAddSkillCommand } from "../commands/addSkillCommand.js";
 import { createTransformToGufoSatusBarItem } from "../commands/gufoTransformCommand.js";
 import { createInitCommand } from "../commands/initCommand.js";
 import { createGenerateJsonStatusBarItem } from "../commands/JsonGenerationCommands.js";
-import { registerPlantUMLCommands } from "../commands/plantumlCommand.js";
 import { createTontoGenerationStatusBarItem } from "../commands/TontoGenerationCommand.js";
 import { createTpmInstallCommands } from "../commands/TpmInstallCommand.js";
 import { createValidationSatusBarItem } from "../commands/validationCommand.js";
-import { TontoFeature, TontoFeatureToggleController } from "../configuration/tonto-feature-toggles.js";
-import { activateDiagram } from "../diagram/activateDiagram.js";
-import { registerAutoOpenTontoDiagramPreview } from "../diagram-editor/auto-open-tontodiagram-preview.js";
 import { registerCreateTontoDiagramCommand } from "../diagram-editor/create-tontodiagram-command.js";
-import { registerTontoDiagramCompletionProvider } from "../diagram-editor/tontodiagram-completion-provider.js";
 import { TontoDiagramEditorProvider } from "../diagram-editor/tonto-diagram-editor-provider.js";
 import { registerTontoMetadataFolding } from "../editor/tonto-metadata-folding.js";
 import { setOutputChannel } from "./outputChannel.js";
@@ -65,7 +60,7 @@ const TONTO_COMMAND_GROUPS: TontoCommandGroup[] = [
         label: "Diagrams",
         icon: "type-hierarchy",
         commands: [
-            { id: "tonto.diagram.plantuml.openProject", label: "Open Ontology PlantUML Diagram", icon: "symbol-structure" },
+            { id: "tonto.diagram.open", label: "Open SVG Diagram", icon: "symbol-structure" },
         ],
     },
     {
@@ -167,17 +162,13 @@ export function activate(context: vscode.ExtensionContext): void {
     registerTontoAgentTools(context);
     registerTontoAgentSetup(context);
     registerTontoMetadataFolding(context);
-    activateDiagram(context, languageClient);
-    registerPlantUMLCommands(context);
 
-    const featureToggles = new TontoFeatureToggleController();
-    context.subscriptions.push(featureToggles);
-    featureToggles.registerFeature(TontoFeature.TontoDiagramVisualization, () => vscode.Disposable.from(
+    context.subscriptions.push(
         registerCreateTontoDiagramCommand(),
         TontoDiagramEditorProvider.register(context),
-        registerAutoOpenTontoDiagramPreview(),
-        registerTontoDiagramCompletionProvider(),
-    ));
+        vscode.commands.registerCommand("tonto.diagram.open", (resource?: vscode.Uri) =>
+            vscode.commands.executeCommand("tonto.diagram.createFile", resource)),
+    );
 
     // Register a TreeDataProvider for the `tontoCommandsExplorer` view so commands
     // appear as items inside the primary Sidebar view instead of as top-bar buttons.

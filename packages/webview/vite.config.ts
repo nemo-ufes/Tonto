@@ -1,9 +1,7 @@
 import { resolve } from "node:path";
-import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-    plugins: [react({ jsxRuntime: "classic" })],
     build: {
         emptyOutDir: true,
         outDir: "../extension/pack/webview",
@@ -17,8 +15,7 @@ export default defineConfig({
         },
         rollupOptions: {
             input: {
-                sprotty: resolve(__dirname, "src/main.ts"),
-                "diagram-editor": resolve(__dirname, "src/diagram-editor/main.tsx"),
+                "diagram-editor": resolve(__dirname, "src/recovered/main.ts"),
             },
             output: {
                 entryFileNames: "[name].js",

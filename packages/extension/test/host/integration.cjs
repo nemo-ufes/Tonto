@@ -11,8 +11,8 @@ exports.run = async function () {
     assert.ok(extension, "Packaged Tonto extension is discoverable");
     await extension.activate();
     findings.push("activation");
-    assert.equal(vscode.lm.tools.filter(tool => tool.name.startsWith("tonto_")).length, 5);
-    findings.push("5 chat tools registered");
+    assert.equal(vscode.lm.tools.filter(tool => tool.name.startsWith("tonto_")).length, 14);
+    findings.push("14 chat tools registered");
     const root = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const modelPath = path.join(root, "model.tonto");
     const document = await vscode.workspace.openTextDocument(modelPath);
@@ -27,11 +27,13 @@ exports.run = async function () {
     const ast = await invoke("tonto_ast", { path: modelPath });
     assert.ok(JSON.stringify(ast.ast).includes("Human"), "Chat sees unsaved buffers");
     assert.equal(await fs.readFile(modelPath, "utf8"), before);
-    const formatted = await invoke("tonto_apply", { path: modelPath, edits: [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }, newText: "// preview\n" }] });
+    const formatted = await invoke("tonto_format", { path: modelPath });
     assert.equal(formatted.saved, false);
     findings.push("chat validation, unsaved AST and format previews");
-    await vscode.workspace.getConfiguration("tonto").update("features.tontodiagram.enabled", true, vscode.ConfigurationTarget.Workspace);
-    await vscode.commands.executeCommand("tonto.diagram.createFile", document.uri);
+    const registered = await vscode.commands.getCommands(true);
+    assert.ok(!registered.some(command => command.startsWith("tonto.diagram.plantuml.")));
+    assert.deepEqual(extension.packageJSON.contributes.customEditors.map(editor => editor.viewType), ["tonto.view.editor"]);
+    await vscode.commands.executeCommand("tonto.diagram.open", document.uri);
     const viewPath = path.join(root, "views", "model.tontoview");
     const view = await vscode.workspace.openTextDocument(viewPath);
     const json = JSON.parse(view.getText());
@@ -39,6 +41,24 @@ exports.run = async function () {
     await vscode.commands.executeCommand("vscode.openWith", view.uri, "tonto.view.editor");
     assert.ok(vscode.window.tabGroups.all.flatMap(group => group.tabs).some(tab => tab.input instanceof vscode.TabInputCustom && tab.input.uri.fsPath === viewPath));
     findings.push("version-1 JSON creation and custom editor opening");
+    await fs.writeFile(path.join(root, "AGENTS.md"), "Preserve these existing instructions.\n");
+    await fs.writeFile(path.join(root, ".mcp.json"), JSON.stringify({ mcpServers: { unrelated: { command: "example" } } }));
+    const commands = await vscode.commands.getCommands(true);
+    assert.ok(commands.includes("notifications.clearAll"));
+    const dismiss = setInterval(() => { void vscode.commands.executeCommand("notifications.clearAll"); }, 300);
+    try {
+      await vscode.commands.executeCommand("tonto.setupAgents");
+      const claude = JSON.parse(await fs.readFile(path.join(root, ".mcp.json"), "utf8"));
+      assert.equal(claude.mcpServers.unrelated.command, "example");
+      assert.ok(claude.mcpServers.tonto.args[0].endsWith("/runtime/mcp.mjs"));
+      assert.ok((await fs.readFile(path.join(root, "AGENTS.md"), "utf8")).startsWith("Preserve these existing instructions."));
+      const codex = await fs.readFile(path.join(root, ".codex", "config.toml"), "utf8");
+      assert.ok(codex.includes("[mcp_servers.tonto]"));
+      await vscode.commands.executeCommand("tonto.setupAgents");
+      assert.equal(await fs.readFile(path.join(root, ".codex", "config.toml"), "utf8"), codex);
+      findings.push("stable runtime staging, preserved configuration and idempotent setup");
+    } finally { clearInterval(dismiss); }
+
     const report = { passed: true, vscode: vscode.version, findings, extensionPath: extension.extensionPath };
     if (process.env.TONTO_TEST_REPORT) await fs.writeFile(process.env.TONTO_TEST_REPORT, JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report));

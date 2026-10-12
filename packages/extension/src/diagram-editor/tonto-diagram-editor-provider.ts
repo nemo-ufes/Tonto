@@ -1,490 +1,375 @@
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import {
-    TontoDiagramDirection,
-    TontoDiagramGraph,
-    TontoDiagramIssue,
-    TontoDiagramSpec,
-    buildTontoDiagramGraph,
-    parseTontoDiagramSpec,
-    serializeTontoDiagramSpec,
-    updateTontoDiagramLayout
+  buildTontoDiagramGraph, loadTontoDiagramWorkspace, parseTontoDiagramSpec, serializeTontoDiagramSpec,
+  updateTontoDiagramLayout, type TontoDiagramGraph, type TontoDiagramSpec, type TontoDiagramIssue,
 } from "tonto-cli";
+import { projectSvgView } from "tonto-cli/lib/view/projection.js";
+import { legacyGraphToSvgView, legacySpecToViewFile, canonicalizeLegacyViewFile } from "tonto-cli/lib/view/model/legacy.js";
+import { readViewFile, emptyViewFile, reconcile, type ViewFile } from "tonto-cli/lib/view/model/viewfile.js";
+import type { ViewModel } from "tonto-cli/lib/view/model/model.js";
 import * as vscode from "vscode";
 import { isTontoSourceInDiagramScope } from "./tontodiagram-source-scope.js";
+import { inferViewSource, namedViewPath } from "./view-paths.js";
 
-type DiagramDocumentStateMessage = {
-    type: "documentState";
-    status: "loading" | "ready" | "error";
-    documentText: string;
-    graph?: TontoDiagramGraph;
-    issues: TontoDiagramIssue[];
+type DocumentState = {
+  type: "documentState"; status: "loading" | "ready" | "error"; documentText: string;
+  graph?: TontoDiagramGraph; viewModel?: ViewModel; arrangement?: ViewFile; isLegacy: boolean;
+  issues: TontoDiagramIssue[];
 };
-
-type DiagramReadyMessage = {
-    type: "ready";
+type PanelState = {
+  panel: vscode.WebviewPanel; document: vscode.TextDocument; sourcePath?: string; requestVersion: number;
+  disposed: boolean; queue: Promise<void>; last?: DocumentState;
 };
-
-type DiagramSourceUpdateMessage = {
-    type: "updateSource";
-    text: string;
-};
-
-type DiagramLayoutUpdateMessage = {
-    type: "updateLayout";
-    nodes: Array<{
-        id: string;
-        specifier: string;
-        x: number;
-        y: number;
-    }>;
-};
-
-type DiagramImportsUpdateMessage = {
-    type: "updateImports";
-    imports: string[];
-};
-
-type DiagramIncludeUpdateMessage = {
-    type: "updateInclude";
-    include: string[];
-};
-
-type DiagramPresentationUpdateMessage = {
-    type: "updatePresentation";
-    direction?: TontoDiagramDirection;
-    stereotypes?: boolean;
-    attributes?: boolean;
-};
-
-type DiagramFilterFlagsUpdateMessage = {
-    type: "updateFilterFlags";
-    external?: boolean;
-    datatypes?: boolean;
-};
-
-type DiagramTitleUpdateMessage = {
-    type: "updateTitle";
-    title: string;
-};
-
-type DiagramExportRequestMessage = {
-    type: "requestExport";
-    format: "png" | "svg" | "plantuml";
-};
-
-type DiagramIncomingMessage =
-    | DiagramReadyMessage
-    | DiagramSourceUpdateMessage
-    | DiagramLayoutUpdateMessage
-    | DiagramImportsUpdateMessage
-    | DiagramIncludeUpdateMessage
-    | DiagramPresentationUpdateMessage
-    | DiagramFilterFlagsUpdateMessage
-    | DiagramTitleUpdateMessage
-    | DiagramExportRequestMessage;
-
-type DiagramEditorPanelState = {
-    panel: vscode.WebviewPanel;
-    sourcePath?: string;
-    requestVersion: number;
-    disposed: boolean;
-};
+type Message = { type: string; [key: string]: unknown };
+const isRecord = (value: unknown): value is Message => typeof value === "object" && value !== null && !Array.isArray(value);
+const stringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === "string");
 
 export class TontoDiagramEditorProvider implements vscode.CustomTextEditorProvider, vscode.Disposable {
-    public static readonly viewType = "tonto.diagram.editor";
+  static readonly viewType = "tonto.diagram.editor";
+  static readonly viewFileType = "tonto.view.editor";
+  private readonly panels = new Set<PanelState>();
+  private readonly disposables: vscode.Disposable[] = [];
+  private readonly pending = new Map<string, ReturnType<typeof setTimeout>>();
+  private rasterId = 0;
+  private readonly rasters = new Map<number, { panel: PanelState; resolve: (bytes: Uint8Array) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
-    private readonly panelsByDocument = new Map<string, Set<DiagramEditorPanelState>>();
-    private readonly documentsBySourcePath = new Map<string, Set<string>>();
-    private readonly disposables: vscode.Disposable[] = [];
+  constructor(private readonly context: vscode.ExtensionContext) {
+    const watcher = vscode.workspace.createFileSystemWatcher("**/*.tonto");
+    this.disposables.push(watcher, watcher.onDidCreate(uri => this.scheduleSource(uri.fsPath)),
+      watcher.onDidChange(uri => this.scheduleSource(uri.fsPath)), watcher.onDidDelete(uri => this.scheduleSource(uri.fsPath)),
+      vscode.workspace.onDidChangeTextDocument(event => {
+        if (event.document.uri.path.endsWith(".tonto")) this.scheduleSource(event.document.uri.fsPath);
+        else if (this.isDiagram(event.document)) this.refreshDocument(event.document);
+      }),
+      vscode.workspace.onDidSaveTextDocument(document => {
+        if (document.uri.path.endsWith(".tonto")) this.scheduleSource(document.uri.fsPath);
+      }),
+      vscode.workspace.onDidCloseTextDocument(document => {
+        if (document.uri.path.endsWith(".tonto")) this.scheduleSource(document.uri.fsPath);
+      }),
+      vscode.window.onDidChangeTextEditorSelection(event => {
+        const position = event.selections[0]?.active;
+        if (!position) return;
+        for (const panel of this.panels) {
+          const ids = panel.last?.viewModel?.nodes.filter(node => {
+            const location = node.source;
+            return location?.uri === event.textEditor.document.uri.toString() && position.line >= location.line &&
+              position.line <= location.endLine;
+          }).map(node => node.id) ?? [];
+          void panel.panel.webview.postMessage({ type: "selectElements", ids });
+        }
+      }),
+      vscode.window.onDidChangeActiveColorTheme(() => {
+        for (const panel of this.panels) this.sendTheme(panel);
+      }),
+      vscode.commands.registerCommand("tonto.view.convert", async (resource?: vscode.Uri) => {
+        const document = resource ? await vscode.workspace.openTextDocument(resource) :
+          vscode.window.activeTextEditor?.document ?? [...this.panels].find(panel => panel.panel.active)?.document;
+        if (document?.uri.path.endsWith(".tontodiagram")) await this.convert(document);
+        else void vscode.window.showErrorMessage("Open a .tontodiagram to convert it.");
+      }),
+      vscode.commands.registerCommand("tonto.view.open", () => this.chooseView()),
+      vscode.commands.registerCommand("tonto.view.saveAs", () => this.saveNamedView()),
+    );
+  }
 
-    constructor(private readonly context: vscode.ExtensionContext) {
-        this.disposables.push(
-            vscode.workspace.onDidChangeTextDocument(async (event) => {
-                if (event.document.languageId !== "tontodiagram") {
-                    return;
-                }
+  static register(context: vscode.ExtensionContext): vscode.Disposable {
+    const provider = new TontoDiagramEditorProvider(context);
+    const options = { webviewOptions: { retainContextWhenHidden: true }, supportsMultipleEditorsPerDocument: true };
+    return vscode.Disposable.from(provider,
+      vscode.window.registerCustomEditorProvider(this.viewType, provider, options),
+      vscode.window.registerCustomEditorProvider(this.viewFileType, provider, options));
+  }
 
-                await this.refreshDocumentEditors(event.document);
-            }),
-            vscode.workspace.onDidSaveTextDocument(async (document) => {
-                if (document.languageId === "tonto") {
-                    await this.refreshEditorsForSourcePath(document.uri.fsPath);
-                    return;
-                }
+  dispose(): void {
+    for (const timer of this.pending.values()) clearTimeout(timer);
+    for (const raster of this.rasters.values()) { clearTimeout(raster.timer); raster.reject(new Error("Diagram closed.")); }
+    for (const panel of this.panels) panel.panel.dispose();
+    vscode.Disposable.from(...this.disposables).dispose();
+    this.panels.clear(); this.rasters.clear();
+  }
 
-                if (document.languageId === "tontodiagram") {
-                    await this.refreshDocumentEditors(document);
-                }
-            }),
-        );
+  async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
+    if (document.uri.scheme !== "file") throw new Error("Tonto views require a filesystem workspace.");
+    panel.webview.options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, "pack", "webview")] };
+    panel.webview.html = createDiagramEditorHtml(this.context.extensionUri, panel.webview);
+    const state: PanelState = { panel, document, requestVersion: 0, disposed: false, queue: Promise.resolve() };
+    this.panels.add(state);
+    panel.onDidDispose(() => {
+      state.disposed = true; this.panels.delete(state);
+      for (const [id, raster] of this.rasters) if (raster.panel === state) {
+        clearTimeout(raster.timer); raster.reject(new Error("Diagram closed.")); this.rasters.delete(id);
+      }
+    });
+    panel.webview.onDidReceiveMessage((message: unknown) => {
+      void this.receive(state, message).catch(error => vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error)));
+    });
+    if (!this.isLegacy(document)) await this.ensureSource(document);
+    this.enqueue(state);
+  }
+
+  private isLegacy(document: vscode.TextDocument): boolean { return document.uri.path.endsWith(".tontodiagram"); }
+  private isDiagram(document: vscode.TextDocument): boolean { return /\.tonto(diagram|view)$/.test(document.uri.path); }
+  private sendTheme(state: PanelState): void {
+    void state.panel.webview.postMessage({ type: "theme", dark: vscode.window.activeColorTheme.kind !== vscode.ColorThemeKind.Light && vscode.window.activeColorTheme.kind !== vscode.ColorThemeKind.HighContrastLight });
+  }
+  private scheduleSource(source: string): void {
+    clearTimeout(this.pending.get(source));
+    // Invalidate immediately: a queued build must not briefly show obsolete buffers.
+    for (const panel of this.panels) if (!panel.sourcePath || isTontoSourceInDiagramScope(source, panel.sourcePath)) panel.requestVersion++;
+    this.pending.set(source, setTimeout(() => {
+      this.pending.delete(source);
+      for (const panel of this.panels) if (!panel.sourcePath || isTontoSourceInDiagramScope(source, panel.sourcePath)) this.enqueue(panel);
+    }, 300));
+  }
+  private refreshDocument(document: vscode.TextDocument): void {
+    for (const panel of this.panels) if (panel.document.uri.toString() === document.uri.toString()) this.enqueue(panel);
+  }
+  private enqueue(state: PanelState): void {
+    const version = ++state.requestVersion;
+    state.queue = state.queue.catch(() => undefined).then(async () => {
+      if (state.disposed || version !== state.requestVersion) return;
+      const text = state.document.getText();
+      const base: DocumentState = { ...state.last, type: "documentState", status: "loading", documentText: text, isLegacy: this.isLegacy(state.document), issues: [] };
+      await state.panel.webview.postMessage(base);
+      try {
+        const resolved = await this.resolveState(state.document, text);
+        if (state.disposed || version !== state.requestVersion) return;
+        state.sourcePath = resolved.graph?.projectRoot;
+        if (resolved.issues.some(issue => issue.severity === "error") && state.last?.viewModel) {
+          await state.panel.webview.postMessage({ ...state.last, documentText: text, status: "error", issues: resolved.issues });
+          return;
+        }
+        state.last = resolved;
+        await state.panel.webview.postMessage(resolved);
+      } catch (error) {
+        if (!state.disposed && version === state.requestVersion) await state.panel.webview.postMessage({ ...base, status: "error", issues: [{ severity: "error", message: error instanceof Error ? error.message : String(error) }] });
+      }
+    });
+  }
+
+  private overlays(): Map<string, string> {
+    return new Map(vscode.workspace.textDocuments.filter(document => document.uri.scheme === "file" && document.uri.path.endsWith(".tonto"))
+      .map(document => [path.resolve(document.uri.fsPath), document.getText()]));
+  }
+  private async resolveState(document: vscode.TextDocument, text: string): Promise<DocumentState> {
+    const isLegacy = this.isLegacy(document);
+    let spec: TontoDiagramSpec;
+    let arrangement: ViewFile;
+    const issues: TontoDiagramIssue[] = [];
+    if (isLegacy) {
+      const parsed = parseTontoDiagramSpec(text);
+      if (!parsed.spec) throw new Error(parsed.issues.map(issue => issue.message).join("\n"));
+      spec = parsed.spec; issues.push(...parsed.issues);
+      arrangement = emptyViewFile();
+    } else {
+      arrangement = this.parseView(text);
+      const raw: unknown = JSON.parse(text);
+      spec = this.viewSpec(arrangement, isRecord(raw) && typeof raw.title === "string" ? raw.title : path.basename(document.uri.fsPath, ".tontoview"));
     }
-
-    public static register(context: vscode.ExtensionContext): vscode.Disposable {
-        const provider = new TontoDiagramEditorProvider(context);
-        return vscode.Disposable.from(
-            vscode.window.registerCustomEditorProvider(TontoDiagramEditorProvider.viewType, provider, {
-                webviewOptions: {
-                    retainContextWhenHidden: true,
-                },
-                supportsMultipleEditorsPerDocument: true,
-            }),
-            provider,
-        );
+    const boundSource = spec.source ? vscode.Uri.file(path.resolve(path.dirname(document.uri.fsPath), spec.source)) : document.uri;
+    const workspaceRoot = vscode.workspace.getWorkspaceFolder(boundSource)?.uri.fsPath;
+    const workspace = await loadTontoDiagramWorkspace(spec.source, document.uri.fsPath, this.overlays(), workspaceRoot);
+    const graph = await buildTontoDiagramGraph(spec, document.uri.fsPath, { workspace });
+    issues.push(...graph.issues);
+    let viewModel: ViewModel;
+    if (isLegacy) {
+      viewModel = legacyGraphToSvgView(graph);
+      const semantic = projectSvgView(workspace.ontologyModels, { includedPackages: graph.packages, showExternalReferences: true, showDatatypes: true, hidden: [] });
+      for (const node of viewModel.nodes) node.source = semantic.nodes.find(candidate => candidate.package === node.package && candidate.name === node.name)?.source;
+      arrangement = legacySpecToViewFile(spec, graph, spec.source).file;
+    } else {
+      const includedPackages = arrangement.content.includedPackages ?? (arrangement.content.scope === "file" && workspace.sourceModel
+        ? graph.workspace.packages.filter(pkg => pkg.sourcePath === workspace.sourcePath).map(pkg => pkg.name) : undefined);
+      viewModel = projectSvgView(workspace.ontologyModels, { ...arrangement.content, hidden: [], includedPackages }, arrangement.focus);
+      const reconciled = reconcile(arrangement, viewModel);
+      if (reconciled.orphans.length) issues.push({ severity: "warning", message: `Saved placements no longer resolve: ${reconciled.orphans.join(", ")}. They remain in this view.` });
     }
+    return { type: "documentState", status: issues.some(issue => issue.severity === "error") ? "error" : "ready", documentText: text, isLegacy, graph, viewModel, arrangement, issues };
+  }
 
-    public dispose(): void {
-        for (const panelState of this.getPanelStates()) {
-            panelState.panel.dispose();
-        }
+  private parseView(text: string): ViewFile {
+    const value: unknown = JSON.parse(text);
+    if (!isRecord(value) || value.version !== 1) throw new Error("A Tonto view must be a version-1 JSON object.");
+    return readViewFile(value);
+  }
+  private viewSpec(file: ViewFile, title: string): TontoDiagramSpec {
+    return { title, source: file.source, imports: file.content.includedPackages ?? [],
+      filter: { include: [], relations: [], external: file.content.showExternalReferences, datatypes: file.content.showDatatypes },
+      presentation: { direction: file.layout.direction === "RIGHT" ? "LR" : "TB", stereotypes: file.display.showRelationStereotypes, attributes: file.display.showAttributes },
+      nodes: Object.entries(file.nodes).map(([target, placement]) => ({ target: target.replaceAll("::", "."), x: placement.x, y: placement.y })),
+      relations: [], viewport: file.viewport ?? { x: 0, y: 0, zoom: 1 } };
+  }
+  private async writeView(document: vscode.TextDocument, file: ViewFile): Promise<void> {
+    const previous: unknown = JSON.parse(document.getText());
+    // Preserve unknown extension fields rather than destroy another tool's metadata.
+    await this.replace(document, JSON.stringify({ ...(isRecord(previous) ? previous : {}), ...file }, null, 2) + "\n");
+  }
+  private async replace(document: vscode.TextDocument, text: string): Promise<void> {
+    if (text === document.getText()) return;
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), text);
+    if (!await vscode.workspace.applyEdit(edit)) throw new Error("The diagram changed before this edit could be applied.");
+    // VS Code owns dirty state, Save and Undo; a drag must never force a save.
+  }
+  private async ensureSource(document: vscode.TextDocument): Promise<void> {
+    const file = this.parseView(document.getText());
+    if (file.source) return;
+    const parent = path.dirname(path.dirname(document.uri.fsPath));
+    const names = (await vscode.workspace.fs.readDirectory(vscode.Uri.file(parent))).filter(([, type]) => type === vscode.FileType.File).map(([name]) => name);
+    const inferred = inferViewSource(document.uri.fsPath, names);
+    if (inferred) { file.source = path.relative(path.dirname(document.uri.fsPath), inferred).split(path.sep).join("/"); await this.writeView(document, file); return; }
+    const selected = await vscode.window.showOpenDialog({ title: "Choose the Tonto source for this view", canSelectMany: false, filters: { Tonto: ["tonto"] } });
+    if (!selected?.[0]) throw new Error("Choose a model source before opening this Tonto view.");
+    file.source = path.relative(path.dirname(document.uri.fsPath), selected[0].fsPath).split(path.sep).join("/");
+    await this.writeView(document, file);
+  }
 
-        vscode.Disposable.from(...this.disposables).dispose();
-        this.disposables.length = 0;
-        this.panelsByDocument.clear();
-        this.documentsBySourcePath.clear();
+  private async receive(state: PanelState, value: unknown): Promise<void> {
+    if (!isRecord(value) || typeof value.type !== "string" || state.disposed) return;
+    const document = state.document;
+    if (value.type === "ready") { this.sendTheme(state); this.enqueue(state); return; }
+    if (value.type === "rasterized") {
+      if (typeof value.id !== "number") return;
+      const pending = this.rasters.get(value.id);
+      if (!pending || pending.panel !== state) return;
+      clearTimeout(pending.timer); this.rasters.delete(value.id);
+      if (typeof value.dataUrl === "string" && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value.dataUrl) && value.dataUrl.length < 64 * 1024 * 1024) pending.resolve(Buffer.from(value.dataUrl.split(",")[1], "base64"));
+      else pending.reject(new Error(typeof value.error === "string" ? value.error : "Invalid PNG response."));
+      return;
     }
-
-    async resolveCustomTextEditor(
-        document: vscode.TextDocument,
-        webviewPanel: vscode.WebviewPanel,
-        _token: vscode.CancellationToken,
-    ): Promise<void> {
-        webviewPanel.webview.options = {
-            enableScripts: true,
-            localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, "pack", "webview")],
-        };
-        webviewPanel.webview.html = createDiagramEditorHtml(this.context.extensionUri, webviewPanel.webview);
-
-        const panelState: DiagramEditorPanelState = {
-            panel: webviewPanel,
-            requestVersion: 0,
-            disposed: false,
-        };
-        this.registerPanel(document.uri, panelState);
-
-        webviewPanel.onDidDispose(() => {
-            panelState.disposed = true;
-            this.unregisterPanel(document.uri, panelState);
-        });
-
-        webviewPanel.webview.onDidReceiveMessage(async (message: DiagramIncomingMessage) => {
-            await this.handleIncomingMessage(document, message);
-        });
-
-        void this.pushDocumentState(document, panelState);
+    if (value.type === "revealSource" && typeof value.id === "string") {
+      const model = state.last?.viewModel;
+      const location = model?.nodes.find(node => node.id === value.id)?.source ?? model?.edges.find(edge => edge.id === value.id)?.source_;
+      if (location) {
+        const source = await vscode.workspace.openTextDocument(vscode.Uri.parse(location.uri));
+        await vscode.window.showTextDocument(source, { viewColumn: vscode.ViewColumn.One, selection: new vscode.Range(location.line, location.character, location.endLine, location.endCharacter) });
+      }
+      return;
     }
-
-    private async handleIncomingMessage(document: vscode.TextDocument, message: DiagramIncomingMessage): Promise<void> {
-        if (message.type === "ready") {
-            await this.refreshDocumentEditors(document);
-            return;
-        }
-
-        if (message.type === "updateSource") {
-            await this.replaceDocumentText(document, message.text);
-            return;
-        }
-
-        if (message.type === "updateLayout") {
-            const parsed = parseTontoDiagramSpec(document.getText());
-            if (!parsed.spec) {
-                return;
-            }
-
-            const updatedSpec = updateTontoDiagramLayout(
-                parsed.spec,
-                message.nodes.map((node) => ({
-                    target: node.specifier,
-                    x: node.x,
-                    y: node.y,
-                }))
-            );
-
-            await this.writeSpec(document, updatedSpec);
-            return;
-        }
-
-        if (message.type === "updateImports") {
-            await this.mutateSpec(document, (spec) => ({
-                ...spec,
-                imports: dedupeSorted(message.imports),
-            }));
-            return;
-        }
-
-        if (message.type === "updateInclude") {
-            await this.mutateSpec(document, (spec) => ({
-                ...spec,
-                filter: {
-                    ...spec.filter,
-                    include: dedupeSorted(message.include),
-                },
-            }));
-            return;
-        }
-
-        if (message.type === "updatePresentation") {
-            await this.mutateSpec(document, (spec) => ({
-                ...spec,
-                presentation: {
-                    direction: message.direction ?? spec.presentation.direction,
-                    stereotypes: message.stereotypes ?? spec.presentation.stereotypes,
-                    attributes: message.attributes ?? spec.presentation.attributes,
-                },
-            }));
-            return;
-        }
-
-        if (message.type === "updateFilterFlags") {
-            await this.mutateSpec(document, (spec) => ({
-                ...spec,
-                filter: {
-                    ...spec.filter,
-                    external: message.external ?? spec.filter.external,
-                    datatypes: message.datatypes ?? spec.filter.datatypes,
-                },
-            }));
-            return;
-        }
-
-        if (message.type === "updateTitle") {
-            const trimmed = message.title.trim();
-            if (!trimmed) {
-                return;
-            }
-            await this.mutateSpec(document, (spec) => ({
-                ...spec,
-                title: trimmed,
-            }));
-            return;
-        }
-
-        if (message.type === "requestExport") {
-            await this.handleExportRequest(document, message.format);
-            return;
-        }
+    if (value.type === "selection") return;
+    if (value.type === "convertView") { await this.convert(document); return; }
+    if (value.type === "requestExport" && (value.format === "svg" || value.format === "png" || value.format === "plantuml")) {
+      if (value.format === "plantuml") { await vscode.commands.executeCommand("tonto.diagram.plantuml.openProject", vscode.Uri.file(state.last?.graph?.source ?? document.uri.fsPath)); return; }
+      if (typeof value.svg !== "string" || value.svg.length > 16 * 1024 * 1024 || !value.svg.startsWith("<svg")) throw new Error("Export requires the current rendered SVG.");
+      const target = await vscode.window.showSaveDialog({ defaultUri: document.uri.with({ path: document.uri.path.replace(/\.tonto(diagram|view)$/, `.${value.format}`) }), filters: { [value.format.toUpperCase()]: [value.format] } });
+      if (!target) return;
+      const bytes = value.format === "svg" ? Buffer.from(value.svg, "utf8") : await this.rasterize(state, value.svg);
+      await vscode.workspace.fs.writeFile(target, bytes); return;
     }
-
-    private async handleExportRequest(document: vscode.TextDocument, format: "png" | "svg" | "plantuml"): Promise<void> {
-        if (format === "plantuml") {
-            await vscode.commands.executeCommand("tonto.diagram.plantuml.openProject", document.uri);
-            return;
-        }
-
-        // PNG/SVG are produced inside the webview from the live ReactFlow canvas;
-        // when the webview offers a ready-made blob we'll forward it via showSaveDialog.
-        // For now surface the format as a not-yet-wired notification so the UX
-        // makes it obvious the request was received but the host needs more work.
-        vscode.window.showInformationMessage(`Tonto diagram: ${format.toUpperCase()} export is handled in the webview.`);
+    if (value.type === "updateSource" && typeof value.text === "string" && value.text.length < 8 * 1024 * 1024) {
+      await this.replace(document, value.text); return;
     }
-
-    private async mutateSpec(
-        document: vscode.TextDocument,
-        mutate: (spec: TontoDiagramSpec) => TontoDiagramSpec,
-    ): Promise<void> {
-        const parsed = parseTontoDiagramSpec(document.getText());
-        if (!parsed.spec) {
-            return;
-        }
-        const next = mutate({ ...parsed.spec, source: undefined });
-        await this.writeSpec(document, next);
+    if (value.type === "updateArrangement" && isRecord(value.arrangement)) {
+      if (this.isLegacy(document)) { await this.convert(document); return; }
+      const next = readViewFile(value.arrangement);
+      // The canvas cannot change which filesystem source this editor is bound to.
+      next.source = this.parseView(document.getText()).source;
+      await this.writeView(document, next); return;
     }
-
-    private async writeSpec(document: vscode.TextDocument, spec: TontoDiagramSpec): Promise<void> {
-        const serialized = serializeTontoDiagramSpec(spec);
-        if (serialized !== document.getText()) {
-            await this.replaceDocumentText(document, serialized);
-        }
+    if (!this.isLegacy(document)) {
+      const file = this.parseView(document.getText());
+      if (value.type === "updateImports" && stringList(value.imports)) file.content.includedPackages = dedupeSorted(value.imports);
+      else if (value.type === "updateInclude" && stringList(value.include)) {
+        const ids = new Set(value.include);
+        file.content.hidden = value.include.length ? (state.last?.viewModel?.nodes ?? []).filter(node => !ids.has(node.id) && !ids.has(`${node.package}.${node.name}`) && !ids.has(node.name)).map(node => node.id) : [];
+      } else if (value.type === "updatePresentation") {
+        if (typeof value.attributes === "boolean") file.display.showAttributes = value.attributes;
+        if (typeof value.stereotypes === "boolean") file.display.showRelationStereotypes = value.stereotypes;
+        if (value.direction === "TB" || value.direction === "LR") file.layout.direction = value.direction === "LR" ? "RIGHT" : "DOWN";
+      } else if (value.type === "updateFilterFlags") {
+        if (typeof value.external === "boolean") file.content.showExternalReferences = value.external;
+        if (typeof value.datatypes === "boolean") file.content.showDatatypes = value.datatypes;
+      } else if (value.type === "updateTitle" && typeof value.title === "string" && value.title.trim()) {
+        const raw: unknown = JSON.parse(document.getText());
+        await this.replace(document, JSON.stringify({ ...(isRecord(raw) ? raw : {}), title: value.title.trim() }, null, 2) + "\n"); return;
+      } else return;
+      await this.writeView(document, file); return;
     }
+    const parsed = parseTontoDiagramSpec(document.getText());
+    if (!parsed.spec) return;
+    let spec = parsed.spec;
+    if (value.type === "updateLayout" && Array.isArray(value.nodes)) {
+      const nodes = value.nodes.filter(isRecord).filter(node => typeof node.specifier === "string" && typeof node.x === "number" && Number.isFinite(node.x) && typeof node.y === "number" && Number.isFinite(node.y));
+      spec = updateTontoDiagramLayout(spec, nodes.map(node => ({ target: String(node.specifier), x: Number(node.x), y: Number(node.y) })));
+    } else if (value.type === "updateImports" && stringList(value.imports)) spec.imports = dedupeSorted(value.imports);
+    else if (value.type === "updateInclude" && stringList(value.include)) spec.filter.include = dedupeSorted(value.include);
+    else if (value.type === "updateTitle" && typeof value.title === "string" && value.title.trim()) spec.title = value.title.trim();
+    else if (value.type === "updatePresentation") {
+      if (typeof value.attributes === "boolean") spec.presentation.attributes = value.attributes;
+      if (typeof value.stereotypes === "boolean") spec.presentation.stereotypes = value.stereotypes;
+      if (["TB", "BT", "LR", "RL"].includes(String(value.direction))) spec.presentation.direction = value.direction as TontoDiagramSpec["presentation"]["direction"];
+    } else if (value.type === "updateFilterFlags") {
+      if (typeof value.external === "boolean") spec.filter.external = value.external;
+      if (typeof value.datatypes === "boolean") spec.filter.datatypes = value.datatypes;
+    } else return;
+    await this.replace(document, serializeTontoDiagramSpec(spec));
+  }
 
-    private async refreshDocumentEditors(document: vscode.TextDocument): Promise<void> {
-        const documentPanels = this.panelsByDocument.get(document.uri.toString());
-        if (!documentPanels) {
-            return;
-        }
-
-        await Promise.all(
-            [...documentPanels].map(async (panelState) => {
-                await this.pushDocumentState(document, panelState);
-            }),
-        );
+  private rasterize(state: PanelState, svg: string): Promise<Uint8Array> {
+    const id = ++this.rasterId;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this.rasters.delete(id); reject(new Error("PNG export timed out.")); }, 15000);
+      this.rasters.set(id, { panel: state, resolve, reject, timer });
+      void state.panel.webview.postMessage({ type: "rasterize", id, svg, scale: 2 });
+    });
+  }
+  private async convert(document: vscode.TextDocument): Promise<void> {
+    if (!this.isLegacy(document)) return;
+    const resolved = await this.resolveState(document, document.getText());
+    const parsed = parseTontoDiagramSpec(document.getText());
+    if (!parsed.spec || !resolved.graph || !resolved.arrangement) return;
+    const conversion = legacySpecToViewFile(parsed.spec, resolved.graph);
+    if (conversion.unmapped.length) {
+      const choice = await vscode.window.showWarningMessage(`Conversion needs review: ${conversion.unmapped.join("; ")}`, { modal: true }, "Create View");
+      if (choice !== "Create View") return;
     }
-
-    private async refreshEditorsForSourcePath(sourcePath: string): Promise<void> {
-        const affectedDocuments = new Set<string>();
-
-        for (const [sourceScope, documentKeys] of this.documentsBySourcePath) {
-            if (!isTontoSourceInDiagramScope(sourcePath, sourceScope)) {
-                continue;
-            }
-
-            for (const documentKey of documentKeys) {
-                affectedDocuments.add(documentKey);
-            }
-        }
-
-        await Promise.all(
-            [...affectedDocuments].map(async (documentKey) => {
-                const document = vscode.workspace.textDocuments.find((candidate) => candidate.uri.toString() === documentKey);
-                if (!document) {
-                    return;
-                }
-
-                await this.refreshDocumentEditors(document);
-            }),
-        );
-    }
-
-    private async pushDocumentState(document: vscode.TextDocument, panelState: DiagramEditorPanelState): Promise<void> {
-        const requestVersion = ++panelState.requestVersion;
-        const immediateState = this.createImmediateDocumentState(document);
-
-        if (panelState.disposed) {
-            return;
-        }
-
-        await panelState.panel.webview.postMessage(immediateState.message);
-
-        if (!immediateState.parsed.spec) {
-            this.remapDocumentSource(document.uri.toString(), panelState.sourcePath, undefined);
-            panelState.sourcePath = undefined;
-            return;
-        }
-
-        const documentState = await this.createResolvedDocumentState(document, immediateState.parsed, immediateState.message);
-        if (panelState.disposed || panelState.requestVersion !== requestVersion) {
-            return;
-        }
-
-        this.remapDocumentSource(document.uri.toString(), panelState.sourcePath, documentState.graph?.source);
-        panelState.sourcePath = documentState.graph?.source;
-
-        await panelState.panel.webview.postMessage(documentState);
-    }
-
-    private createImmediateDocumentState(document: vscode.TextDocument): {
-        parsed: ReturnType<typeof parseTontoDiagramSpec>;
-        message: DiagramDocumentStateMessage;
-    } {
-        const parsed = parseTontoDiagramSpec(document.getText());
-        return {
-            parsed,
-            message: {
-                type: "documentState",
-                status: parsed.spec ? "loading" : "error",
-                documentText: document.getText(),
-                issues: [...parsed.issues],
-            },
-        };
-    }
-
-    private async createResolvedDocumentState(
-        document: vscode.TextDocument,
-        parsed: ReturnType<typeof parseTontoDiagramSpec>,
-        immediateState: DiagramDocumentStateMessage,
-    ): Promise<DiagramDocumentStateMessage> {
-        const issues = [...immediateState.issues];
-        let graph: TontoDiagramGraph | undefined;
-        let status: DiagramDocumentStateMessage["status"] = "ready";
-
-        if (parsed.spec) {
-            try {
-                graph = await buildTontoDiagramGraph(parsed.spec, document.uri.fsPath);
-                issues.push(...graph.issues);
-            } catch (error) {
-                status = "error";
-                issues.push({
-                    severity: "error",
-                    message: error instanceof Error ? error.message : String(error),
-                });
-            }
-        }
-
-        return {
-            type: "documentState",
-            status,
-            documentText: immediateState.documentText,
-            graph,
-            issues,
-        };
-    }
-
-    private registerPanel(documentUri: vscode.Uri, panelState: DiagramEditorPanelState): void {
-        const documentKey = documentUri.toString();
-        if (!this.panelsByDocument.has(documentKey)) {
-            this.panelsByDocument.set(documentKey, new Set());
-        }
-
-        this.panelsByDocument.get(documentKey)?.add(panelState);
-    }
-
-    private unregisterPanel(documentUri: vscode.Uri, panelState: DiagramEditorPanelState): void {
-        const documentKey = documentUri.toString();
-        const documentPanels = this.panelsByDocument.get(documentKey);
-        if (documentPanels) {
-            documentPanels.delete(panelState);
-            if (documentPanels.size === 0) {
-                this.panelsByDocument.delete(documentKey);
-            }
-        }
-
-        if (panelState.sourcePath) {
-            const documents = this.documentsBySourcePath.get(panelState.sourcePath);
-            documents?.delete(documentKey);
-            if (documents && documents.size === 0) {
-                this.documentsBySourcePath.delete(panelState.sourcePath);
-            }
-        }
-    }
-
-    private remapDocumentSource(documentKey: string, previousSourcePath: string | undefined, nextSourcePath: string | undefined): void {
-        if (previousSourcePath) {
-            const previousDocuments = this.documentsBySourcePath.get(previousSourcePath);
-            previousDocuments?.delete(documentKey);
-            if (previousDocuments && previousDocuments.size === 0) {
-                this.documentsBySourcePath.delete(previousSourcePath);
-            }
-        }
-
-        if (nextSourcePath) {
-            if (!this.documentsBySourcePath.has(nextSourcePath)) {
-                this.documentsBySourcePath.set(nextSourcePath, new Set());
-            }
-            this.documentsBySourcePath.get(nextSourcePath)?.add(documentKey);
-        }
-    }
-
-    private async replaceDocumentText(document: vscode.TextDocument, nextText: string): Promise<void> {
-        const fullRange = new vscode.Range(
-            document.positionAt(0),
-            document.positionAt(document.getText().length),
-        );
-        const edit = new vscode.WorkspaceEdit();
-        edit.replace(document.uri, fullRange, nextText);
-        const applied = await vscode.workspace.applyEdit(edit);
-        if (applied && document.isDirty) {
-            try {
-                await document.save();
-            } catch (error) {
-                console.error("Failed to auto-save Tonto diagram document", error);
-            }
-        }
-    }
-
-    private getPanelStates(): DiagramEditorPanelState[] {
-        return [...this.panelsByDocument.values()].flatMap((panelStates) => [...panelStates]);
-    }
+    const source = resolved.graph.source;
+    const suggested = source?.endsWith(".tonto") ? namedViewPath(source, parsed.spec.title) : path.join(path.dirname(document.uri.fsPath), "views", `${parsed.spec.title.replace(/[^\w.-]+/g, "-")}.tontoview`);
+    const target = await vscode.window.showSaveDialog({ title: "Convert to Tonto View", defaultUri: vscode.Uri.file(suggested), filters: { "Tonto View": ["tontoview"] } });
+    if (!target) return;
+    conversion.file.source = source?.endsWith(".tonto") ? path.relative(path.dirname(target.fsPath), source).split(path.sep).join("/") : undefined;
+    await this.createView(target, canonicalizeLegacyViewFile(conversion.file, resolved.graph));
+  }
+  private async createView(uri: vscode.Uri, file: ViewFile): Promise<void> {
+    await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(uri.fsPath)));
+    const edit = new vscode.WorkspaceEdit();
+    edit.createFile(uri, { overwrite: false });
+    edit.insert(uri, new vscode.Position(0, 0), JSON.stringify(file, null, 2) + "\n");
+    if (!await vscode.workspace.applyEdit(edit)) throw new Error("The target view already exists or could not be created.");
+    await vscode.commands.executeCommand("vscode.openWith", uri, TontoDiagramEditorProvider.viewFileType);
+  }
+  private async chooseView(): Promise<void> {
+    const files = await vscode.workspace.findFiles("**/views/*.tontoview");
+    const chosen = await vscode.window.showQuickPick(files.map(uri => ({ label: path.basename(uri.fsPath), description: vscode.workspace.asRelativePath(uri), uri })), { title: "Open Tonto View" });
+    if (chosen) await vscode.commands.executeCommand("vscode.openWith", chosen.uri, TontoDiagramEditorProvider.viewFileType);
+  }
+  private async saveNamedView(): Promise<void> {
+    const active = [...this.panels].find(panel => panel.panel.active);
+    if (!active) return;
+    if (this.isLegacy(active.document)) { await this.convert(active.document); return; }
+    const name = await vscode.window.showInputBox({ title: "Save as Named Tonto View", validateInput: value => /[\p{L}\p{N}]/u.test(value) ? undefined : "Enter a view name." });
+    if (!name) return;
+    const file = this.parseView(active.document.getText());
+    const source = file.source ? path.resolve(path.dirname(active.document.uri.fsPath), file.source) : undefined;
+    if (!source) throw new Error("Select a source model before saving a named view.");
+    const target = namedViewPath(source, name);
+    file.source = path.relative(path.dirname(target), source).split(path.sep).join("/");
+    await this.createView(vscode.Uri.file(target), file);
+  }
 }
-
 function createDiagramEditorHtml(extensionUri: vscode.Uri, webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "pack", "webview", "diagram-editor.js"));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "pack", "webview", "style.css"));
 
+    const nonce = randomBytes(18).toString("base64");
     return `<!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; script-src ${webview.cspSource}; style-src 'unsafe-inline' ${webview.cspSource} https://fonts.googleapis.com; font-src ${webview.cspSource} https://fonts.gstatic.com;">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; script-src 'nonce-${nonce}'; style-src 'unsafe-inline' ${webview.cspSource} https://fonts.googleapis.com; font-src ${webview.cspSource} https://fonts.gstatic.com;">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -493,7 +378,7 @@ function createDiagramEditorHtml(extensionUri: vscode.Uri, webview: vscode.Webvi
     </head>
     <body>
         <div id="root" data-diagram-name="${escapeHtml(path.basename(extensionUri.fsPath))}"></div>
-        <script type="module" src="${scriptUri}"></script>
+        <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
     </body>
 </html>`;
 }

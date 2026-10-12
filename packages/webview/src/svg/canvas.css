@@ -1,0 +1,23 @@
+.tonto-svg-canvas { position:absolute; inset:0; overflow:hidden; touch-action:none; outline:none; background:var(--bg); background-image:radial-gradient(var(--grid-minor) 1px, transparent 1px); background-size:16px 16px; }
+.no-minor-grid .tonto-svg-canvas { background-image:none; }
+.tonto-svg-canvas:focus-visible { box-shadow:inset 0 0 0 2px var(--accent); }
+.tonto-svg-paper { position:absolute; left:0; top:0; transform-origin:0 0; }
+.tonto-svg-paper [data-node] { cursor:move; }
+.tonto-svg-paper [data-edge], .tonto-svg-paper text[data-for] { cursor:pointer; }
+.tonto-svg-handles { position:absolute; overflow:visible; pointer-events:none; }
+.tonto-resize-handle, .tonto-route-handle { pointer-events:all; fill:var(--accent); stroke:var(--bg); stroke-width:1.5; }
+.tonto-resize-handle { cursor:nwse-resize; }
+.tonto-route-handle { cursor:move; }
+.tonto-svg-toolbar { position:absolute; top:12px; left:12px; right:12px; display:flex; flex-wrap:wrap; gap:5px; align-items:center; padding:7px; border:1px solid var(--border); background:var(--bg); box-shadow:0 2px 12px #0002; border-radius:4px; font-size:11px; }
+.tonto-svg-toolbar button,.tonto-svg-toolbar select { background:var(--bg); color:var(--fg); border:1px solid var(--border); padding:4px 7px; border-radius:2px; font-size:11px; cursor:pointer; }
+.tonto-svg-toolbar button:hover { border-color:var(--accent); }
+.tonto-svg-toolbar button:disabled { opacity:.4; cursor:default; }
+.tonto-svg-toolbar label { display:flex; gap:3px; align-items:center; }
+.tonto-svg-toolbar input { accent-color:var(--accent); }
+.tonto-svg-help { position:absolute; bottom:10px; left:12px; padding:4px 8px; background:var(--bg); color:var(--fg-muted); font-size:10px; pointer-events:none; }
+.tonto-svg-error,.tonto-svg-stale { position:absolute; bottom:38px; left:12px; right:100px; padding:8px 12px; background:var(--err-soft); border:1px solid var(--err); color:var(--err); font-size:12px; }
+.tonto-svg-toolbar { z-index:2; color:var(--fg); border-color:var(--line); background:var(--surface, var(--bg)); }
+.tonto-svg-toolbar button,.tonto-svg-toolbar select { border-color:var(--line); color:var(--fg); }
+.tonto-svg-toolbar button:disabled { opacity:.5; }
+.tonto-svg-help { z-index:2; color:var(--fg-2, var(--fg)); border:1px solid var(--line); }
+.tonto-svg-error,.tonto-svg-stale { z-index:3; font-weight:500; }

@@ -1,25 +1,12 @@
 import * as React from "react";
-import {
-    Background,
-    BackgroundVariant,
-    Controls,
-    ReactFlow,
-    ReactFlowProvider,
-    type Edge,
-    type Node,
-    useEdgesState,
-    useNodesInitialized,
-    useNodesState,
-    useReactFlow,
-} from "@xyflow/react";
 import type {
     TontoDiagramGraph,
     TontoDiagramIssue,
     TontoDiagramPresentation,
 } from "tonto-cli";
 import { cn } from "./utils/cn";
-import { DiagramNode } from "./components/diagram-node";
-import { EdgesOverlay } from "./components/edges-overlay";
+import { SvgCanvas, type SvgCanvasHandle } from "../svg/canvas";
+import type { ViewFile, ViewModel } from "tonto-cli/lib/view/model/index.js";
 import { ExportFab } from "./components/export-fab";
 import { PackageTree } from "./components/package-tree";
 import { Sidebar, type SidebarTabId } from "./components/sidebar";
@@ -27,14 +14,9 @@ import { SourcePanel } from "./components/source-panel";
 import { ViewPanel } from "./components/view-panel";
 import { SettingsModal } from "./components/settings-modal";
 import { UfoLegend } from "./components/ufo-legend";
-import { downloadPng, downloadSvg } from "./lib/export";
 import { useDiagramSettings } from "./lib/settings";
 import type { DiagramDocumentStateMessage, DiagramDocumentStateStatus, DiagramExportFormat } from "./messages";
 import { postToVscode } from "./vscode";
-
-const NODE_TYPES = {
-    diagram: DiagramNode,
-};
 
 type Theme = "light" | "dark";
 
@@ -53,6 +35,12 @@ export function App() {
     });
 
     React.useEffect(() => {
+        const listener = (event: MessageEvent) => { if (event.data?.type === "theme" && typeof event.data.dark === "boolean") setTheme(event.data.dark ? "dark" : "light"); };
+        window.addEventListener("message", listener);
+        return () => window.removeEventListener("message", listener);
+    }, []);
+
+    React.useEffect(() => {
         const root = document.documentElement;
         root.classList.toggle("dark", theme === "dark");
         try {
@@ -63,9 +51,9 @@ export function App() {
     }, [theme]);
 
     return (
-        <ReactFlowProvider>
+        <>
             <DiagramEditor theme={theme} onSetTheme={setTheme} />
-        </ReactFlowProvider>
+        </>
     );
 }
 
@@ -84,13 +72,10 @@ function DiagramEditor({ theme, onSetTheme }: { theme: Theme; onSetTheme: (next:
     const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
     const [settingsOpen, setSettingsOpen] = React.useState(false);
     const [titleDraft, setTitleDraft] = React.useState<string>("");
-    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-    // ReactFlow edges stay empty — we render relations ourselves via
-    // `EdgesOverlay` to bypass the rendering issues we hit in this webview.
-    const [edges] = useEdgesState<Edge>([]);
-    const [diagramEdges, setDiagramEdges] = React.useState<TontoDiagramGraph["edges"]>([]);
-    const reactFlow = useReactFlow();
-    const nodesInitialized = useNodesInitialized();
+    const [viewModel, setViewModel] = React.useState<ViewModel>();
+    const [arrangement, setArrangement] = React.useState<ViewFile>();
+    const [isLegacy, setIsLegacy] = React.useState(true);
+    const canvas = React.useRef<SvgCanvasHandle>(null);
     const sourceUpdateTimeout = React.useRef<number | undefined>(undefined);
     const hasFitInitialGraph = React.useRef(false);
     const canvasDescriptionId = React.useId();
@@ -114,8 +99,10 @@ function DiagramEditor({ theme, onSetTheme }: { theme: Theme; onSetTheme: (next:
                 // Graph available — adopt it, refresh nodes/edges in place.
                 setGraph(next.graph);
                 setTitleDraft((current) => (current && current.trim() && current !== next.graph!.title ? current : next.graph!.title));
-                setNodes(toFlowNodes(next.graph));
-                setDiagramEdges(next.graph.edges);
+                setViewModel(next.viewModel);
+                setArrangement(next.arrangement);
+                setIsLegacy(next.isLegacy ?? true);
+                hasFitInitialGraph.current = true;
                 setStatus(nextStatus === "loading" ? "ready" : nextStatus);
                 return;
             }
@@ -127,8 +114,7 @@ function DiagramEditor({ theme, onSetTheme }: { theme: Theme; onSetTheme: (next:
             setStatus(nextStatus);
             if (nextStatus === "error" && !hasFitInitialGraph.current) {
                 setGraph(undefined);
-                setNodes([]);
-                setDiagramEdges([]);
+                setViewModel(undefined);
             }
         };
 
@@ -142,7 +128,7 @@ function DiagramEditor({ theme, onSetTheme }: { theme: Theme; onSetTheme: (next:
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [setNodes]);
+    }, []);
 
     React.useEffect(() => {
         if (!hasReceivedState || sourceDraft === documentText) return;
@@ -156,24 +142,6 @@ function DiagramEditor({ theme, onSetTheme }: { theme: Theme; onSetTheme: (next:
         };
     }, [documentText, hasReceivedState, sourceDraft]);
 
-    React.useEffect(() => {
-        if (!graph || !nodesInitialized || hasFitInitialGraph.current) return;
-        hasFitInitialGraph.current = true;
-        void reactFlow.fitView({ padding: 0.16, maxZoom: 1, duration: 0 });
-    }, [graph, nodesInitialized, reactFlow]);
-
-    const persistNodeLayout = React.useCallback((nextNodes: Node[]) => {
-        postToVscode({
-            type: "updateLayout",
-            nodes: nextNodes.map((node) => ({
-                id: node.id,
-                specifier: typeof node.data?.specifier === "string" ? node.data.specifier : node.id,
-                x: node.position.x,
-                y: node.position.y,
-            })),
-        });
-    }, []);
-
     const commitTitle = React.useCallback(() => {
         const next = titleDraft.trim();
         if (!graph || !next || next === graph.title) {
@@ -184,15 +152,8 @@ function DiagramEditor({ theme, onSetTheme }: { theme: Theme; onSetTheme: (next:
     }, [graph, titleDraft]);
 
     const handleExport = React.useCallback((format: DiagramExportFormat) => {
-        const base = (graph?.title || "diagram").replace(/[^\w.-]+/g, "_");
-        if (format === "png") {
-            void downloadPng(base);
-        } else if (format === "svg") {
-            void downloadSvg(base);
-        } else {
-            postToVscode({ type: "requestExport", format });
-        }
-    }, [graph?.title]);
+        postToVscode({ type: "requestExport", format, ...(format !== "plantuml" ? { svg: canvas.current?.exportSvg() } : {}) });
+    }, []);
 
     if (!hasReceivedState) {
         return <DiagramStartupView />;
@@ -244,7 +205,7 @@ function DiagramEditor({ theme, onSetTheme }: { theme: Theme; onSetTheme: (next:
                             }}
                             aria-label="Diagram name"
                         />
-                        <span className="ext">.tontodiagram</span>
+                        <span className="ext">{isLegacy ? ".tontodiagram" : ".tontoview"}</span>
                     </div>
                     <div className="tonto-spacer" />
                 </header>
@@ -260,54 +221,17 @@ function DiagramEditor({ theme, onSetTheme }: { theme: Theme; onSetTheme: (next:
                         {getCanvasDescription(graph)}
                     </div>
 
-                    <ReactFlow
-                        fitView
-                        fitViewOptions={{ padding: 0.16, maxZoom: 1 }}
-                        nodes={nodes}
-                        edges={edges}
-                        nodeTypes={NODE_TYPES}
-                        onNodesChange={onNodesChange}
-                        onNodeDragStop={(_, draggedNode) => {
-                            const nextNodes = nodes.map((node) =>
-                                node.id === draggedNode.id
-                                    ? { ...node, position: draggedNode.position }
-                                    : node,
-                            );
-                            setNodes(nextNodes);
-                            persistNodeLayout(nextNodes);
-                        }}
-                        aria-label={graph ? `${graph.title} diagram canvas` : "Tonto diagram canvas"}
-                        aria-describedby={canvasDescriptionId}
-                        role="region"
-                        tabIndex={0}
-                        nodesFocusable
-                        edgesFocusable
-                        nodesConnectable={false}
-                        edgesReconnectable={false}
-                        className="h-full w-full"
-                        style={{ background: "var(--bg)" }}
-                    >
-                        <Background
-                            id="tonto-grid-minor"
-                            variant={BackgroundVariant.Dots}
-                            gap={16}
-                            size={1.1}
-                            color="var(--grid-minor)"
-                        />
-                        <Background
-                            id="tonto-grid-major"
-                            variant={BackgroundVariant.Dots}
-                            gap={80}
-                            size={1.8}
-                            color="var(--grid-major)"
-                        />
-                        <Controls showInteractive={false} />
-                        <EdgesOverlay
-                            edges={diagramEdges}
-                            showCardinalities
-                            routing={settings.edgeRouting}
-                        />
-                    </ReactFlow>
+                    {viewModel && arrangement ? (
+                        <SvgCanvas ref={canvas} model={viewModel} arrangement={arrangement}
+                            isLegacy={isLegacy} graph={graph} dark={isDark}
+                            onChange={setArrangement} />
+                    ) : null}
+                    {status === "error" && graph ? (
+                        <div className="tonto-svg-stale" role="status">
+                            Showing the last valid diagram. {issues.find(issue => issue.severity === "error")?.message}
+                        </div>
+                    ) : null}
+
 
                     <div className="tonto-canvas-vignette" aria-hidden="true" />
 
@@ -538,19 +462,5 @@ function resolveDocumentStatus(message: DiagramDocumentStateMessage): DiagramDoc
     if (message.status) return message.status;
     if (message.graph) return "ready";
     return message.issues?.some((issue) => issue.severity === "error") ? "error" : "loading";
-}
-
-function toFlowNodes(graph: TontoDiagramGraph): Node[] {
-    return graph.nodes.map((node) => ({
-        id: node.id,
-        type: "diagram",
-        position: node.position,
-        data: {
-            node,
-            specifier: node.specifier,
-            showAttributes: graph.presentation.attributes,
-            showStereotypes: graph.presentation.stereotypes,
-        },
-    }));
 }
 

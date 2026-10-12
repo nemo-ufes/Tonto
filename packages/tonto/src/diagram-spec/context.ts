@@ -1,4 +1,9 @@
-import { NodeFileSystem } from "langium/node";
+import { EmptyFileSystem, type LangiumDocument } from "langium";
+import { URI } from "vscode-uri";
+import { readFile } from "node:fs/promises";
+import { getTontoProjectSourceFiles } from "../cli/utils/buildFolderDocuments.js";
+import { readOrCreateDefaultTontoManifest } from "../cli/utils/readManifest.js";
+import { builtInLibs } from "../language/workspace/builtins/index.js";
 import path from "node:path";
 import { access } from "node:fs/promises";
 import { createTontoServices } from "../language/tonto-module.js";
@@ -11,7 +16,7 @@ import {
     isDataType,
     isElementRelation
 } from "../language/generated/ast.js";
-import { buildFolderDocuments } from "../cli/utils/buildFolderDocuments.js";
+
 import { getModelContextModules } from "../language/utils/modelStatements.js";
 import {
     TontoDiagramElementContext,
@@ -20,52 +25,54 @@ import {
     TontoDiagramWorkspaceContext
 } from "./types.js";
 
-type DiagramWorkspace = {
+export type DiagramWorkspace = {
     sourceModel?: Model;
     sourcePath?: string;
     projectRoot: string;
     models: Model[];
     ontologyModels: Model[];
+    issues: { message: string; severity: "error" | "warning" }[];
 };
 
-export async function loadTontoDiagramProjectWorkspace(diagramPath: string): Promise<DiagramWorkspace> {
-    const projectRoot = await findTontoProjectRoot(path.dirname(diagramPath));
-    const services = createTontoServices({ ...NodeFileSystem }).Tonto;
-    const builtDocuments = await buildFolderDocuments(projectRoot, services, { validation: false });
-
-    return {
-        projectRoot,
-        models: builtDocuments.models,
-        ontologyModels: excludeBuiltInModels(builtDocuments.models),
-    };
+export async function loadTontoDiagramProjectWorkspace(
+    diagramPath: string, overlays: ReadonlyMap<string, string> = new Map()
+): Promise<DiagramWorkspace> {
+    return loadTontoDiagramWorkspace(undefined, diagramPath, overlays);
 }
 
-export async function loadTontoDiagramWorkspace(source: string | undefined, diagramPath: string): Promise<DiagramWorkspace> {
-    if (!source) {
-        return loadTontoDiagramProjectWorkspace(diagramPath);
+/** Fresh linked documents prevent stale cross-file references; overlays never write to disk. */
+export async function loadTontoDiagramWorkspace(
+    source: string | undefined, diagramPath: string, overlays: ReadonlyMap<string, string> = new Map(), workspaceRoot?: string
+): Promise<DiagramWorkspace> {
+    const sourcePath = source ? resolveTontoDiagramSourcePath(source, diagramPath) : undefined;
+    const projectRoot = await findTontoProjectRoot(sourcePath ? path.dirname(sourcePath) : path.dirname(diagramPath), workspaceRoot);
+    const services = createTontoServices(EmptyFileSystem);
+    const documents: LangiumDocument<Model>[] = [];
+    for (const lib of builtInLibs) {
+        documents.push(services.shared.workspace.LangiumDocumentFactory.fromString<Model>(lib.content, URI.parse(lib.uri)));
     }
-
-    const sourcePath = resolveTontoDiagramSourcePath(source, diagramPath);
-    const projectRoot = await findTontoProjectRoot(path.dirname(sourcePath));
-    const services = createTontoServices({ ...NodeFileSystem }).Tonto;
-    const builtDocuments = await buildFolderDocuments(projectRoot, services, { validation: false });
-    const sourceModel = builtDocuments.models.find((model) => model.$document?.uri.fsPath === sourcePath);
-
-    if (!sourceModel) {
-        return {
-            projectRoot,
-            models: builtDocuments.models,
-            ontologyModels: excludeBuiltInModels(builtDocuments.models),
-        };
+    const files = await getTontoProjectSourceFiles(projectRoot, readOrCreateDefaultTontoManifest(projectRoot));
+    const sources = new Map<string, string>();
+    for (const file of files.sort()) sources.set(path.resolve(file), overlays.get(path.resolve(file)) ?? await readFile(file, "utf8"));
+    for (const [file, text] of overlays) {
+        const relative = path.relative(projectRoot, file);
+        if (path.extname(file) === ".tonto" && relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)) {
+            sources.set(path.resolve(file), text);
+        }
     }
-
-    return {
-        sourceModel,
-        sourcePath,
-        projectRoot,
-        models: builtDocuments.models,
-        ontologyModels: excludeBuiltInModels(builtDocuments.models),
-    };
+    for (const [file, text] of sources) {
+        documents.push(services.shared.workspace.LangiumDocumentFactory.fromString<Model>(text, URI.file(file)));
+    }
+    for (const document of documents) services.shared.workspace.LangiumDocuments.addDocument(document);
+    await services.shared.workspace.DocumentBuilder.build(documents, { validation: false });
+    const issues: DiagramWorkspace["issues"] = documents.filter(document => document.uri.scheme === "file").flatMap(document => [
+        ...document.parseResult.lexerErrors.map(error => ({ severity: "error" as const, message: `${document.uri.fsPath}: ${error.message}` })),
+        ...document.parseResult.parserErrors.map(error => ({ severity: "error" as const, message: `${document.uri.fsPath}: ${error.message}` })),
+        ...document.references.filter(reference => reference.error).map(reference => ({ severity: "error" as const, message: reference.error?.message ?? "Unresolved reference" })),
+    ]);
+    const models = documents.map(document => document.parseResult.value);
+    return { projectRoot, sourcePath, sourceModel: models.find(model => model.$document?.uri.fsPath === sourcePath),
+        models, ontologyModels: excludeBuiltInModels(models), issues };
 }
 
 export async function collectTontoDiagramWorkspaceContext(
@@ -227,7 +234,7 @@ function addRelation(
     });
 }
 
-async function findTontoProjectRoot(startDirectory: string): Promise<string> {
+async function findTontoProjectRoot(startDirectory: string, fallbackDirectory = startDirectory): Promise<string> {
     let currentDirectory = path.resolve(startDirectory);
 
     while (true) {
@@ -238,7 +245,7 @@ async function findTontoProjectRoot(startDirectory: string): Promise<string> {
         } catch {
             const parentDirectory = path.dirname(currentDirectory);
             if (parentDirectory === currentDirectory) {
-                return startDirectory;
+                return fallbackDirectory;
             }
             currentDirectory = parentDirectory;
         }

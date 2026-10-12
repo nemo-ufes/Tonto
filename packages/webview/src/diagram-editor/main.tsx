@@ -1,5 +1,5 @@
 import * as React from "react";
-import "@xyflow/react/dist/style.css";
+import "../svg/canvas.css";
 import "../styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

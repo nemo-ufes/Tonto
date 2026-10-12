@@ -1,0 +1,308 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tonto saved SVG view",
+  "type": "object",
+  "required": [
+    "version"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "source": {
+      "type": "string",
+      "description": "Tonto source path relative to this view file."
+    },
+    "focus": {
+      "type": "string"
+    },
+    "legacyDirection": {
+      "enum": [
+        "LR",
+        "RL",
+        "TB",
+        "BT"
+      ]
+    },
+    "content": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "enum": [
+            "file",
+            "workspace"
+          ]
+        },
+        "includedPackages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hidden": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "showExternalReferences": {
+          "type": "boolean"
+        },
+        "showDatatypes": {
+          "type": "boolean"
+        },
+        "showGensets": {
+          "type": "boolean"
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "taxonomyOnly": {
+          "type": "boolean"
+        },
+        "showAttributes": {
+          "type": "boolean"
+        },
+        "showCardinalities": {
+          "type": "boolean"
+        },
+        "showRelationNames": {
+          "type": "boolean"
+        },
+        "showRelationStereotypes": {
+          "type": "boolean"
+        },
+        "showEndDecorations": {
+          "type": "boolean"
+        },
+        "showRoleNames": {
+          "type": "boolean"
+        },
+        "showColors": {
+          "type": "boolean"
+        },
+        "showLegend": {
+          "type": "boolean"
+        },
+        "showPackageGroups": {
+          "type": "boolean"
+        },
+        "qualifyNames": {
+          "type": "boolean"
+        },
+        "showDocumentation": {
+          "type": "boolean"
+        },
+        "routing": {
+          "enum": [
+            "straight",
+            "curved",
+            "orthogonal"
+          ]
+        },
+        "fontFamily": {
+          "enum": [
+            "sans",
+            "condensed",
+            "humanist",
+            "geometric",
+            "serif",
+            "book",
+            "monospace"
+          ]
+        },
+        "fontSize": {
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ]
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "associationDistance": {
+          "type": "number",
+          "minimum": 0
+        },
+        "nodeSpacing": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rankSpacing": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maxRankSpan": {
+          "type": "number",
+          "minimum": 0
+        },
+        "direction": {
+          "enum": [
+            "DOWN",
+            "RIGHT"
+          ]
+        },
+        "groupByPackage": {
+          "type": "boolean"
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "pinned": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "alignments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "axis",
+              "nodes"
+            ],
+            "properties": {
+              "axis": {
+                "enum": [
+                  "x",
+                  "y"
+                ]
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "distributions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "axis",
+              "nodes"
+            ],
+            "properties": {
+              "axis": {
+                "enum": [
+                  "x",
+                  "y"
+                ]
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": [
+                "x",
+                "y"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "labelOffset": {
+            "type": "object",
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "viewport": {
+      "type": "object",
+      "required": [
+        "x",
+        "y",
+        "zoom"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "zoom": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "title": {
+      "type": "string"
+    }
+  }
+}

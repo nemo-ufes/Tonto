@@ -12,6 +12,7 @@ import { isAntiRigidStereotype, isRigidStereotype, isSemiRigidStereotype } from 
 import { isNonSortalOntoCategory } from "../language/models/OntologicalCategory.js";
 import { TontoNatureResult, tontoNatureUtils } from "../language/utils/tontoNatureUtils.js";
 import {
+    type DiagramWorkspace,
     buildTontoDiagramWorkspaceContext,
     loadTontoDiagramWorkspace,
     resolveRequestedPackages,
@@ -36,14 +37,15 @@ const NODE_PADDING = 24;
 
 export async function buildTontoDiagramGraph(
     spec: TontoDiagramSpec,
-    diagramPath: string
+    diagramPath: string,
+    options: { overlays?: ReadonlyMap<string, string>; workspace?: DiagramWorkspace } = {}
 ): Promise<TontoDiagramGraph> {
-    const workspace = await loadTontoDiagramWorkspace(spec.source, diagramPath);
+    const workspace = options.workspace ?? await loadTontoDiagramWorkspace(spec.source, diagramPath, options.overlays);
     const workspaceContext = buildTontoDiagramWorkspaceContext(
         workspace.ontologyModels,
         workspace.sourcePath ?? workspace.projectRoot,
     );
-    const graphIssues: TontoDiagramIssue[] = [];
+    const graphIssues: TontoDiagramIssue[] = [...workspace.issues];
 
     const requestedPackages = spec.imports.length > 0
         ? spec.imports
@@ -179,6 +181,13 @@ function collectEdges(
         }
     }
 
+    const occurrences = new Map<string, number>();
+    for (const edge of edges) {
+        if (edge.kind !== "relation") continue;
+        const count = (occurrences.get(edge.id) ?? 0) + 1;
+        occurrences.set(edge.id, count);
+        if (count > 1) edge.id = `${edge.id}#${count}`;
+    }
     return {
         edges: dedupeEdges(edges),
         externalNodes: [...externalNodes.values()].filter((node) => node.appearance.external),
